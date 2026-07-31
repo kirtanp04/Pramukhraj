@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Brand palette — spice-market ledger, not the default cream/terracotta pairing */
+  --color-ivory: #fbf6ec;
+  --color-ivory-dim: #f1e9d6;
+  --color-tan: #f1e4c8;
+  --color-tan-deep: #e4d2a6;
+  --color-oxblood: #7a2531;
+  --color-oxblood-deep: #591a24;
+  --color-turmeric: #d4a017;
+  --color-turmeric-deep: #b6860c;
+  --color-teal: #16302b;
+  --color-teal-deep: #0d1f1b;
+  --color-teal-light: #234c43;
+  --color-ink: #2b211c;
+  --color-ink-soft: #5b4f45;
+
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-card: 0.75rem;
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+  --color-ivory: #0d1f1b;
+  --color-ivory-dim: #16302b;
+  --color-tan: #1c352f;
+  --color-tan-deep: #234c43;
+  --color-ink: #f1e9d6;
+  --color-ink-soft: #c9bfa8;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-turmeric-deep);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Signature motif: a perforated / die-cut top edge, like the folded flap
+     of a namkeen packet. Used on cards & section dividers throughout. */
+  .scallop-top {
+    -webkit-mask-image: radial-gradient(circle at 8px 0, transparent 7px, black 7.5px);
+    mask-image: radial-gradient(circle at 8px 0, transparent 7px, black 7.5px);
+    -webkit-mask-size: 16px 16px;
+    mask-size: 16px 16px;
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-position: top left;
+    mask-position: top left;
+  }
+  .scallop-bottom {
+    -webkit-mask-image: radial-gradient(circle at 8px 100%, transparent 7px, black 7.5px);
+    mask-image: radial-gradient(circle at 8px 100%, transparent 7px, black 7.5px);
+    -webkit-mask-size: 16px 16px;
+    mask-size: 16px 16px;
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-position: bottom left;
+    mask-position: bottom left;
+  }
+  .stamp-badge {
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .admin-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+    background-color: var(--color-ivory);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .admin-input:focus {
+    border-color: color-mix(in srgb, var(--color-oxblood) 50%, transparent);
+  }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-ivory-dim); }
+::-webkit-scrollbar-thumb { background: var(--color-tan-deep); border-radius: 8px; }
