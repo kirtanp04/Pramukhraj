@@ -1,0 +1,22 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace pramukhraj.Extensions
+{
+    /// <summary>
+    /// Central place to register application services. Methods will be implemented in later steps.
+    /// </summary>
+    public static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+        {
+            // Placeholder for database, identity, and authentication registrations
+            return services;
+        }
+
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            // Placeholder for application services (AutoMapper, FluentValidation, etc.)
+            return services;
+        }
+    }
+}

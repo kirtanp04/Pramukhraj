@@ -1,0 +1,111 @@
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using pramukhraj.Common;
+using pramukhraj.DTOs.Auth;
+using pramukhraj.Entities;
+using pramukhraj.Interfaces;
+using System.Threading.Tasks;
+
+namespace pramukhraj.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public sealed class AuthController : ControllerBase
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ITokenService _tokenService;
+        private readonly RoleManager<IdentityRole> _roleManager;
+
+        public AuthController(UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            ITokenService tokenService,
+            RoleManager<IdentityRole> roleManager)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _tokenService = tokenService;
+            _roleManager = roleManager;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            var existing = await _userManager.FindByEmailAsync(request.Email);
+            if (existing != null)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Email is already registered."));
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = request.Email,
+                Email = request.Email,
+                CreatedAt = System.DateTimeOffset.UtcNow
+            };
+
+            var result = await _userManager.CreateAsync(user, request.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Registration failed.", 400, result.Errors));
+            }
+
+            // Ensure default role exists and assign
+            var defaultRole = "Customer";
+            if (!await _roleManager.RoleExistsAsync(defaultRole))
+            {
+                await _roleManager.CreateAsync(new IdentityRole(defaultRole));
+            }
+
+            await _userManager.AddToRoleAsync(user, defaultRole);
+
+            // Generate email confirmation token (to be sent by email in production)
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            return Created(string.Empty, ApiResponse<object>.Ok(new { user.Id, Email = user.Email, EmailConfirmationToken = token }, "Registration successful. Please verify your email."));
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));
+            }
+
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                return Forbid();
+            }
+
+            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            if (!result.Succeeded)
+            {
+                if (result.IsLockedOut)
+                {
+                    return Forbid();
+                }
+
+                return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));
+            }
+
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var (accessToken, refreshToken) = await _tokenService.CreateTokensAsync(user, ip);
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var response = new AuthResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresIn = 60 * 60, // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
+                UserId = user.Id,
+                Email = user.Email ?? string.Empty,
+                Roles = roles.ToArray()
+            };
+
+            return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));
+        }
+    }
+}

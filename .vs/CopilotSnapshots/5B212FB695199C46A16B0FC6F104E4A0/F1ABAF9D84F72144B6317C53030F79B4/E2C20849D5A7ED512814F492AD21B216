@@ -1,0 +1,119 @@
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using pramukhraj.Configurations;
+using pramukhraj.Database;
+using pramukhraj.Entities;
+using pramukhraj.Interfaces;
+using pramukhraj.Services;
+using System;
+using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using FluentValidation.DependencyInjectionExtensions;
+
+namespace pramukhraj.Extensions
+{
+    /// <summary>
+    /// Central place to register application services.
+    /// </summary>
+    public static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Configure JwtSettings
+            services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+            var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
+
+            // Register DbContext
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                var conn = configuration.GetConnectionString("DefaultConnection");
+                options.UseNpgsql(conn, npg => npg.EnableRetryOnFailure());
+            });
+
+            // Identity
+            services.AddIdentity<ApplicationUser, IdentityRole>(opts =>
+            {
+                opts.User.RequireUniqueEmail = true;
+                opts.Password.RequireDigit = true;
+                opts.Password.RequireLowercase = true;
+                opts.Password.RequireUppercase = true;
+                opts.Password.RequireNonAlphanumeric = true;
+                opts.Password.RequiredLength = 8;
+
+                opts.Lockout.MaxFailedAccessAttempts = 5;
+                opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+
+                opts.SignIn.RequireConfirmedEmail = true;
+            })
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
+
+            // Authentication - JWT Bearer
+            var key = Encoding.UTF8.GetBytes(jwtSettings.Secret ?? string.Empty);
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.RequireHttpsMetadata = true;
+                options.SaveToken = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSettings.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtSettings.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                };
+            });
+
+            // Authorization
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("RequireAdministratorRole", policy => policy.RequireRole("SuperAdmin", "Admin"));
+            });
+
+            // CORS - enterprise default policy
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136" };
+            services.AddCors(options =>
+            {
+                options.AddPolicy("EnterpriseCorsPolicy", policy =>
+                {
+                    policy.WithOrigins(allowedOrigins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials()
+                          .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+                });
+            });
+
+            // Register token service
+            services.AddScoped<ITokenService, TokenService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            // AutoMapper
+            services.AddAutoMapper(typeof(pramukhraj.Mapping.MappingProfile));
+
+            // FluentValidation
+            services.AddFluentValidationAutoValidation();
+            services.AddValidatorsFromAssemblyContaining<pramukhraj.Validators.RegisterRequestValidator>();
+
+            return services;
+        }
+    }
+}

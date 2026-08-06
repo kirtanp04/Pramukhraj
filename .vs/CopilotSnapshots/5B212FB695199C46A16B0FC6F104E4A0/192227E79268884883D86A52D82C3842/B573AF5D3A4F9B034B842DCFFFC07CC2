@@ -1,0 +1,31 @@
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using pramukhraj.Database;
+
+namespace pramukhraj.Extensions
+{
+    /// <summary>
+    /// Central place to register application services.
+    /// </summary>
+    public static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Register DbContext
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                var conn = configuration.GetConnectionString("DefaultConnection");
+                options.UseNpgsql(conn, npg => npg.EnableRetryOnFailure());
+            });
+
+            // Identity, Authentication, and other infra will be added in subsequent steps
+            return services;
+        }
+
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            // Register AutoMapper, FluentValidation, MediatR, etc. in following steps
+            return services;
+        }
+    }
+}

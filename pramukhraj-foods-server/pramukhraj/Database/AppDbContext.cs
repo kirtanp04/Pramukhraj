@@ -1,0 +1,49 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using pramukhraj.Entities;
+
+namespace pramukhraj.Database
+{
+    /// <summary>
+    /// Application Entity Framework Core DbContext.
+    /// </summary>
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+        }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<Customer> Customers { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            // Configure RowVersion for concurrency across entities that include it.
+            builder.Entity<ApplicationUser>(b =>
+            {
+                b.Property(u => u.RowVersion).IsRowVersion();
+                b.HasIndex(u => u.NormalizedEmail).HasDatabaseName("IX_Users_NormalizedEmail");
+            });
+
+            builder.Entity<RefreshToken>(b =>
+            {
+                b.HasKey(t => t.Id);
+                b.Property(t => t.Token).IsRequired();
+                b.HasIndex(t => t.Token).IsUnique();
+                b.Property(t => t.CreatedAt).HasDefaultValueSql("now()");
+                b.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Customer>(b =>
+            {
+                b.HasKey(c => c.Id);
+                b.Property(c => c.Email).IsRequired();
+                b.HasIndex(c => c.Email).IsUnique();
+                b.Property(c => c.CreatedAt).HasDefaultValueSql("now()");
+                b.Property(c => c.RowVersion).IsRowVersion();
+            });
+        }
+    }
+}
