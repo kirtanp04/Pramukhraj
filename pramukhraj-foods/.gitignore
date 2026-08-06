@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 # Visual Studio
 .vs/
+.env
+.env.dev
+.env.prod

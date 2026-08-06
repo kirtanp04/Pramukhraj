@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: pramukhraj_db_dev
+    restart: unless-stopped
+    env_file: 
+      - ../.env.dev # Steps out of DB_Folder into Docker_Folder
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: ${DB_TIMEZONE}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Creates the data folder next to your .env files in Docker_Folder
+      - ../pg-dev-data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge

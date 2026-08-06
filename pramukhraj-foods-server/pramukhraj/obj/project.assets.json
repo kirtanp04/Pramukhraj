@@ -2685,23 +2685,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Kirtan\\.nuget\\packages\\": {},
+    "C:\\Users\\EtechTestMachine\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\pramukhraj.csproj",
+      "projectUniqueName": "D:\\Kirtan\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\pramukhraj.csproj",
       "projectName": "pramukhraj",
-      "projectPath": "D:\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\pramukhraj.csproj",
-      "packagesPath": "C:\\Users\\Kirtan\\.nuget\\packages\\",
-      "outputPath": "D:\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\obj\\",
+      "projectPath": "D:\\Kirtan\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\pramukhraj.csproj",
+      "packagesPath": "C:\\Users\\EtechTestMachine\\.nuget\\packages\\",
+      "outputPath": "D:\\Kirtan\\Pramukhraj\\pramukhraj-foods-server\\pramukhraj\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Kirtan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\EtechTestMachine\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -2710,6 +2710,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

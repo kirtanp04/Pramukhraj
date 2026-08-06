@@ -1,1 +1,7 @@
 pramukhraj-foods-server/.vs/
+pramukhraj-foods-server/.env
+
+
+
+docker/.env.dev
+docker/.env.prod
