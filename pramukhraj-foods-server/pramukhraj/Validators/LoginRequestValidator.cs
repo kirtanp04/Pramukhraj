@@ -7,7 +7,7 @@ namespace pramukhraj.Validators
     {
         public LoginRequestValidator()
         {
-            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("A valid email is required.");
+            RuleFor(x => x.Username).NotEmpty().WithMessage("A valid username is required.");
             RuleFor(x => x.Password).NotEmpty().WithMessage("Password is required.");
         }
     }

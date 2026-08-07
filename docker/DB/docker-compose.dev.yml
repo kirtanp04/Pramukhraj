@@ -5,8 +5,8 @@ services:
     image: postgres:16-alpine
     container_name: pramukhraj_db_dev
     restart: unless-stopped
-    env_file: 
-      - ../.env.dev # Steps out of DB_Folder into Docker_Folder
+    # env_file: 
+    #   - ../.env.dev # Steps out of DB_Folder into Docker_Folder
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}

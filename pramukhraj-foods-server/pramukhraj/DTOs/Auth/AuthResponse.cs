@@ -7,6 +7,7 @@ namespace pramukhraj.DTOs.Auth
         public int ExpiresIn { get; set; }
         public string UserId { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public string[] Roles { get; set; } = System.Array.Empty<string>();
+        public string Role { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
     }
 }

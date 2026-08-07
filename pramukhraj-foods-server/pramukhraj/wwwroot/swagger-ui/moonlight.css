@@ -1,0 +1,26 @@
+:root{--bg:#0b1020;--panel:#0f1724;--muted:#94a3b8;--text:#cbd5e1;--accent:#7aa2ff;--success:#7ee787;--danger:#ff7b89}
+.swagger-ui{background-color:var(--bg)!important;color:var(--text)!important}
+.swagger-ui .topbar{background:linear-gradient(180deg,#071027, #0b1020)!important}
+.swagger-ui .topbar .link img{filter:brightness(0) invert(1)}
+.swagger-ui .info, .swagger-ui .scheme-container, .swagger-ui .opblock, .swagger-ui .parameters, .swagger-ui .responses{background:var(--panel)!important;color:var(--text)!important;border-color:#162031}
+.swagger-ui .opblock .opblock-summary{background:transparent!important}
+.swagger-ui .opblock.opblock-get{border-left:4px solid #6ee7b7}
+.swagger-ui .opblock.opblock-post{border-left:4px solid #7aa2ff}
+.swagger-ui .opblock .opblock-summary-method{color:var(--text)!important}
+.swagger-ui .parameter__name, .swagger-ui .parameter__type, .swagger-ui .parameter__in{color:var(--muted)!important}
+.swagger-ui .btn, .swagger-ui .try-out__btn{background:#132033;color:var(--text);border:1px solid #213547}
+.swagger-ui .opblock .opblock-body pre{background:#071421;color:var(--text);border:1px solid #122231}
+.swagger-ui .response-col_status{color:var(--accent)!important}
+.swagger-ui .authorization__btn{background:#122631;color:var(--text)!important}
+
+/* Adjust inputs */
+.swagger-ui input, .swagger-ui textarea, .swagger-ui select{background:#081423;color:var(--text);border:1px solid #213547}
+
+/* Footer and collapse */
+.swagger-ui .info .base-url, .swagger-ui .info .title{color:var(--text)!important}
+
+/* Ensure links are visible */
+.swagger-ui a{color:var(--accent)!important}
+
+/* Small tweaks for mobile */
+@media (max-width: 600px){.swagger-ui .opblock-summary{padding:10px}}

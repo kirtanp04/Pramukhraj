@@ -8,5 +8,6 @@ namespace pramukhraj.Interfaces
         Task<(string AccessToken, string RefreshToken)> CreateTokensAsync(ApplicationUser user, string ipAddress);
         Task<(string AccessToken, string RefreshToken)> CreateTokensForCustomerAsync(Customer customer, string ipAddress);
         Task<bool> RevokeRefreshTokenAsync(string refreshToken, string ipAddress);
+        Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress);
     }
 }

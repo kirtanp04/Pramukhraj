@@ -5,3 +5,7 @@ pramukhraj-foods-server/.env
 
 docker/.env.dev
 docker/.env.prod
+docker/pg-dev-data
+docker/pg-prod-data
+
+.vs

@@ -126,6 +126,53 @@ namespace pramukhraj.Services
             return true;
         }
 
+        /// <summary>
+        /// Refreshes tokens by rotating the provided refresh token.
+        /// Performs validation (existence, not revoked, not expired, optional IP check),
+        /// creates a new access + refresh token pair and atomically revokes the old token.
+        /// </summary>
+        public async Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress)
+        {
+            var existing = await _db.RefreshTokens.SingleOrDefaultAsync(t => t.Token == refreshToken);
+            if (existing == null) throw new InvalidOperationException("Invalid refresh token");
+            if (existing.IsRevoked) throw new InvalidOperationException("Refresh token has been revoked");
+            if (existing.ExpiresAt <= DateTimeOffset.UtcNow) throw new InvalidOperationException("Refresh token has expired");
+
+            // Optional security: require same IP that created the token for administrative flows
+            if (!string.IsNullOrEmpty(existing.CreatedByIp) && existing.CreatedByIp != ipAddress)
+            {
+                // Revoke token to prevent reuse from a different IP
+                existing.IsRevoked = true;
+                existing.RevokedAt = DateTimeOffset.UtcNow;
+                existing.RevokedByIp = ipAddress;
+                _db.RefreshTokens.Update(existing);
+                await _db.SaveChangesAsync();
+                throw new InvalidOperationException("Refresh token IP mismatch");
+            }
+
+            var user = await _userManager.FindByIdAsync(existing.UserId);
+            if (user == null) throw new InvalidOperationException("User not found for refresh token");
+
+            // Use a transaction to ensure both new token creation and old token revocation are atomic
+            await using var tx = await _db.Database.BeginTransactionAsync();
+
+            // Create new tokens (this will insert a new RefreshToken row)
+            var (newAccess, newRefresh) = await CreateTokensAsync(user, ipAddress);
+
+            // Revoke old token and link to replacement
+            existing.IsRevoked = true;
+            existing.RevokedAt = DateTimeOffset.UtcNow;
+            existing.RevokedByIp = ipAddress;
+            existing.ReplacedByToken = newRefresh;
+
+            _db.RefreshTokens.Update(existing);
+            await _db.SaveChangesAsync();
+
+            await tx.CommitAsync();
+
+            return (newAccess, newRefresh);
+        }
+
         private static string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];

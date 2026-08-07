@@ -5,12 +5,11 @@ using pramukhraj.DTOs.Auth;
 using pramukhraj.Entities;
 using Microsoft.EntityFrameworkCore;
 using pramukhraj.Interfaces;
-using System.Threading.Tasks;
 
 namespace pramukhraj.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public sealed class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -29,19 +28,88 @@ namespace pramukhraj.Controllers
             _roleManager = roleManager;
         }
 
+        [HttpPost("admin/refresh")]
+        public async Task<IActionResult> AdminRefresh([FromBody] pramukhraj.DTOs.Auth.RefreshRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                return BadRequest(ApiResponse<string>.Fail("Refresh token is required."));
+            }
+
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            try
+            {
+                var (accessToken, refreshToken) = await _tokenService.RefreshTokensAsync(request.RefreshToken, ip);
+
+                // load the newly created refresh token to get the associated user
+                var db = HttpContext.RequestServices.GetService<pramukhraj.Database.AppDbContext>()!;
+                var newRefresh = await db.RefreshTokens.SingleOrDefaultAsync(t => t.Token == refreshToken);
+                if (newRefresh == null)
+                {
+                    return Unauthorized(ApiResponse<string>.Fail("Unable to refresh token."));
+                }
+
+                var user = await _userManager.FindByIdAsync(newRefresh.UserId);
+                if (user == null)
+                {
+                    return Unauthorized(ApiResponse<string>.Fail("Invalid user for refresh token."));
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+                if (!roles.Contains("Admin"))
+                {
+                    // Only allow admin refresh through this endpoint
+                    return Forbid();
+                }
+
+                string userRole = roles.Count > 0 ? roles[0] : string.Empty;
+
+                var response = new AuthResponse
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                    ExpiresIn = 60 * 60,
+                    UserId = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    Role = userRole,
+                    Username = user.UserName ?? string.Empty
+                };
+
+                return Ok(ApiResponse<AuthResponse>.Ok(response, "Token refreshed."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Unauthorized(ApiResponse<string>.Fail(ex.Message, 401));
+            }
+            catch
+            {
+                return StatusCode(500, ApiResponse<string>.Fail("An unexpected error occurred while refreshing token."));
+            }
+        }
+
         [HttpPost("admin/register")]
         public async Task<IActionResult> AdminRegister([FromBody] RegisterRequest request)
         {
-            var existing = await _userManager.FindByEmailAsync(request.Email);
-            if (existing != null)
+           
+            var existingName = await _userManager.FindByNameAsync(request.Username.Trim().ToLower());
+
+            if (existingName != null)
+            {
+                return BadRequest(ApiResponse<string>.Fail("Username is already registered."));
+            }
+
+            var existingEmail = await _userManager.FindByEmailAsync(request.Email.Trim().ToLower());
+
+            if (existingEmail != null)
             {
                 return BadRequest(ApiResponse<string>.Fail("Email is already registered."));
             }
 
             var user = new ApplicationUser
             {
-                UserName = request.Email,
-                Email = request.Email,
+                UserName = request.Username.Trim().ToLower(),
+                Email = request.Email.Trim().ToLower(),
                 CreatedAt = System.DateTimeOffset.UtcNow
             };
 
@@ -51,16 +119,7 @@ namespace pramukhraj.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Registration failed.", 400, result.Errors));
             }
 
-            // Ensure admin role exists and assign
-            var adminRole = "Admin";
-            if (!await _roleManager.RoleExistsAsync(adminRole))
-            {
-                await _roleManager.CreateAsync(new IdentityRole(adminRole));
-            }
-
-            await _userManager.AddToRoleAsync(user, adminRole);
-
-            // Generate email confirmation token (to be sent by email in production)
+           
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
             return Created(string.Empty, ApiResponse<object>.Ok(new { user.Id, Email = user.Email, EmailConfirmationToken = token }, "Admin registration successful. Please verify your email."));
@@ -69,7 +128,8 @@ namespace pramukhraj.Controllers
         [HttpPost("admin/login")]
         public async Task<IActionResult> AdminLogin([FromBody] LoginRequest request)
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            var user = await _userManager.FindByNameAsync(request.Username);
+
             if (user == null)
             {
                 return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));
@@ -92,9 +152,12 @@ namespace pramukhraj.Controllers
             }
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
             var (accessToken, refreshToken) = await _tokenService.CreateTokensAsync(user, ip);
 
             var roles = await _userManager.GetRolesAsync(user);
+
+            string userRole = roles.Count > 0 ? roles[0] : "";
 
             var response = new AuthResponse
             {
@@ -103,7 +166,8 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60, // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
                 UserId = user.Id,
                 Email = user.Email ?? string.Empty,
-                Roles = roles.ToArray()
+                Role = userRole,
+                Username = user.UserName ?? "",
             };
 
             return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));
@@ -145,7 +209,7 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60,
                 UserId = customer.Id.ToString(),
                 Email = customer.Email,
-                Roles = new[] { "Customer" }
+                Role= string.Empty
             };
 
             return Created(string.Empty, ApiResponse<AuthResponse>.Ok(response, "Customer registration successful."));
@@ -178,7 +242,7 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60,
                 UserId = customer.Id.ToString(),
                 Email = customer.Email,
-                Roles = new[] { "Customer" }
+                Role = string.Empty
             };
 
             return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));

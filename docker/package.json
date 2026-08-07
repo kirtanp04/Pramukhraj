@@ -1,0 +1,22 @@
+{
+  "name": "pramukhraj-docker",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:up": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml up -d",
+    "dev:down": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml down",
+    "dev:restart": "npm run dev:down && npm run dev:up",
+    "dev:logs": "docker logs -f pramukhraj_db_dev",
+    "dev:config": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml config",
+    "dev:ps": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml ps",
+    "dev:stop": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml stop",
+    "dev:start": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml start",
+
+    "prod:up": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml up -d",
+    "prod:down": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml down",
+    "prod:restart": "npm run prod:down && npm run prod:up",
+    "prod:logs": "docker logs -f pramukhraj_db_prod",
+    "prod:config": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml config",
+    "prod:ps": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml ps"
+  }
+}
