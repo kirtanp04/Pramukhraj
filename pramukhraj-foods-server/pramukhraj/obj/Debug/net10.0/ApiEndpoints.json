@@ -2,7 +2,7 @@
   {
     "ContainingType": "pramukhraj.Controllers.AuthController",
     "Method": "AdminLogin",
-    "RelativePath": "api/Auth/admin/login",
+    "RelativePath": "api/auth/admin/login",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -17,8 +17,24 @@
   },
   {
     "ContainingType": "pramukhraj.Controllers.AuthController",
+    "Method": "AdminRefresh",
+    "RelativePath": "api/auth/admin/refresh",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Auth.RefreshRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.AuthController",
     "Method": "AdminRegister",
-    "RelativePath": "api/Auth/admin/register",
+    "RelativePath": "api/auth/admin/register",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -34,7 +50,7 @@
   {
     "ContainingType": "pramukhraj.Controllers.AuthController",
     "Method": "CustomerLogin",
-    "RelativePath": "api/Auth/customer/login",
+    "RelativePath": "api/auth/customer/login",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -50,7 +66,7 @@
   {
     "ContainingType": "pramukhraj.Controllers.AuthController",
     "Method": "CustomerRegister",
-    "RelativePath": "api/Auth/customer/register",
+    "RelativePath": "api/auth/customer/register",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,

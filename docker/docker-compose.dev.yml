@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: pramukhraj_db_dev
+
+    restart: unless-stopped
+
+    env_file:
+      - ../pramukhraj-foods/.env
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: ${DB_TIMEZONE}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - ../pg-dev-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+    networks:
+      - dev-network
+
+  backend:
+    container_name: pramukhraj-server-dev
+
+    build:
+      context: ..
+      dockerfile: docker/Server/Dockerfile.dev
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+
+    env_file:
+      - ../pramukhraj-foods/.env
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      DOTNET_WATCH_POLL_INTERVAL: "1000"
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: "1"
+      DOTNET_WATCH_SUPPRESS_BROWSER_REFRESH: "1"
+
+      ConnectionStrings__DefaultConnection: "Server=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};"
+
+      JwtSettings__Key: ${Jwt_Key}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+
+      EncryptionKey: ${ENCRYPTION_KEY}
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ../pramukhraj-foods-server:/src
+      - backend_bin:/src/bin
+      - backend_obj:/src/obj
+
+    networks:
+      - dev-network
+
+  frontend:
+    container_name: pramukhraj-foods-dev
+
+    build:
+      context: ..
+      dockerfile: docker/UI/Dockerfile.dev
+
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    env_file:
+      - ../pramukhraj-foods/.env
+
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - ../pramukhraj-foods:/app
+      - frontend_node_modules:/app/node_modules
+
+    networks:
+      - dev-network
+
+volumes:
+  frontend_node_modules:
+  backend_bin:
+  backend_obj:
+
+networks:
+  dev-network:
+    driver: bridge
+  

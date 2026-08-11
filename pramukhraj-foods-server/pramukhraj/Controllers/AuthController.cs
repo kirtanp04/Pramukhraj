@@ -73,7 +73,8 @@ namespace pramukhraj.Controllers
                     UserId = user.Id,
                     Email = user.Email ?? string.Empty,
                     Role = userRole,
-                    Username = user.UserName ?? string.Empty
+                    Username = user.UserName ?? string.Empty,
+                    IsDeleted = user.IsDeleted
                 };
 
                 return Ok(ApiResponse<AuthResponse>.Ok(response, "Token refreshed."));
@@ -151,6 +152,15 @@ namespace pramukhraj.Controllers
                 return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));
             }
 
+            if (user.IsDeleted)
+            {
+                return Unauthorized(
+                    ApiResponse<string>.Fail(
+                        "Your account has been disabled. Please contact admin for assistance.",
+                        401
+                    )
+                );
+            }
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
             var (accessToken, refreshToken) = await _tokenService.CreateTokensAsync(user, ip);
@@ -168,6 +178,7 @@ namespace pramukhraj.Controllers
                 Email = user.Email ?? string.Empty,
                 Role = userRole,
                 Username = user.UserName ?? "",
+                IsDeleted = user.IsDeleted
             };
 
             return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));

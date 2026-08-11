@@ -1,0 +1,20 @@
+# Development Dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /app
+
+# Copy csproj and restore as distinct layers
+COPY ["pramukhraj-foods-server/pramukhraj.csproj", "./"]
+RUN dotnet restore "pramukhraj-foods-server/pramukhraj.csproj"
+
+# Copy everything else
+COPY . .
+
+# Set environment variables
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:80
+
+# Expose port
+EXPOSE 80
+
+# Run the application with watch for hot reload
+ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://+:80"]

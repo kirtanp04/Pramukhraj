@@ -28,6 +28,10 @@ namespace pramukhraj.Extensions
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
 
+            // Configure EncryptionSettings
+            services.Configure<pramukhraj.Configurations.EncryptionSettings>(configuration.GetSection("Encryption"));
+            var encryptionSettings = configuration.GetSection("Encryption").Get<pramukhraj.Configurations.EncryptionSettings>() ?? new pramukhraj.Configurations.EncryptionSettings();
+
             // Register DbContext
             services.AddDbContext<AppDbContext>(options =>
             {
@@ -84,7 +88,7 @@ namespace pramukhraj.Extensions
             });
 
             // CORS - enterprise default policy
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136" };
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173" };
             services.AddCors(options =>
             {
                 options.AddPolicy("EnterpriseCorsPolicy", policy =>

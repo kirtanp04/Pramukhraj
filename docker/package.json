@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev:up": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml up -d",
+    "dev:up": "docker compose --env-file ../pramukhraj-foods/.env -f DB/docker-compose.dev.yml up -d",
     "dev:down": "docker compose --env-file .env.dev -f DB/docker-compose.dev.yml down",
     "dev:restart": "npm run dev:down && npm run dev:up",
     "dev:logs": "docker logs -f pramukhraj_db_dev",
@@ -17,6 +17,12 @@
     "prod:restart": "npm run prod:down && npm run prod:up",
     "prod:logs": "docker logs -f pramukhraj_db_prod",
     "prod:config": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml config",
-    "prod:ps": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml ps"
+    "prod:ps": "docker compose --env-file .env.prod -f DB/docker-compose.prod.yml ps",
+
+    
+    "docker-dev": "docker compose -f docker-compose.dev.yml up -d",
+    "docker-dev-build": "docker compose -f docker-compose.dev.yml up --build -d",
+    "docker-dev-down": "docker compose -f docker-compose.dev.yml down",
+    "docker-dev-logs": "docker compose -f docker-compose.dev.yml logs -f"
   }
 }
