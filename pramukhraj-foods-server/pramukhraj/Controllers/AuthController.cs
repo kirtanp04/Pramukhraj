@@ -15,17 +15,14 @@ namespace pramukhraj.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ITokenService _tokenService;
-        private readonly RoleManager<IdentityRole> _roleManager;
 
         public AuthController(UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            ITokenService tokenService,
-            RoleManager<IdentityRole> roleManager)
+            ITokenService tokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
-            _roleManager = roleManager;
         }
 
         [HttpPost("admin/refresh")]
@@ -56,11 +53,6 @@ namespace pramukhraj.Controllers
                     return Unauthorized(ApiResponse<string>.Fail("Invalid user for refresh token."));
                 }
 
-                var roles = await _userManager.GetRolesAsync(user);
-                
-
-                string userRole = roles.Count > 0 ? roles[0] : string.Empty;
-
                 var response = new AuthResponse
                 {
                     AccessToken = accessToken,
@@ -68,7 +60,6 @@ namespace pramukhraj.Controllers
                     ExpiresIn = 60 * 60,
                     UserId = user.Id,
                     Email = user.Email ?? string.Empty,
-                    Role = userRole,
                     Username = user.UserName ?? string.Empty,
                     IsDeleted = user.IsDeleted
                 };
@@ -161,10 +152,6 @@ namespace pramukhraj.Controllers
 
             var (accessToken, refreshToken) = await _tokenService.CreateTokensAsync(user, ip);
 
-            var roles = await _userManager.GetRolesAsync(user);
-
-            string userRole = roles.Count > 0 ? roles[0] : "";
-
             var response = new AuthResponse
             {
                 AccessToken = accessToken,
@@ -172,7 +159,6 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60, // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
                 UserId = user.Id,
                 Email = user.Email ?? string.Empty,
-                Role = userRole,
                 Username = user.UserName ?? "",
                 IsDeleted = user.IsDeleted
             };
@@ -216,7 +202,6 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60,
                 UserId = customer.Id.ToString(),
                 Email = customer.Email,
-                Role= string.Empty
             };
 
             return Created(string.Empty, ApiResponse<AuthResponse>.Ok(response, "Customer registration successful."));
@@ -249,7 +234,6 @@ namespace pramukhraj.Controllers
                 ExpiresIn = 60 * 60,
                 UserId = customer.Id.ToString(),
                 Email = customer.Email,
-                Role = string.Empty
             };
 
             return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));

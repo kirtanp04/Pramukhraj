@@ -1,6 +1,5 @@
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/store/authStore'
 
 const mediaItems = Array.from({ length: 18 }).map((_, i) => ({
   id: `media-${i}`,
@@ -10,7 +9,7 @@ const mediaItems = Array.from({ length: 18 }).map((_, i) => ({
 }))
 
 export function AdminMedia() {
-  const canManage = useAuthStore((s) => s.hasPermission('media.manage'))
+  const canManage = true
 
   return (
     <div>

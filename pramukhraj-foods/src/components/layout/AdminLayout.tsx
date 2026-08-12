@@ -4,22 +4,18 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, X, Bell, Search, LogOut, Settings, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react'
 import { Logo } from '@/components/layout/Logo'
-import { Badge } from '@/components/ui/Badge'
 import { adminNavGroups } from '@/constants/adminNav'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
-import { getRole, getRoleIdByName } from '@/mock/roles'
 import { cn } from '@/lib/utils'
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const user = useAuthStore((s) => s.user)
-  const hasPermission = useAuthStore((s) => s.hasPermission)
   const logout = useAuthStore((s) => s.logout)
   const theme = useUIStore((s) => s.theme)
   const toggleTheme = useUIStore((s) => s.toggleTheme)
   const navigate = useNavigate()
-  const role = getRole(getRoleIdByName(user?.role ?? '') ?? '')
 
   function handleLogout() {
     logout()
@@ -33,14 +29,11 @@ export function AdminLayout() {
         <button className="lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={20} /></button>
       </div>
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
-        {adminNavGroups.map((group) => {
-          const visibleItems = group.items.filter((item) => hasPermission(item.permission))
-          if (visibleItems.length === 0) return null
-          return (
-            <div key={group.title}>
-              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-ivory/35">{group.title}</p>
-              <div className="space-y-0.5">
-                {visibleItems.map((item) => (
+        {adminNavGroups.map((group) => (
+          <div key={group.title}>
+            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-ivory/35">{group.title}</p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -56,10 +49,9 @@ export function AdminLayout() {
                     <item.icon size={16} /> {item.label}
                   </NavLink>
                 ))}
-              </div>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </nav>
       <div className="border-t border-ivory/10 p-4">
         <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-ivory/60 hover:bg-ivory/10 hover:text-ivory">
@@ -99,7 +91,6 @@ export function AdminLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            {role && <Badge variant={role.color} className="hidden sm:inline-flex">{role.name}</Badge>}
             <button onClick={toggleTheme} aria-label="Toggle theme" className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5">
               {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
             </button>

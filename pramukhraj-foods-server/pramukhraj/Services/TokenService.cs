@@ -42,7 +42,7 @@ namespace pramukhraj.Services
                 new Claim(JwtRegisteredClaimNames.Sub, customer.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, customer.Email ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Role, "Customer")
+
             };
 
             var token = new JwtSecurityToken(
@@ -76,14 +76,14 @@ namespace pramukhraj.Services
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var roles = await _userManager.GetRolesAsync(user);
-
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            }.Union(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                // Include admin claim when applicable
+                new Claim("is_admin", user.IsAdmin ? "true" : "false")
+            };
 
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
@@ -161,7 +161,7 @@ namespace pramukhraj.Services
                     throw new UnauthorizedAccessException("User not found.");
                 }
 
-                // Step C: Generate new tokens (This calls GetRolesAsync internally)
+                // Step C: Generate new tokens
                 var newTokens = await CreateTokensAsync(user, ipAddress);
 
                 // Step D: Commit changes and complete transaction

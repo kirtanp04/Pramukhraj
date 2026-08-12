@@ -19,10 +19,6 @@ const RequireAuth = lazyNamed(
   () => import("@/components/admin/RequireAuth"),
   "RequireAuth"
 );
-const PermissionGate = lazyNamed(
-  () => import("@/components/admin/PermissionGate"),
-  "PermissionGate"
-);
 const Home = lazyNamed(() => import("@/pages/Home"), "Home");
 const ProductListing = lazyNamed(
   () => import("@/pages/ProductListing"),
@@ -177,10 +173,6 @@ const AdminEmailTemplates = lazyNamed(
   () => import("@/pages/admin/AdminEmailTemplates"),
   "AdminEmailTemplates"
 );
-const AdminRoles = lazyNamed(
-  () => import("@/pages/admin/AdminRoles"),
-  "AdminRoles"
-);
 const AdminUsers = lazyNamed(
   () => import("@/pages/admin/AdminUsers"),
   "AdminUsers"
@@ -217,14 +209,6 @@ const AdminSettings = lazyNamed(
 const lazyElement = (
   component: Parameters<typeof LazyRoute>[0]["component"]
 ) => <LazyRoute component={component} />;
-const protectedAdminRoute = (
-  permission: string,
-  component: Parameters<typeof LazyRoute>[0]["component"]
-) => (
-  <LazyRoute component={PermissionGate} componentProps={{ permission }}>
-    {lazyElement(component)}
-  </LazyRoute>
-);
 
 export function AppRoutes() {
   return useRoutes([
@@ -287,111 +271,32 @@ export function AppRoutes() {
           path: "/admin",
           element: lazyElement(AdminLayout),
           children: [
-            {
-              index: true,
-              element: protectedAdminRoute("dashboard.view", AdminDashboard),
-            },
-            {
-              path: "analytics",
-              element: protectedAdminRoute("analytics.view", AdminAnalytics),
-            },
-            {
-              path: "orders",
-              element: protectedAdminRoute("orders.view", AdminOrders),
-            },
-            {
-              path: "products",
-              element: protectedAdminRoute("products.view", AdminProducts),
-            },
-            {
-              path: "categories",
-              element: protectedAdminRoute("categories.view", AdminCategories),
-            },
-            {
-              path: "customers",
-              element: protectedAdminRoute("customers.view", AdminCustomers),
-            },
-            {
-              path: "reviews",
-              element: protectedAdminRoute("reviews.view", AdminReviews),
-            },
-            {
-              path: "coupons",
-              element: protectedAdminRoute("coupons.view", AdminCoupons),
-            },
-            {
-              path: "inventory",
-              element: protectedAdminRoute("inventory.view", AdminInventory),
-            },
-            {
-              path: "sales",
-              element: protectedAdminRoute("sales.view", AdminSales),
-            },
-            {
-              path: "returns",
-              element: protectedAdminRoute("returns.view", AdminReturns),
-            },
-            {
-              path: "payments",
-              element: protectedAdminRoute("payments.view", AdminPayments),
-            },
-            {
-              path: "shipping",
-              element: protectedAdminRoute("payments.view", AdminShipping),
-            },
-            {
-              path: "notifications",
-              element: protectedAdminRoute("cms.view", AdminNotifications),
-            },
-            { path: "cms", element: protectedAdminRoute("cms.view", AdminCMS) },
-            {
-              path: "blog",
-              element: protectedAdminRoute("blog.view", AdminBlog),
-            },
-            {
-              path: "media",
-              element: protectedAdminRoute("media.view", AdminMedia),
-            },
-            {
-              path: "email-templates",
-              element: protectedAdminRoute("cms.view", AdminEmailTemplates),
-            },
-            {
-              path: "roles",
-              element: protectedAdminRoute("roles.view", AdminRoles),
-            },
-            {
-              path: "users",
-              element: protectedAdminRoute("users.view", AdminUsers),
-            },
-            {
-              path: "audit-logs",
-              element: protectedAdminRoute("settings.view", AdminAuditLogs),
-            },
-            {
-              path: "system-health",
-              element: protectedAdminRoute("settings.view", AdminSystemHealth),
-            },
-            {
-              path: "api-keys",
-              element: protectedAdminRoute("settings.view", AdminApiKeys),
-            },
-            {
-              path: "integrations",
-              element: protectedAdminRoute("settings.view", AdminIntegrations),
-            },
-            {
-              path: "feature-flags",
-              element: protectedAdminRoute("settings.view", AdminFeatureFlags),
-            },
-            {
-              path: "backup",
-              element: protectedAdminRoute("settings.manage", AdminBackup),
-            },
-            {
-              path: "settings",
-              element: protectedAdminRoute("settings.view", AdminSettings),
-            },
+            { index: true, element: lazyElement(AdminDashboard) },
+            { path: "analytics", element: lazyElement(AdminAnalytics) },
+            { path: "orders", element: lazyElement(AdminOrders) },
+            { path: "products", element: lazyElement(AdminProducts) },
+            { path: "categories", element: lazyElement(AdminCategories) },
+            { path: "customers", element: lazyElement(AdminCustomers) },
+            { path: "reviews", element: lazyElement(AdminReviews) },
+            { path: "coupons", element: lazyElement(AdminCoupons) },
+            { path: "inventory", element: lazyElement(AdminInventory) },
+            { path: "sales", element: lazyElement(AdminSales) },
+            { path: "returns", element: lazyElement(AdminReturns) },
+            { path: "payments", element: lazyElement(AdminPayments) },
+            { path: "shipping", element: lazyElement(AdminShipping) },
+            { path: "notifications", element: lazyElement(AdminNotifications) },
+            { path: "cms", element: lazyElement(AdminCMS) },
+            { path: "blog", element: lazyElement(AdminBlog) },
+            { path: "media", element: lazyElement(AdminMedia) },
+            { path: "email-templates", element: lazyElement(AdminEmailTemplates) },
+            { path: "users", element: lazyElement(AdminUsers) },
+            { path: "audit-logs", element: lazyElement(AdminAuditLogs) },
+            { path: "system-health", element: lazyElement(AdminSystemHealth) },
+            { path: "api-keys", element: lazyElement(AdminApiKeys) },
+            { path: "integrations", element: lazyElement(AdminIntegrations) },
+            { path: "feature-flags", element: lazyElement(AdminFeatureFlags) },
+            { path: "backup", element: lazyElement(AdminBackup) },
+            { path: "settings", element: lazyElement(AdminSettings) },
           ],
         },
       ],

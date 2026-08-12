@@ -1,6 +1,5 @@
 import { Download, DatabaseBackup, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/store/authStore'
 
 const backups = [
   { id: 'bk-1', date: '2026-07-29 03:00', size: '482 MB', type: 'Automatic' },
@@ -10,7 +9,7 @@ const backups = [
 ]
 
 export function AdminBackup() {
-  const canManage = useAuthStore((s) => s.hasPermission('settings.manage'))
+  const canManage = true
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">

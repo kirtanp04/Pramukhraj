@@ -39,8 +39,8 @@ namespace pramukhraj.Extensions
                 options.UseNpgsql(conn, npg => npg.EnableRetryOnFailure());
             });
 
-            // Identity
-            services.AddIdentity<ApplicationUser, IdentityRole>(opts =>
+            // Identity (no roles) - configure and register SignInManager via IdentityBuilder
+            var identityBuilder = services.AddIdentityCore<ApplicationUser>(opts =>
             {
                 opts.User.RequireUniqueEmail = true;
                 opts.Password.RequireDigit = true;
@@ -53,9 +53,13 @@ namespace pramukhraj.Extensions
                 opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 
                 opts.SignIn.RequireConfirmedEmail = true;
-            })
-            .AddEntityFrameworkStores<AppDbContext>()
-            .AddDefaultTokenProviders();
+            });
+
+            // Create IdentityBuilder to register EF stores, token providers and SignInManager
+            var extendedIdentityBuilder = new IdentityBuilder(identityBuilder.UserType, typeof(IdentityRole), services);
+            extendedIdentityBuilder.AddEntityFrameworkStores<AppDbContext>();
+            extendedIdentityBuilder.AddDefaultTokenProviders();
+            extendedIdentityBuilder.AddSignInManager();
 
             // Authentication - JWT Bearer
             var key = Encoding.UTF8.GetBytes(jwtSettings.Secret ?? string.Empty);
@@ -81,11 +85,8 @@ namespace pramukhraj.Extensions
                 };
             });
 
-            // Authorization
-            services.AddAuthorization(options =>
-            {
-                options.AddPolicy("RequireAdministratorRole", policy => policy.RequireRole("SuperAdmin", "Admin"));
-            });
+            // Authorization (no role-based policies)
+            services.AddAuthorization();
 
             // CORS - enterprise default policy
             var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173" };

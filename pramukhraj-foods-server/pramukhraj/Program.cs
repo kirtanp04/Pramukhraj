@@ -76,6 +76,9 @@ app.UseAuthorization();
 // EncryptionMiddleware must come AFTER routing/authorization but BEFORE endpoint execution
 app.UseMiddleware<EncryptionMiddleware>();
 
+// Admin validation middleware - validate admin tokens and user state for /api/admin/*
+app.UseMiddleware<pramukhraj.Middleware.AdminValidationMiddleware>();
+
 app.MapControllers();
 
 app.Run();

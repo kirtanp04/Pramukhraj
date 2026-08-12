@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { getRole, getRoleIdByName, roleHasPermission } from "@/mock/roles";
 import { initialAuditLog } from "@/mock/auditLog";
-import type { AdminUser, AuditLogEntry, Permission } from "@/types/admin";
+import type { AdminUser, AuditLogEntry } from "@/types/admin";
 import { adminAuthApi } from "@/services/authApi";
 
 interface AuthState {
@@ -12,7 +11,6 @@ interface AuthState {
   loginError: string | null;
   login: (userName: string, password: string) => Promise<boolean>;
   logout: () => void;
-  hasPermission: (permission: Permission) => boolean;
   logAction: (action: string, target: string) => void;
   refresh: () => Promise<boolean>;
 }
@@ -34,10 +32,6 @@ export const useAuthStore = create<AuthState>()(
 
           if (res === null) {
             throw new Error("User response not found");
-          }
-
-          if (!getRoleIdByName(res.role)) {
-            throw new Error("Your account has an unrecognized role.");
           }
 
           set({
@@ -84,10 +78,6 @@ export const useAuthStore = create<AuthState>()(
             throw new Error("User response not found");
           }
 
-          if (!getRoleIdByName(res.role)) {
-            throw new Error("Your account has an unrecognized role.");
-          }
-
           set({
             user: res,
             isAuthenticated: true,
@@ -118,16 +108,6 @@ export const useAuthStore = create<AuthState>()(
         if (userName) {
           get().logAction("Logged out", userName);
         }
-      },
-
-      hasPermission: permission => {
-        const user = get().user;
-
-        if (!user) return false;
-
-        const roleId = getRoleIdByName(user.role);
-
-        return roleHasPermission(getRole(roleId ?? ""), permission);
       },
 
       logAction: (action, target) => {

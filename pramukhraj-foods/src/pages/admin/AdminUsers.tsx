@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { AdminUser } from '@/types/admin'
-import { getRole, getRoleIdByName } from '@/mock/roles'
 import { Badge } from '@/components/ui/Badge'
 import { DataTable } from '@/components/admin/DataTable'
 import { useAuthStore } from '@/store/authStore'
@@ -20,14 +19,6 @@ export function AdminUsers() {
           <p className="text-xs text-ink-soft">{row.original.email}</p>
         </div>
       ),
-    },
-    {
-      header: 'Role',
-      accessorKey: 'role',
-      cell: ({ row }) => {
-        const role = getRole(getRoleIdByName(row.original.role) ?? '')
-        return role ? <Badge variant={role.color}>{role.name}</Badge> : row.original.role
-      },
     },
     {
       header: 'Status',

@@ -62,7 +62,7 @@ export function getApiErrorMessage(error: unknown): string {
     if (error.response.status === 401)
       return "Your session has expired. Please sign in again.";
     if (error.response.status === 403)
-      return "You do not have permission to perform this action.";
+      return "This action is unavailable in the current workspace.";
     if (error.response.status === 404)
       return "The requested resource was not found.";
     if (error.response.status >= 500)

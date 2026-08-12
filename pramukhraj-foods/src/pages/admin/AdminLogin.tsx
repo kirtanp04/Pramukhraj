@@ -38,8 +38,7 @@ export function AdminLogin() {
             Commerce Console
           </h1>
           <p className="mt-4 max-w-md text-sm text-ivory/70">
-            Manage products, orders, content and access for PramukhRaj Foods
-            from a single, role-aware admin workspace.
+            Manage products, orders, and content for PramukhRaj Foods from a single admin workspace.
           </p>
         </div>
         <p className="text-xs text-ivory/50">
@@ -62,7 +61,7 @@ export function AdminLogin() {
               <h2 className="font-display text-xl">Admin Sign In</h2>
             </div>
             <p className="mb-6 text-sm text-ivory/60">
-              Role-based access — only registered admins may enter.
+              Secure admin access for your internal workspace.
             </p>
 
             <form onSubmit={submit} className="space-y-4">
