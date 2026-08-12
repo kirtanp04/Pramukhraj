@@ -3,8 +3,6 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { adminUsers, DEMO_PASSWORD } from "@/mock/adminUsers";
-import { getRole } from "@/mock/roles";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/layout/Logo";
 
@@ -25,16 +23,10 @@ export function AdminLogin() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    debugger
     if (await login(email, password)) {
       const from = (location.state as { from?: string })?.from ?? "/admin";
       navigate(from, { replace: true });
     }
-  }
-
-  function quickFill(demoEmail: string) {
-    setEmail(demoEmail);
-    setPassword(DEMO_PASSWORD);
   }
 
   return (
@@ -121,29 +113,6 @@ export function AdminLogin() {
               </Button>
             </form>
 
-            <div className="mt-6 border-t border-ivory/10 pt-5">
-              <p className="mb-2 text-xs uppercase tracking-wide text-ivory/40">
-                Try a demo role
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {adminUsers
-                  .filter(u => !u.IsDeleted)
-                  .map(u => (
-                    <button
-                      key={u.UserId}
-                      type="button"
-                      onClick={() => quickFill(u.Username)}
-                      className="rounded-full bg-ivory/10 px-3 py-1.5 text-xs hover:bg-ivory/20"
-                    >
-                      {getRole(u.Role)?.name}
-                    </button>
-                  ))}
-              </div>
-              <p className="mt-3 text-[11px] text-ivory/40">
-                Demo password for every account:{" "}
-                <span className="font-mono text-ivory/60">{DEMO_PASSWORD}</span>
-              </p>
-            </div>
           </div>
         </motion.div>
       </div>

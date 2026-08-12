@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { adminNavGroups } from '@/constants/adminNav'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
-import { getRole } from '@/mock/roles'
+import { getRole, getRoleIdByName } from '@/mock/roles'
 import { cn } from '@/lib/utils'
 
 export function AdminLayout() {
@@ -19,7 +19,7 @@ export function AdminLayout() {
   const theme = useUIStore((s) => s.theme)
   const toggleTheme = useUIStore((s) => s.toggleTheme)
   const navigate = useNavigate()
-  const role = getRole(user?.roleId ?? '')
+  const role = getRole(getRoleIdByName(user?.role ?? '') ?? '')
 
   function handleLogout() {
     logout()
@@ -111,15 +111,17 @@ export function AdminLayout() {
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-ink/5">
-                  <img src={user?.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
-                  <span className="hidden text-sm font-medium sm:block">{user?.name}</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal text-xs font-semibold text-ivory" aria-hidden="true">
+                    {user?.username?.slice(0, 1).toUpperCase()}
+                  </div>
+                  <span className="hidden text-sm font-medium sm:block">{user?.username}</span>
                   <ChevronDown size={14} className="hidden text-ink-soft sm:block" />
                 </button>
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content align="end" sideOffset={8} className="z-40 min-w-52 rounded-xl border border-ink/10 bg-ivory p-1.5 shadow-xl">
                   <div className="px-3 py-2">
-                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-sm font-medium">{user?.username}</p>
                     <p className="text-xs text-ink-soft">{user?.email}</p>
                   </div>
                   <DropdownMenu.Separator className="my-1 h-px bg-ink/10" />

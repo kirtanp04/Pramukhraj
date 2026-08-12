@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { getRole } from '@/mock/roles'
+import { getRole, getRoleIdByName } from '@/mock/roles'
 import type { Permission } from '@/types/admin'
 
 export function PermissionGate({ permission, children }: { permission: Permission; children: ReactNode }) {
   const hasPermission = useAuthStore((s) => s.hasPermission)
-  const roleId = useAuthStore((s) => s.user?.Role)
+  const roleName = useAuthStore((s) => s.user?.role)
+  const roleId = getRoleIdByName(roleName ?? '')
   const role = getRole(roleId ?? '')
 
   if (!hasPermission(permission)) {

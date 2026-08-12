@@ -5,7 +5,7 @@ export class CryptoService {
 
   static encrypt(plainText: string): string {
     try {
-      debugger
+      
       const SECRET_KEY = CryptoJS.enc.Utf8.parse(this.Key);
       const iv = CryptoJS.lib.WordArray.random(16);
       const encrypted = CryptoJS.AES.encrypt(plainText, SECRET_KEY, {

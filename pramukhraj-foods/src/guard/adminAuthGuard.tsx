@@ -1,22 +1,18 @@
+import { lazyNamed } from "@/routes/lazyNamed";
 import { useAuthStore } from "@/store/authStore";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
+
+const AdminLogin = lazyNamed(
+  () => import("@/pages/admin/AdminLogin"),
+  "AdminLogin"
+);
 
 export function RequireAuth() {
   const { isAuthenticated, user } = useAuthStore();
-  const location = useLocation();
 
-  // No session at all — redirect immediately
-  if (!isAuthenticated || user === null || user.IsDeleted) {
-    return (
-      <Navigate to="/admin/login" state={{ from: location.pathname }} replace />
-    );
+  if (!isAuthenticated || user === null || user.isDeleted) {
+    return <AdminLogin />;
   }
 
-  //   // Validating stored session — show loader (never flash protected content)
-  //   if (status === "idle" || status === "loading") {
-  //     return <FullScreenLoader message="Verifying session…" />;
-  //   }
-
-  // Authenticated
   return <Outlet />;
 }

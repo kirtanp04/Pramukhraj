@@ -81,8 +81,16 @@ export const roles: Role[] = [
   },
 ];
 
-export function getRole(roleName: string): Role | undefined {
-  return roles.find(r => r.name === roleName);
+export function getRole(roleId: string): Role | undefined {
+  return roles.find((role) => role.id === roleId);
+}
+
+export function getRoleByName(roleName: string): Role | undefined {
+  return roles.find((role) => role.name === roleName);
+}
+
+export function getRoleIdByName(roleName: string): string | undefined {
+  return getRoleByName(roleName)?.id;
 }
 
 export function roleHasPermission(

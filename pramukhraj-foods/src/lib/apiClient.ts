@@ -153,7 +153,7 @@ export async function apiPost<T>(
       body !== undefined && body !== null
         ? CryptoService.encrypt(JSON.stringify(body) as any)
         : "null";
-    debugger;
+    ;
     const response = await apiClient.post<ApiResponse<T>>(
       url,
       encryptedData,

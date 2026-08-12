@@ -11,14 +11,14 @@ export interface Role {
 }
 
 export interface AdminUser {
-  AccessToken: string;
-  RefreshToken: string;
-  ExpiresIn: number; // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
-  UserId: string;
-  Email: string;
-  Role: string;
-  Username: string;
-  IsDeleted:boolean
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number; // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
+  userId: string;
+  email: string;
+  role: string;
+  username: string;
+  isDeleted: boolean;
 }
 
 export interface AuditLogEntry {

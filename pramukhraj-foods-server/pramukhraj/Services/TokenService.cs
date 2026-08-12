@@ -133,46 +133,44 @@ namespace pramukhraj.Services
         /// </summary>
         public async Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress)
         {
-            var existing = await _db.RefreshTokens.SingleOrDefaultAsync(t => t.Token == refreshToken);
-            if (existing == null) throw new InvalidOperationException("Invalid refresh token");
-            if (existing.IsRevoked) throw new InvalidOperationException("Refresh token has been revoked");
-            if (existing.ExpiresAt <= DateTimeOffset.UtcNow) throw new InvalidOperationException("Refresh token has expired");
+            // 1. Get the execution strategy configured for PostgreSQL
+            var strategy = _db.Database.CreateExecutionStrategy();
 
-            // Optional security: require same IP that created the token for administrative flows
-            if (!string.IsNullOrEmpty(existing.CreatedByIp) && existing.CreatedByIp != ipAddress)
+            // 2. Execute all operations inside the retriable strategy block
+            return await strategy.ExecuteAsync(async () =>
             {
-                // Revoke token to prevent reuse from a different IP
-                existing.IsRevoked = true;
-                existing.RevokedAt = DateTimeOffset.UtcNow;
-                existing.RevokedByIp = ipAddress;
-                _db.RefreshTokens.Update(existing);
+                // Explicit transaction begins inside the execution strategy block
+                using var transaction = await _db.Database.BeginTransactionAsync();
+
+                // Step A: Find and revoke the existing token
+                var existingToken = await _db.RefreshTokens.SingleOrDefaultAsync(t => t.Token == refreshToken);
+                if (existingToken == null || existingToken.IsRevoked)
+                {
+                    throw new UnauthorizedAccessException("Invalid or revoked refresh token.");
+                }
+
+                existingToken.IsRevoked = true;
+                existingToken.RevokedAt = DateTimeOffset.UtcNow;
+                existingToken.RevokedByIp = ipAddress;
+                _db.RefreshTokens.Update(existingToken);
+
+                // Step B: Get User and Roles
+                var user = await _userManager.FindByIdAsync(existingToken.UserId);
+                if (user == null)
+                {
+                    throw new UnauthorizedAccessException("User not found.");
+                }
+
+                // Step C: Generate new tokens (This calls GetRolesAsync internally)
+                var newTokens = await CreateTokensAsync(user, ipAddress);
+
+                // Step D: Commit changes and complete transaction
                 await _db.SaveChangesAsync();
-                throw new InvalidOperationException("Refresh token IP mismatch");
-            }
+                await transaction.CommitAsync();
 
-            var user = await _userManager.FindByIdAsync(existing.UserId);
-            if (user == null) throw new InvalidOperationException("User not found for refresh token");
-
-            // Use a transaction to ensure both new token creation and old token revocation are atomic
-            await using var tx = await _db.Database.BeginTransactionAsync();
-
-            // Create new tokens (this will insert a new RefreshToken row)
-            var (newAccess, newRefresh) = await CreateTokensAsync(user, ipAddress);
-
-            // Revoke old token and link to replacement
-            existing.IsRevoked = true;
-            existing.RevokedAt = DateTimeOffset.UtcNow;
-            existing.RevokedByIp = ipAddress;
-            existing.ReplacedByToken = newRefresh;
-
-            _db.RefreshTokens.Update(existing);
-            await _db.SaveChangesAsync();
-
-            await tx.CommitAsync();
-
-            return (newAccess, newRefresh);
+                return newTokens;
+            });
         }
-
         private static string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];

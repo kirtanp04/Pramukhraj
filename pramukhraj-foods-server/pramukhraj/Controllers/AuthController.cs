@@ -57,11 +57,7 @@ namespace pramukhraj.Controllers
                 }
 
                 var roles = await _userManager.GetRolesAsync(user);
-                if (!roles.Contains("Admin"))
-                {
-                    // Only allow admin refresh through this endpoint
-                    return Forbid();
-                }
+                
 
                 string userRole = roles.Count > 0 ? roles[0] : string.Empty;
 

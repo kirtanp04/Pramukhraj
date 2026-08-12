@@ -323,3 +323,4 @@ D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\refint\pramuk
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\pramukhraj.pdb
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\pramukhraj.genruntimeconfig.cache
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\ref\pramukhraj.dll
+D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt

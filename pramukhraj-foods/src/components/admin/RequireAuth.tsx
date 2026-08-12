@@ -1,12 +1,19 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import {  Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { lazyNamed } from '@/routes/lazyNamed';
+
+const AdminLogin = lazyNamed(
+  () => import("@/pages/admin/AdminLogin"),
+  "AdminLogin"
+);
 
 export function RequireAuth() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const location = useLocation()
+  const user = useAuthStore((s) => s.user)
+ 
 
-  if (!isAuthenticated) {
-    return <Navigate to="/admin/login" state={{ from: location.pathname }} replace />
+   if (!isAuthenticated || user === null || user.isDeleted) {
+    return <AdminLogin />;
   }
   return <Outlet />
 }
