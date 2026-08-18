@@ -4,9 +4,9 @@ type Theme = 'light' | 'dark'
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
-  const stored = window.localStorage.getItem('pramukhraj-theme') as Theme | null
+  const stored = "light"
   if (stored) return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'light'
 }
 
 interface UIState {
@@ -18,11 +18,12 @@ interface UIState {
 export const useUIStore = create<UIState>((set, get) => ({
   theme: getInitialTheme(),
   toggleTheme: () => {
-    const next = get().theme === 'light' ? 'dark' : 'light'
+    const next = get().theme === 'light' ? 'light' : 'light'
     window.localStorage.setItem('pramukhraj-theme', next)
     set({ theme: next })
   },
   setTheme: (t) => {
+    t = "light"
     window.localStorage.setItem('pramukhraj-theme', t)
     set({ theme: t })
   },
