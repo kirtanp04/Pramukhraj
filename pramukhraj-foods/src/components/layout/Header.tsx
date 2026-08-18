@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ShoppingBag, Sun, Moon, Menu, X, ChevronDown, MapPin, Truck } from 'lucide-react'
+import { Heart, ShoppingBag,  Menu, X, ChevronDown, MapPin, Truck } from 'lucide-react'
 import { Logo } from './Logo'
 import { SearchBar } from './SearchBar'
 import { categories } from '@/mock'
 import { useCartStore } from '@/store/cartStore'
-import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 
 export function Header() {
@@ -15,8 +14,7 @@ export function Header() {
   const lines = useCartStore((s) => s.lines)
   const wishlist = useCartStore((s) => s.wishlist)
   const openCart = useCartStore((s) => s.openCart)
-  const theme = useUIStore((s) => s.theme)
-  const toggleTheme = useUIStore((s) => s.toggleTheme)
+
   const cartCount = lines.reduce((sum, l) => sum + l.quantity, 0)
 
   return (

@@ -116,6 +116,7 @@ export function ProductFormPage() {
   async function onSubmit(values: ProductFormValues) {
     setIsSaving(true)
     try {
+      console.log(values)
       // TODO: Replace with real API call
       // const res = isEditing
       //   ? await apiPut(`/api/products/${id}`, values)
