@@ -12,18 +12,15 @@ namespace pramukhraj.Controllers
     [Route("api/auth")]
     public sealed class AuthController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly ITokenService _tokenService;
+        private readonly IServiceManager _serviceManager;
 
-        public AuthController(UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
-            ITokenService tokenService)
+
+        public AuthController(IServiceManager serviceManager)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _tokenService = tokenService;
+            _serviceManager = serviceManager;
         }
+
+
 
         [HttpPost("admin/refresh")]
         public async Task<IActionResult> AdminRefresh([FromBody] pramukhraj.DTOs.Auth.RefreshRequest request)
@@ -37,7 +34,7 @@ namespace pramukhraj.Controllers
 
             try
             {
-                var (accessToken, refreshToken) = await _tokenService.RefreshTokensAsync(request.RefreshToken, ip);
+                var (accessToken, refreshToken) = await _serviceManager.TokenService.RefreshTokensAsync(request.RefreshToken, ip, IsAdmin: true);
 
                 // load the newly created refresh token to get the associated user
                 var db = HttpContext.RequestServices.GetService<pramukhraj.Database.AppDbContext>()!;
@@ -47,7 +44,7 @@ namespace pramukhraj.Controllers
                     return Unauthorized(ApiResponse<string>.Fail("Unable to refresh token."));
                 }
 
-                var user = await _userManager.FindByIdAsync(newRefresh.UserId);
+                var user = await _serviceManager.UserManager.FindByIdAsync(newRefresh.UserId);
                 if (user == null)
                 {
                     return Unauthorized(ApiResponse<string>.Fail("Invalid user for refresh token."));
@@ -80,14 +77,14 @@ namespace pramukhraj.Controllers
         public async Task<IActionResult> AdminRegister([FromBody] RegisterRequest request)
         {
            
-            var existingName = await _userManager.FindByNameAsync(request.Username.Trim().ToLower());
+            var existingName = await _serviceManager.UserManager.FindByNameAsync(request.Username.Trim().ToLower());
 
             if (existingName != null)
             {
                 return BadRequest(ApiResponse<string>.Fail("Username is already registered."));
             }
 
-            var existingEmail = await _userManager.FindByEmailAsync(request.Email.Trim().ToLower());
+            var existingEmail = await _serviceManager.UserManager.FindByEmailAsync(request.Email.Trim().ToLower());
 
             if (existingEmail != null)
             {
@@ -101,14 +98,14 @@ namespace pramukhraj.Controllers
                 CreatedAt = System.DateTimeOffset.UtcNow
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await _serviceManager.UserManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
             {
                 return BadRequest(ApiResponse<object>.Fail("Registration failed.", 400, result.Errors));
             }
 
            
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var token = await _serviceManager.UserManager.GenerateEmailConfirmationTokenAsync(user);
 
             return Created(string.Empty, ApiResponse<object>.Ok(new { user.Id, Email = user.Email, EmailConfirmationToken = token }, "Admin registration successful. Please verify your email."));
         }
@@ -116,19 +113,19 @@ namespace pramukhraj.Controllers
         [HttpPost("admin/login")]
         public async Task<IActionResult> AdminLogin([FromBody] LoginRequest request)
         {
-            var user = await _userManager.FindByNameAsync(request.Username);
+            var user = await _serviceManager.UserManager.FindByNameAsync(request.Username);
 
             if (user == null)
             {
                 return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));
             }
 
-            if (!await _userManager.IsEmailConfirmedAsync(user))
+            if (!await _serviceManager.UserManager.IsEmailConfirmedAsync(user))
             {
                 return Forbid();
             }
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            var result = await _serviceManager.SignInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
             if (!result.Succeeded)
             {
                 if (result.IsLockedOut)
@@ -150,7 +147,7 @@ namespace pramukhraj.Controllers
             }
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            var (accessToken, refreshToken) = await _tokenService.CreateTokensAsync(user, ip);
+            var (accessToken, refreshToken) = await _serviceManager.TokenService.CreateTokensAsync(user, ip, IsAdmin: true);
 
             var response = new AuthResponse
             {
@@ -193,7 +190,7 @@ namespace pramukhraj.Controllers
 
             // create tokens
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var (accessToken, refreshToken) = await _tokenService.CreateTokensForCustomerAsync(customer, ip);
+            var (accessToken, refreshToken) = await _serviceManager.TokenService.CreateTokensForCustomerAsync(customer, ip);
 
             var response = new AuthResponse
             {
@@ -225,7 +222,7 @@ namespace pramukhraj.Controllers
             }
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var (accessToken, refreshToken) = await _tokenService.CreateTokensForCustomerAsync(customer, ip);
+            var (accessToken, refreshToken) = await _serviceManager.TokenService.CreateTokensForCustomerAsync(customer, ip);
 
             var response = new AuthResponse
             {

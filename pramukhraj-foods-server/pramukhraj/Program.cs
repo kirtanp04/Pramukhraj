@@ -4,6 +4,7 @@ using pramukhraj.Services;
 using Scalar.AspNetCore;
 using System.Diagnostics;
 using System.Linq;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,11 +54,68 @@ if (app.Environment.IsDevelopment())
         try
         {
             var url = app.Urls.FirstOrDefault() ?? "https://localhost:7136";
-
             var browse = url.TrimEnd('/') + "/scalar/v1";
 
-            var psi = new ProcessStartInfo { FileName = browse, UseShellExecute = true };
-            Process.Start(psi);
+            // PID file to remember browser process launched by this app
+            var pidFile = Path.Combine(AppContext.BaseDirectory, "scalar_browser.pid");
+
+            // If PID file exists, try to kill previous process launched by this app
+            try
+            {
+                if (File.Exists(pidFile))
+                {
+                    var txt = File.ReadAllText(pidFile);
+                    if (int.TryParse(txt, out var oldPid))
+                    {
+                        try
+                        {
+                            var oldProc = Process.GetProcessById(oldPid);
+                            if (!oldProc.HasExited)
+                            {
+                                oldProc.Kill(true);
+                                oldProc.WaitForExit(2000);
+                            }
+                        }
+                        catch
+                        {
+                            // ignore any errors when killing
+                        }
+                    }
+
+                    try { File.Delete(pidFile); } catch { }
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            // Try to start Microsoft Edge specifically
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "msedge",
+                    Arguments = browse,
+                    UseShellExecute = false
+                };
+
+                var proc = Process.Start(psi);
+                if (proc != null)
+                {
+                    try { File.WriteAllText(pidFile, proc.Id.ToString()); } catch { }
+                }
+                else
+                {
+                    // Fallback: use protocol which launches default browser (will not guarantee Edge)
+                    Process.Start(new ProcessStartInfo { FileName = browse, UseShellExecute = true });
+                }
+            }
+            catch
+            {
+                // final fallback: use default shell to open url
+                try { Process.Start(new ProcessStartInfo { FileName = browse, UseShellExecute = true }); } catch { }
+            }
         }
         catch
         {

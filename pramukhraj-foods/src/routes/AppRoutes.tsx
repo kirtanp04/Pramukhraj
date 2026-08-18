@@ -1,4 +1,4 @@
-import { useRoutes } from "react-router-dom";
+import { Outlet, useRoutes } from "react-router-dom";
 import { LazyRoute } from "@/routes/RouteLoader";
 import { lazyNamed } from "@/routes/lazyNamed";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
@@ -117,8 +117,12 @@ const AdminOrders = lazyNamed(
   "AdminOrders"
 );
 const AdminProducts = lazyNamed(
-  () => import("@/pages/admin/AdminProducts"),
+  () => import("@/pages/admin/product/AdminProducts"),
   "AdminProducts"
+);
+const AdminAddProducts = lazyNamed(
+  () => import("@/pages/admin/product/AdminProductFormPage"),
+  "ProductFormPage"
 );
 const AdminCategories = lazyNamed(
   () => import("@/pages/admin/AdminCategories"),
@@ -274,7 +278,20 @@ export function AppRoutes() {
             { index: true, element: lazyElement(AdminDashboard) },
             { path: "analytics", element: lazyElement(AdminAnalytics) },
             { path: "orders", element: lazyElement(AdminOrders) },
-            { path: "products", element: lazyElement(AdminProducts) },
+            {
+              path: "products",
+              element: <Outlet />,
+              children: [
+                {
+                  index: true,
+                  element: lazyElement(AdminProducts),
+                },
+                {
+                  path: "new",
+                  element: lazyElement(AdminAddProducts),
+                },
+              ],
+            },
             { path: "categories", element: lazyElement(AdminCategories) },
             { path: "customers", element: lazyElement(AdminCustomers) },
             { path: "reviews", element: lazyElement(AdminReviews) },
@@ -288,7 +305,10 @@ export function AppRoutes() {
             { path: "cms", element: lazyElement(AdminCMS) },
             { path: "blog", element: lazyElement(AdminBlog) },
             { path: "media", element: lazyElement(AdminMedia) },
-            { path: "email-templates", element: lazyElement(AdminEmailTemplates) },
+            {
+              path: "email-templates",
+              element: lazyElement(AdminEmailTemplates),
+            },
             { path: "users", element: lazyElement(AdminUsers) },
             { path: "audit-logs", element: lazyElement(AdminAuditLogs) },
             { path: "system-health", element: lazyElement(AdminSystemHealth) },

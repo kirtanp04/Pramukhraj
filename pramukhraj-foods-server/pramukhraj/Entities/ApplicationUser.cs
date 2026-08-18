@@ -11,7 +11,6 @@ namespace pramukhraj.Entities
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
         public bool IsDeleted { get; set; }
-        public bool IsAdmin { get; set; } = false;
         public byte[]? RowVersion { get; set; }
     }
 }

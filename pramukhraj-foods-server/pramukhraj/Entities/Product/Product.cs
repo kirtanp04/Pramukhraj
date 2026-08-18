@@ -6,7 +6,6 @@ namespace pramukhraj.Entities.Product
 {
         [Table("Products")]
         [Index(nameof(Slug), IsUnique = true)]
-        [Index(nameof(SKU), IsUnique = true)]
         [Index(nameof(CategoryId))]
         public class Product
         {
@@ -37,51 +36,11 @@ namespace pramukhraj.Entities.Product
             [MaxLength(100)]
             public string Brand { get; set; } = "Pramukhraj";
 
-            [Required]
-            [MaxLength(100)]
-            public string SKU { get; set; } = string.Empty;
-
-            [MaxLength(50)]
-            public string HSNCode { get; set; } = string.Empty;
-
-            [Column(TypeName = "decimal(18,2)")]
-            public decimal Price { get; set; }
-
-            [Column(TypeName = "decimal(18,2)")]
-            public decimal MRP { get; set; }
-
-            [Column(TypeName = "decimal(18,2)")]
-            public decimal CostPrice { get; set; }
-
-            [Column(TypeName = "decimal(5,2)")]
-            public decimal TaxPercentage { get; set; }
-
-            [Column(TypeName = "decimal(5,2)")]
-            public decimal DiscountPercentage { get; set; }
-
-            public int StockQuantity { get; set; }
-
-            public int MinStockQuantity { get; set; }
-
-            public bool ManageStock { get; set; }
-            public bool AllowBackOrder { get; set; }
             public bool IsFeatured { get; set; }
             public bool IsBestSeller { get; set; }
             public bool IsTrending { get; set; }
             public bool IsNewArrival { get; set; }
             public bool IsActive { get; set; } = true;
-
-            [Column(TypeName = "decimal(3,2)")]
-            public decimal AverageRating { get; set; }
-
-            public int TotalReviews { get; set; }
-            public int TotalSold { get; set; }
-
-            [Column(TypeName = "decimal(10,3)")]
-            public decimal Weight { get; set; }
-
-            [MaxLength(20)]
-            public string WeightUnit { get; set; } = "gm";
 
             [MaxLength(100)]
             public string CountryOfOrigin { get; set; } = "India";
@@ -98,20 +57,8 @@ namespace pramukhraj.Entities.Product
 
             public string NutritionalInformation { get; set; } = string.Empty;
 
-            [MaxLength(500)]
-            public string? VideoUrl { get; set; }
-
             [MaxLength(100)]
             public string? Barcode { get; set; }
-
-            [MaxLength(255)]
-            public string? MetaTitle { get; set; }
-
-            [MaxLength(500)]
-            public string? MetaDescription { get; set; }
-
-            [MaxLength(500)]
-            public string? MetaKeywords { get; set; }
 
             public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 

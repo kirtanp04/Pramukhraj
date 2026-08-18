@@ -71,7 +71,7 @@ namespace pramukhraj.Services
             return (accessToken, refreshToken);
         }
 
-        public async Task<(string AccessToken, string RefreshToken)> CreateTokensAsync(ApplicationUser user, string ipAddress)
+        public async Task<(string AccessToken, string RefreshToken)> CreateTokensAsync(ApplicationUser user, string ipAddress,bool IsAdmin)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -82,7 +82,7 @@ namespace pramukhraj.Services
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 // Include admin claim when applicable
-                new Claim("is_admin", user.IsAdmin ? "true" : "false")
+                new Claim("is_admin", IsAdmin ? "true" : "false")
             };
 
             var token = new JwtSecurityToken(
@@ -131,7 +131,7 @@ namespace pramukhraj.Services
         /// Performs validation (existence, not revoked, not expired, optional IP check),
         /// creates a new access + refresh token pair and atomically revokes the old token.
         /// </summary>
-        public async Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress)
+        public async Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress, bool IsAdmin)
         {
             // 1. Get the execution strategy configured for PostgreSQL
             var strategy = _db.Database.CreateExecutionStrategy();
@@ -162,7 +162,7 @@ namespace pramukhraj.Services
                 }
 
                 // Step C: Generate new tokens
-                var newTokens = await CreateTokensAsync(user, ipAddress);
+                var newTokens = await CreateTokensAsync(user, ipAddress,IsAdmin);
 
                 // Step D: Commit changes and complete transaction
                 await _db.SaveChangesAsync();

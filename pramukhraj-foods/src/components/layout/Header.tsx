@@ -31,7 +31,7 @@ export function Header() {
           <div className="flex items-center gap-4">
             <Link to="/track-order" className="hover:text-turmeric">Track Order</Link>
             <Link to="/help" className="hover:text-turmeric">Help</Link>
-            <button className="hover:text-turmeric">EN</button>
+            {/* <button className="hover:text-turmeric">EN</button> */}
             <button className="hover:text-turmeric">INR ₹</button>
           </div>
         </div>
@@ -49,7 +49,7 @@ export function Header() {
         <SearchBar className="hidden md:block md:max-w-md lg:max-w-lg" />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <button
+          {/* <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
             className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
@@ -65,7 +65,7 @@ export function Header() {
                 {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
               </motion.span>
             </AnimatePresence>
-          </button>
+          </button> */}
           <Link to="/account/wishlist" aria-label="Wishlist" className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5">
             <Heart size={18} />
             {wishlist.length > 0 && (

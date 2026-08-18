@@ -105,13 +105,7 @@ namespace pramukhraj.Middleware
                 return;
             }
 
-            if (!user.IsAdmin)
-            {
-                _logger.LogWarning("AdminValidationMiddleware: user is not admin {UserId}", userId);
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Admin access required." });
-                return;
-            }
+           
 
             // All good — set the HttpContext.User to the principal from the token and continue
             context.User = principal;

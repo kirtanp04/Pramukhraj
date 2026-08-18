@@ -1,19 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Options;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
-using pramukhraj.Services;
-using System;
 using System.Text;
-using FluentValidation;
-using FluentValidation.AspNetCore;
+
 
 namespace pramukhraj.Extensions
 {
@@ -103,7 +97,7 @@ namespace pramukhraj.Extensions
             });
 
             // Register token service
-            services.AddScoped<ITokenService, TokenService>();
+            services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;
         }
