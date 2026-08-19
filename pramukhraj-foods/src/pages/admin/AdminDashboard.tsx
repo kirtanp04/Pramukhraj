@@ -12,7 +12,7 @@ const revenueByMonth = [
 
 const salesByCategory = categories.slice(0, 6).map((c) => ({ name: c.name, sales: Math.round(20000 + Math.random() * 80000) }))
 
-const COLORS = ['#7A2531', '#D4A017', '#16302B', '#234c43', '#e4d2a6', '#591a24']
+const COLORS = ['#DC2626', '#60A5FA', '#1D4ED8', '#2563EB', '#BFDBFE', '#991B1B']
 const orderStatusData = [
   { name: 'Delivered', value: 62 },
   { name: 'Shipped', value: 18 },
@@ -58,7 +58,7 @@ export function AdminDashboard() {
                   <stop offset="95%" stopColor="#7A2531" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2b211c1a" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1118271a" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
               <Tooltip formatter={(v) => formatINR(Number(v))} />
@@ -93,7 +93,7 @@ export function AdminDashboard() {
           <h2 className="mb-4 font-display text-lg">Sales by Category</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={salesByCategory}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2b211c1a" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1118271a" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
               <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
               <Tooltip formatter={(v) => formatINR(Number(v))} />

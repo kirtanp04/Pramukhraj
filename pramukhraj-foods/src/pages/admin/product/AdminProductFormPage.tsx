@@ -154,7 +154,7 @@ export function ProductFormPage() {
 
   const stepProps = { form, categories: CATEGORIES }
 
-  const StepContent = () => {
+  function renderStepContent() {
     switch (currentStep) {
       case 1: return <Step1BasicInfo {...stepProps} />
       case 2: return <Step2Details {...stepProps} />
@@ -209,7 +209,7 @@ export function ProductFormPage() {
         noValidate
       >
         <div className="rounded-card border border-ink/10 bg-ivory px-5 py-6 md:px-8 md:py-8">
-          <StepContent />
+          {renderStepContent()}
         </div>
 
         {/* Navigation footer */}

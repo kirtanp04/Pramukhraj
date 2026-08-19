@@ -4,20 +4,20 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Brand palette — spice-market ledger, not the default cream/terracotta pairing */
-  --color-ivory: #fbf6ec;
-  --color-ivory-dim: #f1e9d6;
-  --color-tan: #f1e4c8;
-  --color-tan-deep: #e4d2a6;
-  --color-oxblood: #7a2531;
-  --color-oxblood-deep: #591a24;
-  --color-turmeric: #d4a017;
-  --color-turmeric-deep: #b6860c;
-  --color-teal: #16302b;
-  --color-teal-deep: #0d1f1b;
-  --color-teal-light: #234c43;
-  --color-ink: #2b211c;
-  --color-ink-soft: #5b4f45;
+  /* Pramukhraj brand palette: papad red, royal blue, and their softer shades. */
+  --color-ivory: #f8faff;
+  --color-ivory-dim: #eef4ff;
+  --color-tan: #dbeafe;
+  --color-tan-deep: #bfdbfe;
+  --color-oxblood: #dc2626;
+  --color-oxblood-deep: #991b1b;
+  --color-turmeric: #60a5fa;
+  --color-turmeric-deep: #2563eb;
+  --color-teal: #1d4ed8;
+  --color-teal-deep: #172554;
+  --color-teal-light: #2563eb;
+  --color-ink: #111827;
+  --color-ink-soft: #475569;
 
   --font-display: 'Fraunces', ui-serif, Georgia, serif;
   --font-body: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
@@ -31,12 +31,12 @@
 }
 .dark {
   color-scheme: dark;
-  --color-ivory: #0d1f1b;
-  --color-ivory-dim: #16302b;
-  --color-tan: #1c352f;
-  --color-tan-deep: #234c43;
-  --color-ink: #f1e9d6;
-  --color-ink-soft: #c9bfa8;
+  --color-ivory: #0b1220;
+  --color-ivory-dim: #111c33;
+  --color-tan: #172554;
+  --color-tan-deep: #1e3a8a;
+  --color-ink: #f8fafc;
+  --color-ink-soft: #cbd5e1;
 }
 
 @layer base {

@@ -37,7 +37,7 @@ export function AdminAnalytics() {
         <h2 className="mb-4 font-display text-lg">Visitors vs Orders</h2>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={traffic}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2b211c1a" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1118271a" vertical={false} />
             <XAxis dataKey="day" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
             <Tooltip />
