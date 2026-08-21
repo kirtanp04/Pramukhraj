@@ -89,15 +89,20 @@ export const productSchema = z.object({
   barcode: z.string().nullable(),
 
   // Step 3 — Variants
-  variants: z.array(productVariantSchema),
-
+  variants: z
+            .array(productVariantSchema)
+            .min(1,"At least of 1 variant is required.")
+            .max(2,"A maximum of 2 variant is allowed."),
   // Step 4 — Tags
-  tags: z.array(productTagSchema),
+  tags: z
+      .array(productTagSchema)
+      .max(7,"A maximum of 7 tags is allowed."),
 
   // Step 5 — Images
   images: z
     .array(productImageSchema)
-    .min(1, "At least one image is required")
+    .min(1, "At least 1 image is required")
+    .max(2,"A maximum of 2 images is allowed.")
     .refine(
       imgs => imgs.filter(i => i.isPrimary).length === 1,
       "Exactly one image must be set as primary"

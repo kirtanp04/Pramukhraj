@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using pramukhraj.Database;
+using pramukhraj.Common;
 using pramukhraj.Configurations;
+using pramukhraj.Database;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace pramukhraj.Middleware
 {
@@ -61,7 +62,7 @@ namespace pramukhraj.Middleware
             {
                 _logger.LogWarning("AdminValidationMiddleware: authentication failed for path {Path}", path);
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Invalid or missing authentication token." });
+                await context.Response.WriteAsJsonAsync(ApiResponse<string>.Fail("Invalid or missing authentication token.",StatusCodes.Status401Unauthorized));
                 return;
             }
 
@@ -74,7 +75,7 @@ namespace pramukhraj.Middleware
             {
                 _logger.LogWarning("AdminValidationMiddleware: token missing subject claim");
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Invalid token claims." });
+                await context.Response.WriteAsJsonAsync(ApiResponse<string>.Fail("Invalid token claims.",StatusCodes.Status401Unauthorized));
                 return;
             }
 
@@ -84,7 +85,7 @@ namespace pramukhraj.Middleware
             {
                 _logger.LogError("AdminValidationMiddleware: AppDbContext not available");
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                await context.Response.WriteAsJsonAsync(new { error = "Server configuration error." });
+                await context.Response.WriteAsJsonAsync(ApiResponse<string>.Fail("Server configuration error.",StatusCodes.Status500InternalServerError));
                 return;
             }
 
@@ -93,7 +94,7 @@ namespace pramukhraj.Middleware
             {
                 _logger.LogWarning("AdminValidationMiddleware: user not found {UserId}", userId);
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Invalid user." });
+                await context.Response.WriteAsJsonAsync(ApiResponse<string>.Fail("Invalid user.",StatusCodes.Status401Unauthorized));
                 return;
             }
 
@@ -101,7 +102,7 @@ namespace pramukhraj.Middleware
             {
                 _logger.LogWarning("AdminValidationMiddleware: user is deleted {UserId}", userId);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Account disabled." });
+                await context.Response.WriteAsJsonAsync(ApiResponse<string>.Fail("Account disabled.",StatusCodes.Status403Forbidden));
                 return;
             }
 

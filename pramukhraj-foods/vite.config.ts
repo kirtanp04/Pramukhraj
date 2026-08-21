@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: true, // Listens on 0.0.0.0
+    allowedHosts: true // Allows Cloudflare trycloudflare domain headers
+  }
 })

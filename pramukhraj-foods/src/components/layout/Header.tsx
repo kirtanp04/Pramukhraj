@@ -22,15 +22,21 @@ export function Header() {
       {/* Utility bar */}
       <div className="hidden bg-teal text-ivory md:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5 text-xs">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><MapPin size={12} /> Deliver to Ahmedabad, 380001</span>
-            <span className="flex items-center gap-1"><Truck size={12} /> Free shipping over ₹499</span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1"> Authentic Taste of Gujarat</span>
+            <span className="flex items-center gap-1">•</span>
+            {/* <span className="flex items-center gap-1"><MapPin size={12} /> Deliver to Ahmedabad, 380001</span> */}
+            <span className="flex items-center gap-1">Freshly Packed</span>
+            <span className="flex items-center gap-1">•</span>
+            {/* <span className="flex items-center gap-1"><Truck size={12} /> Free shipping over ₹499</span> */}
+            <span className="flex items-center gap-1">Delivered to Your Doorstep</span>
           </div>
-          <div className="flex items-center gap-4">
-            <Link to="/track-order" className="hover:text-turmeric">Track Order</Link>
-            <Link to="/help" className="hover:text-turmeric">Help</Link>
+          <div className="flex items-center gap-2">
+            <Link to="/track-order" className="hover:text-amber-300">Track Order</Link>
+             <span className="flex items-center gap-1">•</span>
+            <Link to="/help" className="hover:text-amber-300">Help</Link>
             {/* <button className="hover:text-turmeric">EN</button> */}
-            <button className="hover:text-turmeric">INR ₹</button>
+            {/* <button className="hover:text-turmeric">INR ₹</button> */}
           </div>
         </div>
       </div>

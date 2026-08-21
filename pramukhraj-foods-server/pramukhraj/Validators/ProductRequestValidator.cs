@@ -26,7 +26,22 @@ namespace pramukhraj.Validators
             RuleFor(x => x.Images)
                 .NotEmpty().WithMessage("At least one image is required")
                 .Must(images => images != null && images.Count(i => i.IsPrimary) == 1)
-                .WithMessage("Exactly one image must be set as primary");
+                .WithMessage("Exactly one image must be set as primary")
+                .Must(images => images.Length <= 2)
+                .WithMessage("A maximum of 2 images is allowed.") ;
+
+            RuleFor(x => x.Variants)
+            .NotEmpty().WithMessage("At least one variant is required")
+            .Must(variants => variants != null && variants.Length > 0)
+            .WithMessage("At least one variant is required")
+            .Must(variants => variants.Length <= 5)
+            .WithMessage("A maximum of 5 variants is allowed.");
+
+
+            RuleFor(x => x.Tags)
+            .Must(tags => tags is null || tags.Length <= 7)
+            .WithMessage("A maximum of 7 tags is allowed.");
+
 
             RuleForEach(x => x.Images).SetValidator(new ProductImageRequestValidator());
 
