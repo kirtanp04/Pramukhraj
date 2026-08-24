@@ -10,6 +10,7 @@ interface ProductFormStepperProps {
   onStepClick?: (step: number) => void
   /** Maximum step the user has visited — prevents jumping ahead */
   maxVisitedStep: number
+  disabled?: boolean
 }
 
 export function ProductFormStepper({
@@ -18,6 +19,7 @@ export function ProductFormStepper({
   stepsWithErrors = [],
   onStepClick,
   maxVisitedStep,
+  disabled = false,
 }: ProductFormStepperProps) {
   return (
     <nav aria-label="Product form steps" className="w-full">
@@ -27,7 +29,7 @@ export function ProductFormStepper({
           const isCompleted = step.id < currentStep
           const isCurrent = step.id === currentStep
           const hasError = stepsWithErrors.includes(step.id)
-          const isClickable = step.id <= maxVisitedStep && !!onStepClick
+          const isClickable = !disabled && step.id <= maxVisitedStep && !!onStepClick
 
           return (
             <li key={step.id} className="flex flex-1 items-center last:flex-none">

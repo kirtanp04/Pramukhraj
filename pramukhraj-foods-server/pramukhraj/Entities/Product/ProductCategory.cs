@@ -24,15 +24,13 @@ namespace pramukhraj.Entities.Product
         [MaxLength(1000)]
         public string? Description { get; set; }
 
-        [MaxLength(500)]
-        public string? ImageUrl { get; set; }
+        [Required]
+        public string ImageUrl { get; set; } = string.Empty;
 
         public Guid? ParentCategoryId { get; set; }
 
         [ForeignKey(nameof(ParentCategoryId))]
         public ProductCategory? ParentCategory { get; set; }
-
-        public ICollection<ProductCategory> Children { get; set; } = new List<ProductCategory>();
 
         public int DisplayOrder { get; set; }
         public bool IsFeatured { get; set; }

@@ -4,7 +4,6 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { getDataFromLocalStorage } from "./localStorage";
 import { CryptoService } from "@/services/cryptoService";
 
 export interface ApiResponse<T> {
@@ -15,12 +14,42 @@ export interface ApiResponse<T> {
   errors?: unknown;
 }
 
+// Get token
+
+function getAccessToken(): string {
+  try {
+    const strData = localStorage.getItem("pramukhraj-admin-auth");
+    if (strData === null) {
+      throw new Error("Access token not found. Please log in and try again.");
+    }
+    const data: unknown = JSON.parse(strData);
+    if (
+      data === null ||
+      typeof data !== "object" ||
+      !("state" in data) ||
+      data.state === null ||
+      typeof data.state !== "object" ||
+      !("user" in data.state) ||
+      data.state.user === null ||
+      typeof data.state.user !== "object" ||
+      !("accessToken" in data.state.user) ||
+      typeof data.state.user.accessToken !== "string" ||
+      data.state.user.accessToken.trim() === ""
+    ) {
+      throw new Error("Access token not found. Please log in and try again.");
+    }
+    return data.state.user.accessToken;
+  } catch {
+    throw new Error("Access token not found. Please log in and try again.");
+  }
+}
+
 // ─── Base instance ────────────────────────────────────────────────────────────
 
 export const apiClient: AxiosInstance = axios.create({
   // baseURL: "https://toddler-comic-sometimes-drinking.trycloudflare.com/api/",
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000",
-  timeout: 15_000,
+  timeout: 60_000, // 1min
   headers: { "Content-Type": "application/json" },
 });
 
@@ -31,7 +60,7 @@ apiClient.interceptors.request.use(
     if (config.url !== undefined && config.url.includes("auth/admin")) {
       return config;
     }
-    const token = getDataFromLocalStorage("token");
+    const token = getAccessToken();
     if (token && config.headers) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -44,18 +73,54 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
-  async error => {
-    // Note: 401 token refresh logic would go here
+  (error:any) =>{
     return Promise.reject(error);
   }
 );
 
 // ─── Error Formatting Helper ──────────────────────────────────────────────────
 
+function isApiResponse(value: unknown): value is ApiResponse<unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "success" in value &&
+    typeof value.success === "boolean" &&
+    "message" in value &&
+    typeof value.message === "string" &&
+    "data" in value
+  );
+}
+
+function decodeApiResponse<T>(payload: unknown): ApiResponse<T> {
+  const decoded: unknown =
+    typeof payload === "string"
+      ? JSON.parse(CryptoService.decrypt(payload))
+      : payload;
+
+  if (!isApiResponse(decoded)) {
+    throw new Error("The server returned an invalid response.");
+  }
+
+  return decoded as ApiResponse<T>;
+}
+
+function tryDecodeApiResponse(payload: unknown): ApiResponse<unknown> | undefined {
+  try {
+    return decodeApiResponse(payload);
+  } catch {
+    return undefined;
+  }
+}
+
 export function getApiErrorMessage(error: unknown): string {
+  // Request helpers normalize failures to ApiResponse objects. Handle those
+  // here as well so every caller can use this function consistently.
+
   if (axios.isCancel(error)) return "Request was cancelled.";
+
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as ApiResponse<unknown> | undefined;
+    const data = tryDecodeApiResponse(error.response?.data);
     if (data?.message) return data.message;
     if (error.code === "ECONNABORTED")
       return "Request timed out. Please try again.";
@@ -70,6 +135,18 @@ export function getApiErrorMessage(error: unknown): string {
       return "Server error. Please try again later.";
     return error.message;
   }
+
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "success" in error &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim() !== ""
+  ) {
+    return error.message;
+  }
+
   if (error instanceof Error) return error.message;
   return "An unexpected error occurred.";
 }
@@ -107,9 +184,7 @@ function handleApiError(error: unknown): never {
 
   // 2. If it's an HTTP error from Axios containing backend payload
   if (axios.isAxiosError(error)) {
-    const responseData = error.response?.data as
-      | ApiResponse<unknown>
-      | undefined;
+    const responseData = tryDecodeApiResponse(error.response?.data);
 
     throw {
       success: false,
@@ -137,8 +212,11 @@ export async function apiGet<T>(
   config?: AxiosRequestConfig
 ): Promise<T | null> {
   try {
+    debugger
     const response = await apiClient.get<ApiResponse<T>>(url, config);
-    return parseResponseData(response.data);
+    const responsePayload = decodeApiResponse<T>(response.data);
+    // parseResponseData(responsePayload);
+    return parseResponseData(responsePayload);
   } catch (error) {
     handleApiError(error);
   }
@@ -149,21 +227,29 @@ export async function apiPost<T>(
   body?: unknown,
   config?: AxiosRequestConfig
 ): Promise<T | null> {
+  const response = await apiPostResponse<T>(url, body, config);
+  return response.data;
+}
+
+export async function apiPostResponse<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig
+): Promise<ApiResponse<T>> {
   try {
     const encryptedData =
       body !== undefined && body !== null
-        ? CryptoService.encrypt(JSON.stringify(body) as any)
+        ? CryptoService.encrypt(JSON.stringify(body))
         : "null";
-    ;
-    const response = await apiClient.post<ApiResponse<T>>(
+    const response = await apiClient.post<unknown>(
       url,
       encryptedData,
       config
     );
 
-    const decryptData = CryptoService.decrypt(response.data as any as string)
-
-    return parseResponseData(JSON.parse(decryptData));
+    const responsePayload = decodeApiResponse<T>(response.data);
+    parseResponseData(responsePayload);
+    return responsePayload;
   } catch (error) {
     handleApiError(error);
   }

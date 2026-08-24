@@ -30,7 +30,7 @@ export const productVariantSchema = z
   .object({
     id: z.string(),
     name: z.string().min(1, "Variant name is required"),
-    sku: z.string().min(1, "SKU is required"),
+    // sku: z.string().min(1, "SKU is required"),
     price: z
       .number({ error: "Price must be a number" })
       .positive("Price must be greater than 0"),
@@ -51,6 +51,37 @@ export const productVariantSchema = z
   .refine(v => v.price <= v.mrp, {
     message: "Selling price must be <= MRP",
     path: ["price"],
+  });
+
+function getNormalizedWeightKey(weight: number, unit: string): string {
+  return `${unit.toLowerCase()}:${weight.toFixed(6)}`;
+}
+
+const productVariantsSchema = z
+  .array(productVariantSchema)
+  .min(1, "At least 1 variant is required.")
+  .max(2, "A maximum of 2 variants is allowed.")
+  .superRefine((variants, context) => {
+    const usedWeights = new Set<string>();
+
+    variants.forEach((variant, index) => {
+      const weightKey = getNormalizedWeightKey(variant.weight, variant.weightUnit);
+      if (usedWeights.has(weightKey)) {
+        context.addIssue({
+          code: "custom",
+          message: "This weight already exists for the selected unit.",
+          path: [index, "weight"],
+        });
+      }
+      usedWeights.add(weightKey);
+    });
+
+    if (variants.filter(variant => variant.isDefault).length !== 1) {
+      context.addIssue({
+        code: "custom",
+        message: "Exactly one variant must be set as default.",
+      });
+    }
   });
 
 export const productTagSchema = z.object({
@@ -89,10 +120,7 @@ export const productSchema = z.object({
   barcode: z.string().nullable(),
 
   // Step 3 — Variants
-  variants: z
-            .array(productVariantSchema)
-            .min(1,"At least of 1 variant is required.")
-            .max(2,"A maximum of 2 variant is allowed."),
+  variants: productVariantsSchema,
   // Step 4 — Tags
   tags: z
       .array(productTagSchema)

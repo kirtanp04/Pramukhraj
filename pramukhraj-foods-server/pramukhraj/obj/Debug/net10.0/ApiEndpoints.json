@@ -1,5 +1,47 @@
 [
   {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "AddNewProduct",
+    "RelativePath": "api/admin/products/add",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "AddNewCategory",
+    "RelativePath": "api/admin/products/category/add",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductCategoryRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryComboList",
+    "RelativePath": "api/admin/products/category/get-combo-list",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "pramukhraj.Controllers.AuthController",
     "Method": "AdminLogin",
     "RelativePath": "api/auth/admin/login",

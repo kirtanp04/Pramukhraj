@@ -130,7 +130,9 @@ namespace pramukhraj.Controllers
             {
                 if (result.IsLockedOut)
                 {
-                    return Forbid();
+                    
+                        return Forbid("Your account is temporarily locked due to multiple failed login attempts. Please try again later.");
+
                 }
 
                 return Unauthorized(ApiResponse<string>.Fail("Invalid credentials.", 401));

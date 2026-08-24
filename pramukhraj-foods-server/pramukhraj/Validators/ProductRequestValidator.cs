@@ -3,6 +3,7 @@ using pramukhraj.DTOs.Product;
 
 namespace pramukhraj.Validators
 {
+
     public sealed class ProductRequestValidator : AbstractValidator<AddProductRequest>
     {
         public ProductRequestValidator()
@@ -45,9 +46,35 @@ namespace pramukhraj.Validators
 
             RuleForEach(x => x.Images).SetValidator(new ProductImageRequestValidator());
 
-            RuleForEach(x => x.Variants).SetValidator(new ProductVariantRequestValidator());
+            RuleFor(x => x.Variants)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+            .WithMessage("Variants are required.")
+            .NotEmpty()
+            .WithMessage("At least one variant is required.")
+            .Must(variants =>
+                variants.Count(variant => variant.IsDefault) == 1)
+            .WithMessage(
+                "Exactly one variant must be set as the default variant.")
+            .Must(HaveUniqueWeights)
+            .WithMessage(
+                "Each variant must have a unique weight.");
+
+            RuleForEach(x => x.Variants)
+                .SetValidator(new ProductVariantRequestValidator());
 
             RuleForEach(x => x.Tags).SetValidator(new ProductTagRequestValidator());
+        }
+
+        private static bool HaveUniqueWeights(IEnumerable<AddProductVariantRequest> variants)
+        {
+            return variants
+                .GroupBy(variant => new
+                {
+                    variant.Weight,
+                    Unit = variant.WeightUnit?.Trim().ToLowerInvariant()
+                })
+                .All(group => group.Count() == 1);
         }
     }
 
@@ -69,31 +96,39 @@ namespace pramukhraj.Validators
         }
     }
 
-    public sealed class ProductVariantRequestValidator : AbstractValidator<AddProductVariantRequest>
+    public sealed class ProductVariantRequestValidator: AbstractValidator<AddProductVariantRequest>
     {
         public ProductVariantRequestValidator()
         {
             RuleFor(x => x.Name)
-                .NotEmpty().WithMessage("Variant name is required");
+                .NotEmpty()
+                .WithMessage("Variant name is required.");
 
             RuleFor(x => x.Sku)
-                .NotEmpty().WithMessage("SKU is required");
-
-            RuleFor(x => x.Price)
-                .GreaterThan(0).WithMessage("Price must be greater than 0")
-                .LessThanOrEqualTo(x => x.Mrp).WithMessage("Selling price must be <= MRP");
+                .NotEmpty()
+                .WithMessage("SKU is required.");
 
             RuleFor(x => x.Mrp)
-                .GreaterThan(0).WithMessage("MRP must be greater than 0");
+                .GreaterThan(0)
+                .WithMessage("MRP must be greater than 0.");
+
+            RuleFor(x => x.Price)
+                .GreaterThan(0)
+                .WithMessage("Price must be greater than 0.")
+                .LessThanOrEqualTo(x => x.Mrp)
+                .WithMessage("Selling price must be less than or equal to MRP.");
 
             RuleFor(x => x.StockQuantity)
-                .GreaterThanOrEqualTo(0).WithMessage("Stock cannot be negative");
+                .GreaterThanOrEqualTo(0)
+                .WithMessage("Stock cannot be negative.");
 
             RuleFor(x => x.Weight)
-                .GreaterThan(0).WithMessage("Weight must be greater than 0");
+                .GreaterThan(0)
+                .WithMessage("Weight must be greater than 0.");
 
             RuleFor(x => x.WeightUnit)
-                .NotEmpty().WithMessage("Weight unit is required");
+                .NotEmpty()
+                .WithMessage("Weight unit is required.");
         }
     }
 
@@ -106,4 +141,34 @@ namespace pramukhraj.Validators
                 .MaximumLength(50).WithMessage("Tag is too long");
         }
     }
+
+    public sealed class ProductCategoryRequestValidator : AbstractValidator<AddProductCategoryRequest>
+    {
+        public ProductCategoryRequestValidator()
+        {
+            RuleFor(x => x.Name)
+                .NotEmpty().WithMessage("Category name is required")
+                .MaximumLength(100).WithMessage("Category name is too long");
+
+            RuleFor(x => x.Description)
+                .MaximumLength(500).WithMessage("Description is too long");
+
+            RuleFor(x => x.ImageUrl)
+                .Must(url => string.IsNullOrWhiteSpace(url) ||
+                             url.StartsWith("data:image/") ||
+                             url.StartsWith("http://") ||
+                             url.StartsWith("https://"))
+                .WithMessage("Must be a valid image URL");
+
+            RuleFor(x => x.DisplayOrder)
+                .GreaterThanOrEqualTo(0).WithMessage("Display order cannot be negative");
+
+            RuleFor(x => x.IsFeatured)
+                .NotNull().WithMessage("IsFeatured must be specified");
+
+            RuleFor(x => x.IsActive)
+                .NotNull().WithMessage("IsActive must be specified");
+        }
+    }
 }
+               

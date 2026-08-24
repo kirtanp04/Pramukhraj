@@ -112,6 +112,8 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.LoginRequest>, pramukhraj.Validators.LoginRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.CustomerRegisterRequest>, pramukhraj.Validators.CustomerRegisterValidator>();
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.CustomerLoginRequest>, pramukhraj.Validators.CustomerLoginValidator>();
+            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductCategoryRequest>, pramukhraj.Validators.ProductCategoryRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductRequest>, pramukhraj.Validators.ProductRequestValidator>();
 
             return services;
         }

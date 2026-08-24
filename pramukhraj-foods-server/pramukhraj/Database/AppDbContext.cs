@@ -26,6 +26,7 @@ namespace pramukhraj.Database
         public DbSet<ProductVariant> ProductVariants { get; set; } = null!;
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
+        public DbSet<AdminAction> AdminActions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -47,6 +48,42 @@ namespace pramukhraj.Database
                 b.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
+            // --- Admin Actions ---
+            builder.Entity<AdminAction>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.AdminId);
+                entity.HasIndex(x => x.Module);
+                entity.HasIndex(x => x.Action);
+                entity.HasIndex(x => x.EntityId);
+                entity.HasIndex(x => x.CreatedOn);
+                entity.HasIndex(x => new
+                {
+                    x.Module,
+                    x.CreatedOn
+                });
+                entity.HasIndex(x => new
+                {
+                    x.AdminId,
+                    x.CreatedOn
+                });
+                entity.Property(x => x.AdminName)
+                    .HasMaxLength(150)
+                    .IsRequired();
+                entity.Property(x => x.Module)
+                    .HasMaxLength(100)
+                    .IsRequired();
+                entity.Property(x => x.Action)
+                    .HasMaxLength(50)
+                    .IsRequired();
+                entity.Property(x => x.EntityName)
+                    .HasMaxLength(250);
+                entity.Property(x => x.Description)
+                    .HasMaxLength(1000);
+            });
+
+            // --- Customer Configurations ---
+
             builder.Entity<Customer>(b =>
             {
                 b.HasKey(c => c.Id);
@@ -62,11 +99,6 @@ namespace pramukhraj.Database
                 b.Property(c => c.CreatedOn).HasDefaultValueSql("now()");
                 b.Property(c => c.UpdatedOn).HasDefaultValueSql("now()");
 
-                // Prevent cascade delete on self-referencing table to avoid SQL errors
-                b.HasMany(c => c.Children)
-                 .WithOne(c => c.ParentCategory)
-                 .HasForeignKey(c => c.ParentCategoryId)
-                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             // --- Product Configurations ---

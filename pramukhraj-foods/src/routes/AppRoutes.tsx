@@ -125,8 +125,12 @@ const AdminAddProducts = lazyNamed(
   "ProductFormPage"
 );
 const AdminCategories = lazyNamed(
-  () => import("@/pages/admin/AdminCategories"),
+  () => import("@/pages/admin/category/AdminCategories"),
   "AdminCategories"
+);
+const AdminAddCategory = lazyNamed(
+  () => import("@/pages/admin/category/AdminCategoryFormPage"),
+  "AdminCategoryFormPage"
 );
 const AdminCustomers = lazyNamed(
   () => import("@/pages/admin/AdminCustomers"),
@@ -292,7 +296,14 @@ export function AppRoutes() {
                 },
               ],
             },
-            { path: "categories", element: lazyElement(AdminCategories) },
+            {
+              path: "categories",
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(AdminCategories) },
+                { path: "new", element: lazyElement(AdminAddCategory) },
+              ],
+            },
             { path: "customers", element: lazyElement(AdminCustomers) },
             { path: "reviews", element: lazyElement(AdminReviews) },
             { path: "coupons", element: lazyElement(AdminCoupons) },

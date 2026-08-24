@@ -48,7 +48,7 @@ namespace pramukhraj.Middleware
                 }
             }
 
-            if (!path.StartsWith(_adminPrefix, StringComparison.OrdinalIgnoreCase))
+            if (!path.Contains(_adminPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 await _next(context);
                 return;
@@ -110,6 +110,7 @@ namespace pramukhraj.Middleware
 
             // All good — set the HttpContext.User to the principal from the token and continue
             context.User = principal;
+            context.Items["UserInfo"] = user; // optional: store user info in context items for downstream access
             await _next(context);
         }
     }

@@ -1,21 +1,26 @@
 import type { UseFormReturn } from 'react-hook-form'
+import { AlertCircle, LoaderCircle, RefreshCw } from 'lucide-react'
 import type { ProductFormValues } from '@/types/productSchema'
+import type { ComboData } from '@/types/common'
 import { FormField, ToggleField, inputCls } from '@/components/admin/product/FormField'
-
-// In a real project, categories come from the API. Passed as a prop so this
-// component stays pure and the parent handles fetching.
-interface Category {
-  id: string
-  name: string
-}
 
 interface Step1BasicInfoProps {
   form: UseFormReturn<ProductFormValues>
-  categories: Category[]
+  categories: ComboData[]
+  categoriesLoading: boolean
+  categoriesError: string | null
+  onRetryCategories: () => void
 }
 
-export function Step1BasicInfo({ form, categories }: Step1BasicInfoProps) {
+export function Step1BasicInfo({
+  form,
+  categories,
+  categoriesLoading,
+  categoriesError,
+  onRetryCategories,
+}: Step1BasicInfoProps) {
   const { register, formState: { errors }, watch, setValue } = form
+  const categoriesUnavailable = categoriesLoading || !!categoriesError || categories.length === 0
 
   return (
     <div className="space-y-6">
@@ -40,13 +45,66 @@ export function Step1BasicInfo({ form, categories }: Step1BasicInfoProps) {
           </FormField>
 
           {/* Category */}
-          <FormField label="Category" error={errors.categoryId?.message} required>
-            <select {...register('categoryId')} className={inputCls(!!errors.categoryId)}>
-              <option value="">— Select category —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+          <FormField
+            label="Category"
+            error={errors.categoryId?.message}
+            hint={!categoriesUnavailable ? `${categories.length} active categories available` : undefined}
+            required
+          >
+            <div className="relative">
+              <select
+                {...register('categoryId')}
+                disabled={categoriesUnavailable}
+                aria-busy={categoriesLoading}
+                className={`${inputCls(!!errors.categoryId)} disabled:cursor-not-allowed disabled:bg-ivory-dim disabled:text-ink-soft`}
+              >
+                <option value="">
+                  {categoriesLoading
+                    ? 'Loading categories...'
+                    : categoriesError
+                      ? 'Categories unavailable'
+                      : categories.length === 0
+                        ? 'No active categories available'
+                        : '— Select category —'}
+                </option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              {categoriesLoading && (
+                <LoaderCircle
+                  size={15}
+                  className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 animate-spin text-oxblood"
+                  aria-hidden
+                />
+              )}
+            </div>
+
+            {categoriesError && (
+              <div
+                className="mt-1.5 flex items-start justify-between gap-3 rounded-lg border border-oxblood/20 bg-oxblood/5 px-3 py-2"
+                role="alert"
+              >
+                <p className="flex min-w-0 items-start gap-1.5 text-[11px] text-oxblood">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" aria-hidden />
+                  <span>{categoriesError}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={onRetryCategories}
+                  className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-oxblood hover:text-oxblood-deep"
+                >
+                  <RefreshCw size={11} aria-hidden /> Retry
+                </button>
+              </div>
+            )}
+
+            {!categoriesLoading && !categoriesError && categories.length === 0 && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-turmeric-deep" role="status">
+                <AlertCircle size={13} aria-hidden />
+                Create and activate a category before adding a product.
+              </p>
+            )}
           </FormField>
 
           {/* Brand */}

@@ -154,6 +154,63 @@ namespace pramukhraj.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("pramukhraj.Entities.AdminAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("AdminId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("CreatedOn");
+
+                    b.HasIndex("EntityId");
+
+                    b.HasIndex("Module");
+
+                    b.HasIndex("AdminId", "CreatedOn");
+
+                    b.HasIndex("Module", "CreatedOn");
+
+                    b.ToTable("AdminActions");
+                });
+
             modelBuilder.Entity("pramukhraj.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -473,8 +530,8 @@ namespace pramukhraj.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -537,8 +594,7 @@ namespace pramukhraj.Migrations
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean");
@@ -765,9 +821,8 @@ namespace pramukhraj.Migrations
             modelBuilder.Entity("pramukhraj.Entities.Product.ProductCategory", b =>
                 {
                     b.HasOne("pramukhraj.Entities.Product.ProductCategory", "ParentCategory")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany()
+                        .HasForeignKey("ParentCategoryId");
 
                     b.Navigation("ParentCategory");
                 });
@@ -826,11 +881,6 @@ namespace pramukhraj.Migrations
                     b.Navigation("Tags");
 
                     b.Navigation("Variants");
-                });
-
-            modelBuilder.Entity("pramukhraj.Entities.Product.ProductCategory", b =>
-                {
-                    b.Navigation("Children");
                 });
 #pragma warning restore 612, 618
         }

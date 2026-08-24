@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, ArrowRight, Save } from 'lucide-react'
+import { ArrowLeft, ArrowRight, LoaderCircle, Save } from 'lucide-react'
 import { productSchema, type ProductFormValues, STEP_FIELDS } from '@/types/productSchema'
 
 import { ProductFormStepper } from '@/components/admin/product/ProductFormStepper'
@@ -14,21 +14,12 @@ import { Step5Images } from '@/components/admin/product/Step5Images'
 import { Step6Review } from '@/components/admin/product/Step6Review'
 import { MessageDialog } from '@/components/ui/MessageDialog'
 import { useMessageDialog } from '@/hooks/useMessageDialog'
+import { useProductCategories } from '@/hooks/useProductCategories'
 
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/apiClient'
 import { PRODUCT_FORM_STEPS } from '@/model/Product'
-
-// ─── Mock categories (replace with real API call) ─────────────────────────────
-const CATEGORIES = [
-  { id: 'cat-papad', name: 'Papad' },
-  { id: 'cat-khakhra', name: 'Khakhra' },
-  { id: 'cat-pickles', name: 'Pickles' },
-  { id: 'cat-masala', name: 'Masala' },
-  { id: 'cat-namkeen', name: 'Namkeen' },
-  { id: 'cat-snacks', name: 'Snacks' },
-  { id: 'cat-dryfruits', name: 'Dry Fruits' },
-  { id: 'cat-sweets', name: 'Sweets' },
-]
+import { productApi } from '@/services/productApi'
 
 // ─── Default values matching the Product class defaults ───────────────────────
 const DEFAULT_VALUES: ProductFormValues = {
@@ -61,10 +52,15 @@ export function ProductFormPage() {
   const isEditing = !!id
   const navigate = useNavigate()
   const dialog = useMessageDialog()
+  const {
+    categories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+    retry: retryCategories,
+  } = useProductCategories()
 
   const [currentStep, setCurrentStep] = useState(1)
   const [maxVisitedStep, setMaxVisitedStep] = useState(1)
-  const [isSaving, setIsSaving] = useState(false)
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -72,7 +68,10 @@ export function ProductFormPage() {
     mode: 'onChange',
   })
 
-  const { formState: { errors } } = form
+  const { formState: { errors, isSubmitting } } = form
+  const categoryStepBlocked = currentStep === 1 && (
+    categoriesLoading || !!categoriesError || categories.length === 0
+  )
 
   // Track which steps have errors for the stepper indicator
   const stepsWithErrors = PRODUCT_FORM_STEPS.map((s) => s.id).filter((id) => {
@@ -90,6 +89,8 @@ export function ProductFormPage() {
   // ─── Step navigation ────────────────────────────────────────────────────────
 
   async function goToStep(target: number) {
+    if (isSubmitting) return
+
     if (target > currentStep) {
       // Validate current step fields before advancing
       const fieldsToValidate = STEP_FIELDS[currentStep] as (keyof ProductFormValues)[]
@@ -103,7 +104,10 @@ export function ProductFormPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function handleNext() {
+  async function handleNext(event: MouseEvent<HTMLButtonElement>) {
+    // Validation is asynchronous. Prevent the browser's default click action
+    // before React replaces this button with the final submit button.
+    event.preventDefault()
     await goToStep(currentStep + 1)
   }
 
@@ -114,30 +118,28 @@ export function ProductFormPage() {
   // ─── Submit ─────────────────────────────────────────────────────────────────
 
   async function onSubmit(values: ProductFormValues) {
-    setIsSaving(true)
+    if (isEditing) {
+      dialog.error('Product updates are not connected yet.', {
+        title: 'Update Unavailable',
+      })
+      return
+    }
+
     try {
-      console.log(values)
-      // TODO: Replace with real API call
-      // const res = isEditing
-      //   ? await apiPut(`/api/products/${id}`, values)
-      //   : await apiPost('/api/products', values)
-      await new Promise((r) => setTimeout(r, 1200)) // mock delay
+      await productApi.add(values)
 
       dialog.success(
-        isEditing
-          ? 'Product updated successfully.'
-          : 'Product created successfully.',
+        'Product created successfully.',
         {
-          title: isEditing ? 'Product Updated' : 'Product Created',
+          title: 'Product Created',
           actionLabel: 'Back to Products',
           onAction: () => navigate('/admin/products'),
         },
       )
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      dialog.error(msg, { title: 'Save Failed' })
-    } finally {
-      setIsSaving(false)
+      dialog.error(getApiErrorMessage(err), {
+        title: 'Could Not Create Product',
+      })
     }
   }
 
@@ -152,16 +154,23 @@ export function ProductFormPage() {
 
   // ─── Step render ────────────────────────────────────────────────────────────
 
-  const stepProps = { form, categories: CATEGORIES }
-
   function renderStepContent() {
     switch (currentStep) {
-      case 1: return <Step1BasicInfo {...stepProps} />
-      case 2: return <Step2Details {...stepProps} />
-      case 3: return <Step3Variants {...stepProps} />
-      case 4: return <Step4Tags {...stepProps} />
-      case 5: return <Step5Images {...stepProps} />
-      case 6: return <Step6Review {...stepProps} />
+      case 1:
+        return (
+          <Step1BasicInfo
+            form={form}
+            categories={categories}
+            categoriesLoading={categoriesLoading}
+            categoriesError={categoriesError}
+            onRetryCategories={() => void retryCategories()}
+          />
+        )
+      case 2: return <Step2Details form={form} />
+      case 3: return <Step3Variants form={form} />
+      case 4: return <Step4Tags form={form} />
+      case 5: return <Step5Images form={form} />
+      case 6: return <Step6Review form={form} categories={categories} />
       default: return null
     }
   }
@@ -174,8 +183,9 @@ export function ProductFormPage() {
       <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
+          disabled={isSubmitting}
           onClick={() => navigate('/admin/products')}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-ink/15 text-ink-soft hover:bg-ink/5"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-ink/15 text-ink-soft hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Back to products"
         >
           <ArrowLeft size={16} />
@@ -200,6 +210,7 @@ export function ProductFormPage() {
           stepsWithErrors={stepsWithErrors}
           maxVisitedStep={maxVisitedStep}
           onStepClick={goToStep}
+          disabled={isSubmitting}
         />
       </div>
 
@@ -207,8 +218,15 @@ export function ProductFormPage() {
       <form
         onSubmit={form.handleSubmit(onSubmit, handleFormError)}
         noValidate
+        aria-busy={isSubmitting}
       >
-        <div className="rounded-card border border-ink/10 bg-ivory px-5 py-6 md:px-8 md:py-8">
+        <div
+          className={cn(
+            'rounded-card border border-ink/10 bg-ivory px-5 py-6 transition-opacity md:px-8 md:py-8',
+            isSubmitting && 'pointer-events-none opacity-70',
+          )}
+          aria-disabled={isSubmitting}
+        >
           {renderStepContent()}
         </div>
 
@@ -222,8 +240,9 @@ export function ProductFormPage() {
           {currentStep > 1 && (
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={handleBack}
-              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-5 py-2 text-sm text-ink hover:bg-ink/5"
+              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-5 py-2 text-sm text-ink hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ArrowLeft size={15} /> Back
             </button>
@@ -234,8 +253,9 @@ export function ProductFormPage() {
             {currentStep < TOTAL_STEPS && (
               <button
                 type="button"
+                disabled={isSubmitting || categoryStepBlocked}
                 onClick={() => goToStep(TOTAL_STEPS)}
-                className="text-xs text-ink-soft hover:text-oxblood"
+                className="text-xs text-ink-soft hover:text-oxblood disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Skip to Review
               </button>
@@ -243,22 +263,32 @@ export function ProductFormPage() {
 
             {!isLastStep ? (
               <button
+                key="next-step"
                 type="button"
+                disabled={isSubmitting || categoryStepBlocked}
                 onClick={handleNext}
-                className="flex items-center gap-1.5 rounded-full bg-oxblood px-5 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep"
+                className="flex items-center gap-1.5 rounded-full bg-oxblood px-5 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Next <ArrowRight size={15} />
               </button>
             ) : (
               <button
+                key="submit-product"
                 type="submit"
-                disabled={isSaving}
-                className="flex items-center gap-1.5 rounded-full bg-oxblood px-6 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep disabled:opacity-60"
+                disabled={isSubmitting}
+                className="flex min-w-40 items-center justify-center gap-1.5 rounded-full bg-oxblood px-6 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {/* <ButtonLoader loading={isSaving} loadingText="Saving…"> */}
-                  <Save size={15} />
-                  {isEditing ? 'Save Changes' : 'Create Product'}
-                {/* </ButtonLoader> */}
+                {isSubmitting ? (
+                  <>
+                    <LoaderCircle size={15} className="animate-spin" aria-hidden />
+                    <span>{isEditing ? 'Saving Changes...' : 'Creating Product...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={15} aria-hidden />
+                    <span>{isEditing ? 'Save Changes' : 'Create Product'}</span>
+                  </>
+                )}
               </button>
             )}
           </div>

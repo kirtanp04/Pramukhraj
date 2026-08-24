@@ -19,7 +19,6 @@ namespace pramukhraj.Entities.Product
         public Product Product { get; set; } = default!;
 
         [Required]
-        [MaxLength(500)]
         public string ImageUrl { get; set; } = string.Empty;
 
         [MaxLength(255)]

@@ -18,13 +18,18 @@ namespace pramukhraj.Extensions
 
         private readonly Lazy<SignInManager<ApplicationUser>> _SignInManager;
 
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
         public ServiceManager(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IOptions<JwtSettings> jwtOptions,
-            AppDbContext _db)
+            AppDbContext _db,
+            IHttpContextAccessor httpContextAccessor,
+            ILoggerFactory loggerFactory
+            )
         {
-            _ProductService = new Lazy<IProductService>(() => new ProductService(_db));
+            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 

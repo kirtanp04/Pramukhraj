@@ -1,4 +1,6 @@
-﻿namespace pramukhraj.DTOs.Product
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace pramukhraj.DTOs.Product
 {
     public class AddProductRequest
     {
@@ -47,15 +49,25 @@
         public string Name { get; set; } = string.Empty;
     }
     
-        public class AddProductImageRequest
+    public class AddProductImageRequest
     {
         public string Id { get; set; }       = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
-                public string? AltText { get; set; }
-                public bool IsPrimary  { get; set; }
-                public int DisplayOrder{ get; set; }
-                public string? FileName{ get; set; }
-                public long? FileSize  { get; set; }
-                public string? MimeType{ get; set; }              
-    }        
+        public string? AltText { get; set; }
+        public bool IsPrimary  { get; set; }
+        public int DisplayOrder{ get; set; }
+        public string? FileName{ get; set; }
+        public long? FileSize  { get; set; }
+        public string? MimeType{ get; set; }              
+    } 
+    
+    public class AddProductCategoryRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public int DisplayOrder { get; set; }
+        public bool IsFeatured { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
 }

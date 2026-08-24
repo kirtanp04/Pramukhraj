@@ -1,12 +1,13 @@
 import { CheckCircle2, AlertTriangle, Star } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 import type { ProductFormValues } from '@/types/productSchema'
+import type { ComboData } from '@/types/common'
 import { cn } from '@/lib/utils'
 import { Product } from '@/model/Product'
 
 interface Step6ReviewProps {
   form: UseFormReturn<ProductFormValues>
-  categories: { id: string; name: string }[]
+  categories: ComboData[]
 }
 
 function ReviewRow({
@@ -213,7 +214,7 @@ export function Step6Review({ form, categories }: Step6ReviewProps) {
                     )}
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-3 text-ink-soft">
-                    <span>SKU: {v.sku || '—'}</span>
+                    {/* <span>SKU: {v.sku || '—'}</span> */}
                     <span>MRP: ₹{v.mrp}</span>
                     <span>Price: ₹{v.price}</span>
                     {discount > 0 && <span className="text-green-700">{discount}% off</span>}

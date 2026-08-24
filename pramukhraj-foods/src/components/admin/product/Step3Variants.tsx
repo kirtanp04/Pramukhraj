@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useFieldArray, type UseFormReturn } from 'react-hook-form'
 import { Plus, Trash2, Star } from 'lucide-react'
 import type { ProductFormValues } from '@/types/productSchema'
@@ -17,12 +18,22 @@ function generateId() {
 export function Step3Variants({ form }: Step3VariantsProps) {
   const { control, register, formState: { errors }, watch, setValue } = form
   const { fields, append, remove } = useFieldArray({ control, name: 'variants' })
+  const variantValues = watch('variants')
+
+  useEffect(() => {
+    if (variantValues.length > 0 && !variantValues.some((variant) => variant.isDefault)) {
+      setValue('variants.0.isDefault', true, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    }
+  }, [variantValues, setValue])
 
   function addVariant() {
     append({
       id: generateId(),
       name: '',
-      sku: '',
+      // sku: '',
       price: 0,
       mrp: 0,
       stockQuantity: 0,
@@ -34,10 +45,13 @@ export function Step3Variants({ form }: Step3VariantsProps) {
   }
 
   function setDefault(index: number) {
-    fields.forEach((_, i) => setValue(`variants.${i}.isDefault`, i === index))
+    variantValues.forEach((_, variantIndex) => {
+      setValue(`variants.${variantIndex}.isDefault`, variantIndex === index, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    })
   }
-
-  const variantValues = watch('variants')
 
   return (
     <div className="space-y-4">
@@ -45,8 +59,8 @@ export function Step3Variants({ form }: Step3VariantsProps) {
         <div>
           <h3 className="font-display text-base font-semibold text-ink">Variants</h3>
           <p className="text-xs text-ink-soft">
-            Each variant is a distinct SKU — e.g. different pack sizes or flavours.
-            Exactly one must be set as the default.
+            Each weight must be unique within its unit. For example, 250 gm can appear once,
+            while 250 kg is a separate variant. The first variant becomes default if needed.
           </p>
         </div>
         <button
@@ -123,13 +137,13 @@ export function Step3Variants({ form }: Step3VariantsProps) {
                   />
                 </FormField>
 
-                <FormField label="SKU" error={err?.sku?.message} required>
+                {/* <FormField label="SKU" error={err?.sku?.message} required>
                   <input
                     {...register(`variants.${index}.sku`)}
                     placeholder="e.g. PRJ-PAP-200G"
                     className={inputCls(!!err?.sku)}
                   />
-                </FormField>
+                </FormField> */}
 
                 <FormField label="MRP (₹)" error={err?.mrp?.message} required>
                   <input
@@ -168,7 +182,7 @@ export function Step3Variants({ form }: Step3VariantsProps) {
                   />
                 </FormField>
 
-                <FormField label="Variant Weight">
+                <FormField label="Variant Weight" error={err?.weight?.message} required>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -176,11 +190,11 @@ export function Step3Variants({ form }: Step3VariantsProps) {
                       min="0"
                       {...register(`variants.${index}.weight`, { valueAsNumber: true })}
                       placeholder="0"
-                      className={inputCls()}
+                      className={inputCls(!!err?.weight)}
                     />
                     <select
                       {...register(`variants.${index}.weightUnit`)}
-                      className={`w-24 shrink-0 ${inputCls()}`}
+                      className={` ${inputCls()}`}
                     >
                       {WEIGHT_UNITS.map((u) => (
                         <option key={u} value={u}>{u}</option>

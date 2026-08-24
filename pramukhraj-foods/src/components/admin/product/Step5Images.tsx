@@ -6,33 +6,19 @@ import {
 } from 'lucide-react'
 import type { ProductFormValues, ProductImageValue } from '@/types/productSchema'
 import { inputCls } from '@/components/admin/product/FormField'
+import { fileToDataUrl, formatBytes } from '@/lib/imageUpload'
 import { cn } from '@/lib/utils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE_BYTES = 5 * 1024 * 1024  // 5 MB per file
-const MAX_FILES = 10
+const MAX_FILES = 2
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateId() {
   return `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`))
-    reader.readAsDataURL(file)
-  })
 }
 
 interface FileError {
@@ -293,7 +279,7 @@ export function Step5Images({ form }: Step5ImagesProps) {
       }
 
       try {
-        const base64 = await fileToBase64(file)
+        const base64 = await fileToDataUrl(file)
         const isFirst = fields.length === 0 && toProcess.indexOf(file) === 0
 
         const entry: ProductImageValue = {
