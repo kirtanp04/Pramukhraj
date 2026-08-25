@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
+using pramukhraj.DTOs.Product;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using System.Text;
+using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 
 
 namespace pramukhraj.Extensions
@@ -96,6 +99,17 @@ namespace pramukhraj.Extensions
                 });
             });
 
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddFixedWindowLimiter("rate-limit", opt =>
+                {
+                    opt.PermitLimit = 7;
+                    opt.Window = TimeSpan.FromMinutes(1);
+                    opt.QueueLimit = 0;
+                });
+            });
+
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
 
@@ -114,6 +128,8 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.CustomerLoginRequest>, pramukhraj.Validators.CustomerLoginValidator>();
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductCategoryRequest>, pramukhraj.Validators.ProductCategoryRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductRequest>, pramukhraj.Validators.ProductRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, pramukhraj.Validators.ProductCategoryImageRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, pramukhraj.Validators.GetProductImageRequestValidator>();
 
             return services;
         }

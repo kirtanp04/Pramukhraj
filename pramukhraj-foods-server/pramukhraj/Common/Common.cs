@@ -7,7 +7,7 @@ namespace pramukhraj.Common
     public class Common
     {
         public static ApiResponse<Entities.ApplicationUser> GetAdminClaimInfo(
-     IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor)
         {
             var httpContext = httpContextAccessor.HttpContext;
 
@@ -51,6 +51,45 @@ namespace pramukhraj.Common
                 Message = "Administrator information retrieved successfully.",
                 Data = applicationUser
             };
+        }
+
+        public static int GetTimeZone(IHttpContextAccessor httpContextAccessor)
+        {
+            ArgumentNullException.ThrowIfNull(httpContextAccessor);
+
+            var httpContext = httpContextAccessor.HttpContext;
+
+             const string TimeZoneKey = "time-zone";
+
+             const int MinTimeZoneOffsetMinutes = -840;
+             const int MaxTimeZoneOffsetMinutes = 840;
+
+            if (httpContext is null ||
+                !httpContext.Items.TryGetValue(TimeZoneKey, out var rawValue) ||
+                rawValue is null)
+            {
+                return 0;
+            }
+
+            int? timeZone = rawValue switch
+            {
+                int value => value,
+
+                string value when int.TryParse(value, out var parsedValue)
+                    => parsedValue,
+
+                _ => null
+            };
+
+            if (!timeZone.HasValue)
+            {
+                return 0;
+            }
+
+            return timeZone.Value is >= MinTimeZoneOffsetMinutes
+                and <= MaxTimeZoneOffsetMinutes
+                    ? timeZone.Value
+                    : 0;
         }
     }
 }

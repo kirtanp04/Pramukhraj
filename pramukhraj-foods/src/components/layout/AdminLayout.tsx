@@ -23,12 +23,12 @@ export function AdminLayout() {
   }
 
   const SidebarContent = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-5 py-5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between px-5 py-5">
         <Logo className="text-ivory" />
         <button className="lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={20} /></button>
       </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+      <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-3 pb-6">
         {adminNavGroups.map((group) => (
           <div key={group.title}>
             <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-ivory/35">{group.title}</p>
@@ -53,7 +53,7 @@ export function AdminLayout() {
           </div>
         ))}
       </nav>
-      <div className="border-t border-ivory/10 p-4">
+      <div className="shrink-0 border-t border-ivory/10 p-4">
         <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-ivory/60 hover:bg-ivory/10 hover:text-ivory">
           <ExternalLink size={14} /> View storefront
         </a>
@@ -64,7 +64,9 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-ivory text-ink">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 bg-teal-deep text-ivory lg:block">{SidebarContent}</aside>
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 overflow-hidden bg-teal-deep text-ivory lg:block">
+        {SidebarContent}
+      </aside>
 
       {/* Mobile sidebar */}
       <AnimatePresence>
@@ -74,7 +76,7 @@ export function AdminLayout() {
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-              className="fixed inset-y-0 left-0 z-50 w-72 bg-teal-deep text-ivory lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-72 overflow-hidden bg-teal-deep text-ivory lg:hidden"
             >
               {SidebarContent}
             </motion.aside>

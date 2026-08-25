@@ -1,15 +1,17 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using pramukhraj.Common;
 using pramukhraj.DTOs.Auth;
 using pramukhraj.Entities;
-using Microsoft.EntityFrameworkCore;
 using pramukhraj.Interfaces;
 
 namespace pramukhraj.Controllers
 {
     [ApiController]
     [Route("api/auth")]
+    [EnableRateLimiting("rate-limit")]
     public sealed class AuthController : ControllerBase
     {
         private readonly IServiceManager _serviceManager;

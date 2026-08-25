@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using pramukhraj.DTOs.Product;
+using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 
 namespace pramukhraj.Validators
 {
@@ -139,6 +140,24 @@ namespace pramukhraj.Validators
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Tag cannot be empty")
                 .MaximumLength(50).WithMessage("Tag is too long");
+        }
+    }
+
+    public sealed class ProductCategoryImageRequestValidator : AbstractValidator<GetProductCategoriesImagesRequest>
+    {
+        public ProductCategoryImageRequestValidator()
+        {
+            RuleFor(x => x.CategoryIds)
+                .NotEmpty().WithMessage("Category IDs are required");
+        }
+    }
+
+    public sealed class GetProductImageRequestValidator : AbstractValidator<GetProductImagesRequest>
+    {
+        public GetProductImageRequestValidator()
+        {
+            RuleFor(x => x.ProductIds)
+                .NotEmpty().WithMessage("ProductIds IDs are required");
         }
     }
 

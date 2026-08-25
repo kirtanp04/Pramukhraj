@@ -39,6 +39,24 @@ namespace pramukhraj.Middleware
             var path = context.Request.Path.Value ?? string.Empty;
             // Allow unauthenticated access to admin auth endpoints (login/register/refresh)
             var allowedAdminAuthPaths = new[] { "/api/auth/admin/login", "/api/auth/admin/register", "/api/auth/admin/refresh" };
+
+            try
+            {
+               
+                string timeZone = context.Request.Headers["time-zone"];
+
+                if (!string.IsNullOrEmpty(timeZone))
+                {
+                    context.Items.Add("time-zone", Convert.ToInt32(timeZone));
+                }
+            }
+            catch 
+            {
+
+                throw;
+            }
+
+
             foreach (var p in allowedAdminAuthPaths)
             {
                 if (path.StartsWith(p, StringComparison.OrdinalIgnoreCase))

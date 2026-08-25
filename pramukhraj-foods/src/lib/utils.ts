@@ -21,3 +21,16 @@ export function slugify(text: string): string {
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
+
+export function formatDateTime(value: string): string {
+  if (!value.trim()) return '—'
+
+  const normalizedValue = value.includes('T') ? value : value.replace(' ', 'T')
+  const date = new Date(normalizedValue)
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}

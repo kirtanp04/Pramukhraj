@@ -10,6 +10,7 @@ using pramukhraj.Helper;
 using pramukhraj.Interfaces;
 using System.Data.Common;
 using static pramukhraj.Common.AdminActions;
+using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 
 namespace pramukhraj.Services
 {
@@ -44,7 +45,6 @@ namespace pramukhraj.Services
                 };
             }
 
-            // Validate CategoryId
             if (!Guid.TryParse(request.CategoryId, out var categoryId))
             {
                 return new ApiResponse<string>
@@ -55,9 +55,6 @@ namespace pramukhraj.Services
                     Errors = "The provided category ID is invalid."
                 };
             }
-
-            //await using var transaction =
-            //    await _db.Database.BeginTransactionAsync(cancellationToken);
 
             try
             {
@@ -162,7 +159,8 @@ namespace pramukhraj.Services
                         ImageUrl = image.ImageUrl?.Trim() ?? string.Empty,
                         AltText = image.AltText?.Trim(),
                         IsPrimary = image.IsPrimary,
-                        DisplayOrder = image.DisplayOrder
+                        DisplayOrder = image.DisplayOrder,
+                        
                     })
                     .ToList()
                     ?? [];
@@ -186,7 +184,11 @@ namespace pramukhraj.Services
 
                         Price = variant.Price,
                         StockQuantity = variant.StockQuantity,
-                        IsActive = variant.IsActive
+                        IsActive = variant.IsActive,
+                        Weight = variant.Weight,
+                        MRP = variant.Mrp,
+                        IsDefault = variant.IsDefault,
+                        WeightUnit = variant.WeightUnit
                     })
                     .ToList()
                     ?? [];
@@ -626,6 +628,456 @@ namespace pramukhraj.Services
                     Message = "Unable to retrieve the category list.",
                     Errors =
                         "An unexpected error occurred while retrieving the categories. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+
+        public async Task<ApiResponse<List<ProductCategorylistResponse>>> GetCategoryList(
+        int pageNumber = 1,
+        CancellationToken cancellationToken = default)
+        {
+            const int pageSize = 10;
+
+            try
+            {
+                pageNumber = Math.Max(pageNumber, 1);
+
+                var skip = (pageNumber - 1) * pageSize;
+
+                var categories = await _db.ProductCategories
+                    .AsNoTracking()
+                    .OrderByDescending(category => category.CreatedOn)
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .Select(category => new ProductCategorylistResponse
+                    {
+                        Id = category.Id.ToString(),
+                        Name = category.Name,
+                        Description = category.Description,
+                        DisplayOrder = category.DisplayOrder,
+                        Imageurl = string.Empty,
+                        IsActive = category.IsActive,
+                        IsFeatured = category.IsFeatured,
+                        ProductCount = _db.Products.Count(product =>
+                            product.CategoryId == category.Id),
+                        Slug = category.Slug,
+                        CreatedOn = category.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss")
+                    })
+                    .ToListAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Retrieved {CategoryCount} product categories for page {PageNumber}.",
+                    categories.Count,
+                    pageNumber);
+
+                return new ApiResponse<List<ProductCategorylistResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = categories.Count > 0
+                        ? "Product categories retrieved successfully."
+                        : "No product categories were found.",
+                    Data = categories
+                };
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Product category list request was cancelled for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<ProductCategorylistResponse>>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The product category list request was cancelled.",
+                    Errors = "The request was cancelled before the product categories could be retrieved. Please try again.",
+                    Data = []
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving product categories for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<ProductCategorylistResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product category list.",
+                    Errors = "A database error occurred while retrieving the product categories. Please try again.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving product categories for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<ProductCategorylistResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product category list.",
+                    Errors = "An unexpected error occurred while retrieving the product categories. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+        public async Task<ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>> GetCategoryImagesByCategoryIds(
+         List<string> categoryIds,
+         CancellationToken cancellationToken = default)
+        {
+            if (categoryIds == null || categoryIds.Count == 0)
+            {
+                return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "No category IDs were provided.",
+                    Data = []
+                };
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var validCategoryIds = categoryIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => Guid.TryParse(id, out var categoryId)
+                        ? categoryId
+                        : (Guid?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (validCategoryIds.Count == 0)
+                {
+                    return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                    {
+                        StatusCode = StatusCodes.Status200OK,
+                        Success = true,
+                        Message = "No valid category IDs were provided.",
+                        Data = []
+                    };
+                }
+
+                const int chunkSize = 500;
+
+                var result = new Dictionary<string, ProductCategoryImagesResponse>(
+                    validCategoryIds.Count,
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var chunk in validCategoryIds.Chunk(chunkSize))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var rows = await _db.ProductCategories
+                        .AsNoTracking()
+                        .Where(category => chunk.Contains(category.Id))
+                        .Select(category => new ProductCategoryImagesResponse
+                        {
+                            CategoryId = category.Id.ToString(),
+                            Imageurl = category.ImageUrl ?? string.Empty
+                        })
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var row in rows)
+                    {
+                        result[row.CategoryId] = row;
+                    }
+                }
+
+                return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = result.Count > 0
+                        ? "Product category images retrieved successfully."
+                        : "No product category images were found.",
+                    Data = result
+                };
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Product category images request was cancelled. Requested category count: {CategoryCount}.",
+                    categoryIds.Count);
+
+                return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The product category images request was cancelled.",
+                    Errors = "The request was cancelled before the category images could be retrieved. Please try again.",
+                    Data = []
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving product category images. Requested category count: {CategoryCount}.",
+                    categoryIds.Count);
+
+                return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product category images.",
+                    Errors = "A database error occurred while retrieving the category images. Please try again.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving product category images. Requested category count: {CategoryCount}.",
+                    categoryIds.Count);
+
+                return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product category images.",
+                    Errors = "An unexpected error occurred while retrieving the category images. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+        public async Task<ApiResponse<List<AdminProductList>>> GetProductList(int pageNumber, CancellationToken cancellationToken = default)
+        {
+            const int pageSize = 10;
+            try
+            {
+
+                pageNumber = Math.Max(pageNumber, 1);
+
+                var skip = (pageNumber - 1) * pageSize;
+
+                var products = await _db.Products
+                   .AsNoTracking()
+                   .OrderByDescending(product => product.CreatedOn)
+                   .Skip(skip)
+                   .Take(pageSize)
+                   .Select(product => new AdminProductList
+                   {
+                       Id = product.Id.ToString(),
+                       Name = product.Name,
+                       IsActive = product.IsActive,
+                       Slug = product.Slug,
+                       CreatedOn = product.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
+                       CategoryName = product.Category.Name,
+                       ImageUrl = "",
+                       IsBestSeller = product.IsBestSeller,
+                       IsFeatured = product.IsFeatured,
+                       IsNewArrival = product.IsNewArrival,
+                       IsTrending = product.IsTrending,
+                       ShelfLife = product.ShelfLife,
+                       Stock = _db.ProductVariants
+                            .AsNoTracking()
+                           .Where(variant => variant.ProductId == product.Id)
+                           .Sum(variant => variant.StockQuantity),
+                      Price  =  _db.ProductVariants
+                                    .Where(variant => variant.ProductId == product.Id)
+                                    //.OrderBy(variant => variant.Weight)
+                                    .Select(variant =>
+                                        $"{variant.Price:0.##}~{variant.Weight:0.##}{variant.WeightUnit}")
+                                    .ToArray()
+                   })
+                   .ToListAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Retrieved {productCount} products for page {PageNumber}.",
+                    products.Count,
+                    pageNumber);
+
+                return new ApiResponse<List<AdminProductList>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = products.Count > 0
+                        ? "Product retrieved successfully."
+                        : "No product were found.",
+                    Data = products
+                };
+
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Product list request was cancelled for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<AdminProductList>>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The product list request was cancelled.",
+                    Errors = "The request was cancelled before the products could be retrieved. Please try again.",
+                    Data = []
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving product categories for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<AdminProductList>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product list.",
+                    Errors = "A database error occurred while retrieving the product. Please try again.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving product categories for page {PageNumber}.",
+                    pageNumber);
+
+                return new ApiResponse<List<AdminProductList>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product list.",
+                    Errors = "An unexpected error occurred while retrieving the product. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+        public async Task<ApiResponse<Dictionary<string, ProductImagesResponse>>> GetProductImagesByProductIds(
+            List<string> productIds,
+            CancellationToken cancellationToken = default)
+        {
+            if (productIds == null || productIds.Count == 0)
+            {
+                return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "No product IDs were provided.",
+                    Data = []
+                };
+            }
+
+            try
+            {
+                var validProductIds = productIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => Guid.TryParse(id, out var productId)
+                        ? productId
+                        : (Guid?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (validProductIds.Count == 0)
+                {
+                    return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                    {
+                        StatusCode = StatusCodes.Status200OK,
+                        Success = true,
+                        Message = "No valid product IDs were provided.",
+                        Data = []
+                    };
+                }
+
+                var rows = await _db.ProductImages
+                    .AsNoTracking()
+                    .Where(image => validProductIds.Contains(image.ProductId))
+                    .OrderByDescending(image => image.IsPrimary)
+                    .ThenBy(image => image.DisplayOrder)
+                    .Select(image => new ProductImagesResponse
+                    {
+                        ProductId = image.ProductId.ToString(),
+                        Imageurl = image.ImageUrl
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var result = new Dictionary<string, ProductImagesResponse>(
+                    validProductIds.Count,
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var row in rows)
+                {
+                    result.TryAdd(row.ProductId, row);
+                }
+
+                return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = result.Count > 0
+                        ? "Product images retrieved successfully."
+                        : "No product images were found.",
+                    Data = result
+                };
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Product image request was cancelled. Requested product count: {ProductCount}.",
+                    productIds.Count);
+
+                return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The product image request was cancelled.",
+                    Errors = "The request was cancelled before product images could be retrieved.",
+                    Data = []
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(exception, "Database error occurred while retrieving product images.");
+
+                return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve product images.",
+                    Errors = "A database error occurred while retrieving product images.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Unexpected error occurred while retrieving product images.");
+
+                return new ApiResponse<Dictionary<string, ProductImagesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve product images.",
+                    Errors = "An unexpected error occurred while retrieving product images.",
                     Data = []
                 };
             }
