@@ -70,4 +70,33 @@ namespace pramukhraj.DTOs.Product
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; } = true;
     }
+
+    public class AdminProductList
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public bool? IsFeatured { get; set; }
+        public bool? IsBestSeller { get; set; }
+        public bool? IsTrending { get; set; }
+        public bool? IsNewArrival { get; set; }
+        public bool? IsActive { get; set; }
+        public string ShelfLife { get; set; } = string.Empty;
+        public string CreatedOn { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
+        public int Stock { get; set; }
+        public string[] Price { get; set; } = [];
+    }
+
+    public class ProductImagesResponse
+    {
+        public string Imageurl { get; set; } = string.Empty;
+        public string ProductId { get; set; } = string.Empty;
+    }
+
+    public class GetProductImagesRequest
+    {
+        public List<string> ProductIds { get; set; } = new List<string>();
+    }
 }

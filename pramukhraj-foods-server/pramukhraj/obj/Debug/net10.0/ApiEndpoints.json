@@ -33,12 +33,76 @@
   },
   {
     "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryImages",
+    "RelativePath": "api/admin/products/category/get-category-images",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.ProductCategoryRequestResponse\u002BGetProductCategoriesImagesRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
     "Method": "GetCategoryComboList",
     "RelativePath": "api/admin/products/category/get-combo-list",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryList",
+    "RelativePath": "api/admin/products/category/get-list/{pageNumber}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageNumber",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetProductList",
+    "RelativePath": "api/admin/products/get-list/{pageNumber}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageNumber",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetProductImages",
+    "RelativePath": "api/admin/products/get-product-images",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.GetProductImagesRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {

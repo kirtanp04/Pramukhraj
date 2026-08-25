@@ -128,6 +128,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("EnterpriseCorsPolicy");
+
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -169,3 +169,34 @@ export const STEP_FIELDS: Record<number, (keyof ProductFormValues)[]> = {
   5: ["images"],
   6: [],
 };
+
+
+
+export interface AdminProductList {
+  id: string;
+  name: string;
+  categoryName:string;
+  slug:string;
+  isFeatured: boolean | null;
+  isBestSeller: boolean | null;
+  isTrending: boolean | null;
+  isNewArrival: boolean | null;
+  isActive: boolean | null;
+  shelfLife:string;
+  createdOn: string;
+  imageUrl: string; // empty string will come
+  stock: number;
+  /** Tilde-separated price and variant weight, e.g. "200~250gm". */
+  price: string[];
+}
+
+export interface ProductImage {
+  productId: string;
+  imageurl: string;
+}
+
+export interface GetProductImagesRequestPayload {
+  productIds: string[];
+}
+
+export type ProductImagesDictionary = Record<string, ProductImage>;

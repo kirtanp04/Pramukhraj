@@ -3,8 +3,17 @@ import {
   flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel,
   useReactTable, type ColumnDef, type SortingState,
 } from '@tanstack/react-table'
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
+
+interface ServerPaginationOptions {
+  page: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+  isFetching?: boolean
+  onPageChange: (page: number) => void
+}
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, any>[]
@@ -12,9 +21,25 @@ interface DataTableProps<T> {
   searchPlaceholder?: string
   toolbar?: React.ReactNode
   pageSize?: number
+  isLoading?: boolean
+  loadingRows?: number
+  emptyMessage?: string
+  serverPagination?: ServerPaginationOptions
+  hideFooter?: boolean
 }
 
-export function DataTable<T>({ columns, data, searchPlaceholder = 'Search...', toolbar, pageSize = 8 }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns,
+  data,
+  searchPlaceholder = 'Search...',
+  toolbar,
+  pageSize = 8,
+  isLoading = false,
+  loadingRows = pageSize,
+  emptyMessage = 'No results found.',
+  serverPagination,
+  hideFooter = false,
+}: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
@@ -32,7 +57,10 @@ export function DataTable<T>({ columns, data, searchPlaceholder = 'Search...', t
   })
 
   return (
-    <div className="rounded-card border border-ink/10 bg-ivory">
+    <div
+      className="rounded-card border border-ink/10 bg-ivory"
+      aria-busy={isLoading || serverPagination?.isFetching}
+    >
       <div className="flex flex-wrap items-center gap-3 border-b border-ink/10 p-4">
         <div className="flex min-w-52 flex-1 items-center gap-2 rounded-full border border-ink/15 bg-ivory-dim px-3 py-1.5">
           <Search size={14} className="text-ink-soft" />
@@ -69,8 +97,18 @@ export function DataTable<T>({ columns, data, searchPlaceholder = 'Search...', t
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.length === 0 ? (
-              <tr><td colSpan={columns.length} className="px-4 py-10 text-center text-ink-soft">No results found.</td></tr>
+            {isLoading ? (
+              Array.from({ length: loadingRows }, (_, rowIndex) => (
+                <tr key={rowIndex} className="border-b border-ink/5 last:border-0">
+                  {columns.map((_, columnIndex) => (
+                    <td key={columnIndex} className="px-4 py-3">
+                      <Skeleton className={cn('h-5', columnIndex === 0 ? 'w-40' : 'w-24')} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : table.getRowModel().rows.length === 0 ? (
+              <tr><td colSpan={columns.length} className="px-4 py-10 text-center text-ink-soft">{emptyMessage}</td></tr>
             ) : (
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="border-b border-ink/5 last:border-0 hover:bg-ivory-dim/60">
@@ -86,19 +124,44 @@ export function DataTable<T>({ columns, data, searchPlaceholder = 'Search...', t
         </table>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs text-ink-soft">
-        <span>
-          Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())} · {table.getFilteredRowModel().rows.length} results
+      {!hideFooter && <div className="flex items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs text-ink-soft">
+        <span className="flex items-center gap-2">
+          {serverPagination
+            ? `Page ${serverPagination.page} · ${table.getFilteredRowModel().rows.length} results on this page`
+            : `Page ${table.getState().pagination.pageIndex + 1} of ${Math.max(1, table.getPageCount())} · ${table.getFilteredRowModel().rows.length} results`}
+          {serverPagination?.isFetching && (
+            <LoaderCircle size={13} className="animate-spin" aria-label="Loading page" />
+          )}
         </span>
         <div className="flex items-center gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="rounded-full p-1.5 hover:bg-ink/5 disabled:opacity-30">
+          <button
+            type="button"
+            aria-label="Previous page"
+            onClick={() => serverPagination
+              ? serverPagination.onPageChange(serverPagination.page - 1)
+              : table.previousPage()}
+            disabled={serverPagination
+              ? !serverPagination.hasPreviousPage || serverPagination.isFetching
+              : !table.getCanPreviousPage()}
+            className="rounded-full p-1.5 hover:bg-ink/5 disabled:opacity-30"
+          >
             <ChevronLeft size={15} />
           </button>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="rounded-full p-1.5 hover:bg-ink/5 disabled:opacity-30">
+          <button
+            type="button"
+            aria-label="Next page"
+            onClick={() => serverPagination
+              ? serverPagination.onPageChange(serverPagination.page + 1)
+              : table.nextPage()}
+            disabled={serverPagination
+              ? !serverPagination.hasNextPage || serverPagination.isFetching
+              : !table.getCanNextPage()}
+            className="rounded-full p-1.5 hover:bg-ink/5 disabled:opacity-30"
+          >
             <ChevronRight size={15} />
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
