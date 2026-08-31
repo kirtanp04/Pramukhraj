@@ -26,7 +26,7 @@ namespace pramukhraj.Database
         public DbSet<ProductVariant> ProductVariants { get; set; } = null!;
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
-        public DbSet<AdminAction> AdminActions { get; set; }
+        public DbSet<AdminAction> AdminActions { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

@@ -13,6 +13,33 @@
     }
   ],
   "paths": {
+    "/api/admin/get-admin-actions": {
+      "get": {
+        "tags": [
+          "AdminActions"
+        ],
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/auth/admin/refresh": {
       "post": {
         "tags": [
@@ -173,7 +200,7 @@
         }
       }
     },
-    "/api/admin/products/add": {
+    "/api/products/admin/add": {
       "post": {
         "tags": [
           "Product"
@@ -205,7 +232,69 @@
         }
       }
     },
-    "/api/admin/products/category/add": {
+    "/api/products/admin/{id}": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/products/admin/category/add": {
       "post": {
         "tags": [
           "Product"
@@ -237,7 +326,69 @@
         }
       }
     },
-    "/api/admin/products/category/get-combo-list": {
+    "/api/products/admin/category/{id}": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductCategoryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductCategoryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddProductCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/products/admin/category/get-combo-list": {
       "get": {
         "tags": [
           "Product"
@@ -249,7 +400,7 @@
         }
       }
     },
-    "/api/admin/products/get-list/{pageNumber}": {
+    "/api/products/admin/get-list/{pageNumber}": {
       "get": {
         "tags": [
           "Product"
@@ -273,7 +424,7 @@
         }
       }
     },
-    "/api/admin/products/get-product-images": {
+    "/api/products/admin/get-product-images": {
       "post": {
         "tags": [
           "Product"
@@ -305,7 +456,7 @@
         }
       }
     },
-    "/api/admin/products/category/get-list/{pageNumber}": {
+    "/api/products/admin/category/get-list/{pageNumber}": {
       "get": {
         "tags": [
           "Product"
@@ -329,7 +480,7 @@
         }
       }
     },
-    "/api/admin/products/category/get-category-images": {
+    "/api/products/admin/category/get-category-images": {
       "post": {
         "tags": [
           "Product"
@@ -682,6 +833,9 @@
     }
   },
   "tags": [
+    {
+      "name": "AdminActions"
+    },
     {
       "name": "Auth"
     },

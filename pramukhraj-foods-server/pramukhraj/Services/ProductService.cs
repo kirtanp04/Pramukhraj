@@ -11,6 +11,7 @@ using pramukhraj.Interfaces;
 using System.Data.Common;
 using static pramukhraj.Common.AdminActions;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace pramukhraj.Services
 {
@@ -74,12 +75,12 @@ namespace pramukhraj.Services
                 // Check category exists
                 var categoryExists = await _db.ProductCategories
                     .AsNoTracking()
-                    .AnyAsync(
+                    .FirstAsync(
                         x => x.Id == categoryId && x.IsActive
 ,
                         cancellationToken);
 
-                if (!categoryExists)
+                if (categoryExists == null)
                 {
                     return new ApiResponse<string>
                     {
@@ -143,7 +144,26 @@ namespace pramukhraj.Services
                     Barcode = request.Barcode?.Trim() ?? "",
 
                     CreatedOn = currentTime,
-                    UpdatedOn = currentTime
+                    UpdatedOn = currentTime,
+                    Slug = ProductHelper.GenerateSlug(request.Name?.Trim() ?? "Product-slug", 6),
+
+                    MetaTitle = ProductHelper.GenerateProductMetaTitle(
+                                request.Name?.Trim() ?? "Pramukhraj-Product",
+                                request.Brand),
+
+                    MetaDescription = ProductHelper.GenerateProductMetaDescription(
+                                        request.Name?.Trim() ?? "Pramukhraj-Product",
+                                        request.ShortDescription,
+                                        request.Description,
+                                        categoryExists.Name),
+
+                    MetaKeywords = ProductHelper.GenerateProductMetaKeywords(
+                                    request.Name?.Trim() ?? "Pramukhraj-Product",
+                                    categoryExists.Name,
+                                    request.Brand,
+                                    request.Tags?
+                                    .Where(tag => !string.IsNullOrWhiteSpace(tag.Name))
+                                    .Select(tag => tag.Name.Trim())),
                 };
 
                 // ----------------------------------------------------
@@ -155,11 +175,11 @@ namespace pramukhraj.Services
                     {
                         Id = Guid.NewGuid(),
                         ProductId = productId,
-
                         ImageUrl = image.ImageUrl?.Trim() ?? string.Empty,
                         AltText = image.AltText?.Trim(),
                         IsPrimary = image.IsPrimary,
                         DisplayOrder = image.DisplayOrder,
+                        
                         
                     })
                     .ToList()
@@ -330,7 +350,574 @@ namespace pramukhraj.Services
             }
         }
 
+        public async Task<ApiResponse<ProductDetailsResponse>> GetProductByIdAsync(
+            string strProductId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Guid.TryParse(strProductId, out var productId) ||
+                productId == Guid.Empty)
+            {
+                return new ApiResponse<ProductDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid product.",
+                    Errors = "The provided product ID is invalid."
+                };
+            }
 
+            try
+            {
+                var product = await _db.Products
+                    .AsNoTracking()
+                    .Where(entity => entity.Id == productId)
+                    .Select(entity => new ProductDetailsResponse
+                    {
+                        Id = entity.Id.ToString(),
+                        CategoryId = entity.CategoryId.ToString(),
+                        Name = entity.Name,
+                        ShortDescription = entity.ShortDescription,
+                        Description = entity.Description,
+                        Brand = entity.Brand,
+                        IsFeatured = entity.IsFeatured,
+                        IsBestSeller = entity.IsBestSeller,
+                        IsTrending = entity.IsTrending,
+                        IsNewArrival = entity.IsNewArrival,
+                        IsActive = entity.IsActive,
+                        CountryOfOrigin = entity.CountryOfOrigin,
+                        IsVegetarian = entity.IsVegetarian,
+                        ShelfLife = entity.ShelfLife,
+                        StorageInstruction = entity.StorageInstruction,
+                        Ingredients = entity.Ingredients,
+                        NutritionalInformation = entity.NutritionalInformation,
+                        Barcode = entity.Barcode,
+                        Images = entity.Images
+                            .OrderBy(image => image.DisplayOrder)
+                            .Select(image => new ProductImageDetailsResponse
+                            {
+                                Id = image.Id.ToString(),
+                                ImageUrl = image.ImageUrl,
+                                AltText = image.AltText,
+                                IsPrimary = image.IsPrimary,
+                                DisplayOrder = image.DisplayOrder
+                            })
+                            .ToArray(),
+                        Variants = entity.Variants
+                            .OrderByDescending(variant => variant.IsDefault)
+                            .ThenBy(variant => variant.Name)
+                            .Select(variant => new ProductVariantDetailsResponse
+                            {
+                                Id = variant.Id.ToString(),
+                                Name = variant.Name,
+                                Sku = variant.SKU,
+                                Price = variant.Price,
+                                Mrp = variant.MRP,
+                                StockQuantity = variant.StockQuantity,
+                                Weight = variant.Weight,
+                                WeightUnit = variant.WeightUnit,
+                                IsDefault = variant.IsDefault,
+                                IsActive = variant.IsActive
+                            })
+                            .ToArray(),
+                        Tags = entity.Tags
+                            .OrderBy(tag => tag.Name)
+                            .Select(tag => new ProductTagDetailsResponse
+                            {
+                                Id = tag.Id.ToString(),
+                                Name = tag.Name
+                            })
+                            .ToArray()
+                    })
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                if (product is null)
+                {
+                    return new ApiResponse<ProductDetailsResponse>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Product not found.",
+                        Errors = "The selected product does not exist."
+                    };
+                }
+
+                return new ApiResponse<ProductDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Product retrieved successfully.",
+                    Data = product
+                };
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving Product {ProductId}.",
+                    productId);
+
+                return new ApiResponse<ProductDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product.",
+                    Errors = "A database error occurred while retrieving the product. Please try again."
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving Product {ProductId}.",
+                    productId);
+
+                return new ApiResponse<ProductDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the product.",
+                    Errors = "An unexpected error occurred while retrieving the product. Please try again later."
+                };
+            }
+        }
+
+        public async Task<ApiResponse<string>> UpdateProductAsync(
+        string strProductId,
+        AddProductRequest request,
+        CancellationToken cancellationToken = default)
+        {
+            // ---------------------------------------------------------
+            // Basic request validation
+            // ---------------------------------------------------------
+
+            if (request is null)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid request.",
+                    Errors = "Product details are required."
+                };
+            }
+
+            if (!Guid.TryParse(strProductId, out var productId) ||
+                productId == Guid.Empty)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid product.",
+                    Errors = "The provided product ID is invalid."
+                };
+            }
+
+            if (!Guid.TryParse(request.CategoryId, out var categoryId) ||
+                categoryId == Guid.Empty)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid category.",
+                    Errors = "The provided category ID is invalid."
+                };
+            }
+
+            // ---------------------------------------------------------
+            // Admin validation
+            // ---------------------------------------------------------
+
+            var adminClaim = Common.Common.GetAdminClaimInfo(_httpContextAccessor);
+
+            if (!adminClaim.Success)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = adminClaim.StatusCode,
+                    Success = false,
+                    Message = adminClaim.Message,
+                    Errors = adminClaim.Errors
+                };
+            }
+
+            if (!Guid.TryParse(
+                    adminClaim.Data?.Id?.ToString(),
+                    out var adminId) ||
+                adminId == Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "Product update rejected because the authenticated admin ID was invalid. ProductId: {ProductId}",
+                    productId);
+
+               
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Success = false,
+                    Message = "Unauthorized request.",
+                    Errors = "Valid administrator information could not be determined."
+                };
+
+            }
+
+            var adminName = string.IsNullOrWhiteSpace(adminClaim.Data?.UserName)
+                ? "Unknown Admin"
+                : adminClaim.Data.UserName.Trim();
+
+            var productName = request.Name?.Trim() ?? string.Empty;
+            var barcode = request.Barcode?.Trim();
+
+            try
+            {
+                // ---------------------------------------------------------
+                // Get existing product
+                // Do NOT use AsNoTracking because we are updating this entity
+                // ---------------------------------------------------------
+
+                var product = await _db.Products
+                    .FirstOrDefaultAsync(
+                        x => x.Id == productId,
+                        cancellationToken);
+
+                if (product is null)
+                {
+                    return new ApiResponse<string>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Product not found.",
+                        Errors = "The selected product does not exist."
+                    };
+                }
+
+                // ---------------------------------------------------------
+                // Validate category
+                // ---------------------------------------------------------
+
+                var categoryExists = await _db.ProductCategories
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x => x.Id == categoryId && x.IsActive,
+                        cancellationToken);
+
+                if (!categoryExists)
+                {
+                    return new ApiResponse<string>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Category not found.",
+                        Errors = "The selected product category does not exist."
+                    };
+                }
+
+                // ---------------------------------------------------------
+                // Validate barcode
+                //
+                // Important:
+                // Exclude current product from duplicate check.
+                // ---------------------------------------------------------
+
+                if (!string.IsNullOrWhiteSpace(barcode))
+                {
+                    var barcodeExists = await _db.Products
+                        .AsNoTracking()
+                        .AnyAsync(
+                            x =>
+                                x.Id != productId &&
+                                x.Barcode == barcode,
+                            cancellationToken);
+
+                    if (barcodeExists)
+                    {
+                        return new ApiResponse<string>
+                        {
+                            StatusCode = StatusCodes.Status409Conflict,
+                            Success = false,
+                            Message = "Duplicate barcode.",
+                            Errors = "Another product with the same barcode already exists."
+                        };
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // Update existing product
+                // ---------------------------------------------------------
+
+                product.CategoryId = categoryId;
+
+                product.Name = productName;
+                product.ShortDescription =
+                    request.ShortDescription?.Trim() ?? string.Empty;
+
+                product.Description =
+                    request.Description?.Trim() ?? string.Empty;
+
+                product.Brand =
+                    request.Brand?.Trim() ?? string.Empty;
+
+                product.IsFeatured = request.IsFeatured;
+                product.IsBestSeller = request.IsBestSeller;
+                product.IsTrending = request.IsTrending;
+                product.IsNewArrival = request.IsNewArrival;
+                product.IsActive = request.IsActive;
+
+                product.CountryOfOrigin =
+                    request.CountryOfOrigin?.Trim() ?? string.Empty;
+
+                product.IsVegetarian = request.IsVegetarian;
+
+                product.ShelfLife =
+                    request.ShelfLife?.Trim() ?? string.Empty;
+
+                product.StorageInstruction =
+                    request.StorageInstruction?.Trim() ?? string.Empty;
+
+                product.Ingredients =
+                    request.Ingredients?.Trim() ?? string.Empty;
+
+                product.NutritionalInformation =
+                    request.NutritionalInformation?.Trim() ?? string.Empty;
+
+                product.Barcode = barcode ?? string.Empty;
+
+                product.UpdatedOn = DateTime.UtcNow;
+
+                // CreatedOn is intentionally NOT changed.
+
+                // ---------------------------------------------------------
+                // Prepare new images
+                // ---------------------------------------------------------
+
+                var productImages = request.Images?
+                    .Select(image => new ProductImage
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = productId,
+
+                        ImageUrl =
+                            image.ImageUrl?.Trim() ?? string.Empty,
+
+                        AltText =
+                            string.IsNullOrWhiteSpace(image.AltText)
+                                ? null
+                                : image.AltText.Trim(),
+
+                        IsPrimary = image.IsPrimary,
+                        DisplayOrder = image.DisplayOrder
+                    })
+                    .ToList()
+                    ?? [];
+
+                // ---------------------------------------------------------
+                // Prepare new variants
+                // ---------------------------------------------------------
+
+                var productVariants = request.Variants?
+                    .Select((variant, index) => new ProductVariant
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = productId,
+
+                        Name =
+                            variant.Name?.Trim() ?? string.Empty,
+
+                        SKU = ProductHelper.GenerateSku(
+                            product.Name,
+                            variant.Name?.Trim(),
+                            index),
+
+                        Price = variant.Price,
+                        MRP = variant.Mrp,
+
+                        StockQuantity = variant.StockQuantity,
+
+                        Weight = variant.Weight,
+                        WeightUnit =
+                            variant.WeightUnit?.Trim() ?? string.Empty,
+
+                        IsActive = variant.IsActive,
+                        IsDefault = variant.IsDefault
+                    })
+                    .ToList()
+                    ?? [];
+
+                // ---------------------------------------------------------
+                // Prepare tags
+                //
+                // Remove empty and duplicate tags.
+                // ---------------------------------------------------------
+
+                var productTags = request.Tags?
+                    .Where(tag =>
+                        !string.IsNullOrWhiteSpace(tag.Name))
+                    .Select(tag => tag.Name.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(tagName => new ProductTag
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = productId,
+                        Name = tagName
+                    })
+                    .ToList()
+                    ?? [];
+
+                // ---------------------------------------------------------
+                // Replace child records
+                //
+                // We delete ONLY child entities.
+                // Product itself remains intact.
+                // ---------------------------------------------------------
+
+                await _db.ProductImages
+                    .Where(x => x.ProductId == productId)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                await _db.ProductVariants
+                    .Where(x => x.ProductId == productId)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                await _db.ProductTags
+                    .Where(x => x.ProductId == productId)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                // ---------------------------------------------------------
+                // Insert replacement children
+                // ---------------------------------------------------------
+
+                if (productImages.Count > 0)
+                {
+                    await _db.ProductImages.AddRangeAsync(
+                        productImages,
+                        cancellationToken);
+                }
+
+                if (productVariants.Count > 0)
+                {
+                    await _db.ProductVariants.AddRangeAsync(
+                        productVariants,
+                        cancellationToken);
+                }
+
+                if (productTags.Count > 0)
+                {
+                    await _db.ProductTags.AddRangeAsync(
+                        productTags,
+                        cancellationToken);
+                }
+
+                // ---------------------------------------------------------
+                // Audit log
+                // ---------------------------------------------------------
+
+                var adminAction = new AdminAction
+                {
+                    Id = Guid.NewGuid(),
+
+                    AdminId = adminId,
+                    AdminName = adminName,
+
+                    Module = AdminActionModules.Product,
+                    Action = AdminActionTypes.Update,
+
+                    EntityId = product.Id,
+                    EntityName = product.Name,
+
+                    Description =
+                        $"Updated product '{product.Name}'.",
+
+                    CreatedOn = DateTime.UtcNow
+                };
+
+                await _db.AdminActions.AddAsync(
+                    adminAction,
+                    cancellationToken);
+
+                // ---------------------------------------------------------
+                // Save all tracked modifications
+                // ---------------------------------------------------------
+
+                await _db.SaveChangesAsync(cancellationToken);
+
+               
+             
+
+                _logger.LogInformation(
+                    "Product {ProductId} ({ProductName}) was updated successfully by Admin {AdminId}.",
+                    product.Id,
+                    product.Name,
+                    adminId);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Product updated successfully.",
+                    Data = product.Id.ToString()
+                };
+            }
+            catch (DbUpdateException ex)
+                when (ex.InnerException is PostgresException postgresException &&
+                      postgresException.SqlState ==
+                      PostgresErrorCodes.UniqueViolation)
+            {
+              
+                _logger.LogWarning(
+                    ex,
+                    "Unique constraint violation while updating Product {ProductId}.",
+                    productId);
+
+               
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status409Conflict,
+                    Success = false,
+                    Message = "Unable to update product.",
+                    Errors = "A product with one or more of the same unique values already exists."
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+              
+                _logger.LogWarning(
+                    "Product update operation was cancelled. ProductId: {ProductId}",
+                    productId);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "Product update was cancelled.",
+                    Errors = "The request was cancelled before the product could be updated. Please try again."
+                };
+            }
+            catch (Exception ex)
+            {
+               
+                _logger.LogError(
+                    ex,
+                    "Unexpected error while updating Product {ProductId}.",
+                    productId);
+
+                
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update product.",
+                    Errors = "An unexpected error occurred while updating the product. Please try again later."
+                };
+
+
+            }
+        }
 
 
         public async Task<ApiResponse<string>> AddProductCategoryAsync(
@@ -551,6 +1138,425 @@ namespace pramukhraj.Services
                     Message = "Unable to create the category.",
                     Errors =
                         "An unexpected error occurred while creating the category. Please try again later."
+                };
+            }
+        }
+
+
+        public async Task<ApiResponse<ProductCategoryDetailsResponse>> GetProductCategoryByIdAsync(
+            string strCategoryId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Guid.TryParse(strCategoryId, out var categoryId) ||
+                categoryId == Guid.Empty)
+            {
+                return new ApiResponse<ProductCategoryDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid category.",
+                    Errors = "The provided category ID is invalid."
+                };
+            }
+
+            try
+            {
+                var category = await _db.ProductCategories
+                    .AsNoTracking()
+                    .Where(entity => entity.Id == categoryId)
+                    .Select(entity => new ProductCategoryDetailsResponse
+                    {
+                        Id = entity.Id.ToString(),
+                        Name = entity.Name,
+                        Description = entity.Description ?? string.Empty,
+                        ImageUrl = entity.ImageUrl,
+                        DisplayOrder = entity.DisplayOrder,
+                        IsFeatured = entity.IsFeatured,
+                        IsActive = entity.IsActive
+                    })
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                if (category is null)
+                {
+                    return new ApiResponse<ProductCategoryDetailsResponse>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Category not found.",
+                        Errors = "The selected product category does not exist."
+                    };
+                }
+
+                return new ApiResponse<ProductCategoryDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Category retrieved successfully.",
+                    Data = category
+                };
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving Category {CategoryId}.",
+                    categoryId);
+
+                return new ApiResponse<ProductCategoryDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the category.",
+                    Errors = "A database error occurred while retrieving the category. Please try again."
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving Category {CategoryId}.",
+                    categoryId);
+
+                return new ApiResponse<ProductCategoryDetailsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve the category.",
+                    Errors = "An unexpected error occurred while retrieving the category. Please try again later."
+                };
+            }
+        }
+
+        public async Task<ApiResponse<string>> UpdateProductCategoryAsync(
+            string strCategoryId,
+            AddProductCategoryRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (request is null)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid request.",
+                    Errors = "Category details are required."
+                };
+            }
+
+            if (!Guid.TryParse(strCategoryId, out var categoryId) ||
+                categoryId == Guid.Empty)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid category.",
+                    Errors = "The provided category ID is invalid."
+                };
+            }
+
+            var categoryName = request.Name?.Trim();
+
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid category name.",
+                    Errors = "Category name is required."
+                };
+            }
+
+            var adminClaim =
+                Common.Common.GetAdminClaimInfo(_httpContextAccessor);
+
+            if (!adminClaim.Success)
+            {
+                return new ApiResponse<string>
+                {
+                    StatusCode = adminClaim.StatusCode,
+                    Success = false,
+                    Message = adminClaim.Message,
+                    Errors = adminClaim.Errors
+                };
+            }
+
+            if (!Guid.TryParse(
+                    adminClaim.Data?.Id?.ToString(),
+                    out var adminId) ||
+                adminId == Guid.Empty)
+            {
+                _logger.LogWarning(
+                    "Category update rejected because authenticated admin ID is invalid. CategoryId: {CategoryId}",
+                    categoryId);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Success = false,
+                    Message = "Unauthorized request.",
+                    Errors = "Valid administrator information could not be determined."
+                };
+            }
+
+            var adminName =
+                string.IsNullOrWhiteSpace(adminClaim.Data?.UserName)
+                    ? "Unknown Admin"
+                    : adminClaim.Data.UserName.Trim();
+
+            var description =
+                request.Description?.Trim() ?? string.Empty;
+
+         
+            try
+            {
+                
+
+                var category = await _db.ProductCategories
+                    .FirstOrDefaultAsync(
+                        x => x.Id == categoryId,
+                        cancellationToken);
+
+                if (category is null)
+                {
+                    return new ApiResponse<string>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Category not found.",
+                        Errors = "The selected product category does not exist."
+                    };
+                }
+
+                var categoryNameExists =
+                    await _db.ProductCategories
+                        .AsNoTracking()
+                        .AnyAsync(
+                            x =>
+                                x.Id != categoryId &&
+                                EF.Functions.ILike(
+                                    x.Name,
+                                    categoryName),
+                            cancellationToken);
+
+                if (categoryNameExists)
+                {
+                    return new ApiResponse<string>
+                    {
+                        StatusCode = StatusCodes.Status409Conflict,
+                        Success = false,
+                        Message = "Category already exists.",
+                        Errors =
+                            $"A product category named '{categoryName}' already exists."
+                    };
+                }
+
+                var slug = ProductHelper.GenerateSlug(
+                    categoryName,
+                    255);
+
+                
+                var slugExists =
+                    await _db.ProductCategories
+                        .AsNoTracking()
+                        .AnyAsync(
+                            x =>
+                                x.Id != categoryId &&
+                                x.Slug == slug,
+                            cancellationToken);
+
+                if (slugExists)
+                {
+                    var timestamp =
+                        DateTimeOffset.UtcNow
+                            .ToUnixTimeMilliseconds();
+
+                    var suffix = $"-{timestamp}";
+
+                    var maximumBaseLength =
+                        255 - suffix.Length;
+
+                    slug =
+                        $"{ProductHelper.GenerateSlug(
+                            categoryName,
+                            maximumBaseLength)}{suffix}";
+                }
+
+                var currentTime = DateTime.UtcNow;
+
+                category.Name = categoryName;
+
+                category.Slug = slug;
+
+                category.Description = description;
+
+                category.ImageUrl =
+                    request.ImageUrl?.Trim() ?? string.Empty;
+
+                category.DisplayOrder =
+                    request.DisplayOrder;
+
+                category.IsFeatured =
+                    request.IsFeatured;
+
+                category.IsActive =
+                    request.IsActive;
+
+                // Do not modify CreatedOn
+                category.UpdatedOn = currentTime;
+
+                // ---------------------------------------------------------
+                // Regenerate SEO fields
+                // ---------------------------------------------------------
+
+                category.MetaTitle =
+                    ProductHelper.GenerateMetaTitle(
+                        categoryName);
+
+                category.MetaDescription =
+                    ProductHelper.GenerateMetaDescription(
+                        categoryName,
+                        description);
+
+                category.MetaKeywords =
+                    ProductHelper.GenerateMetaKeywords(
+                        categoryName);
+
+                // ---------------------------------------------------------
+                // Audit log
+                // ---------------------------------------------------------
+
+                var adminAction = new AdminAction
+                {
+                    Id = Guid.NewGuid(),
+
+                    AdminId = adminId,
+
+                    AdminName = adminName,
+
+                    Module = AdminActionModules.Category,
+
+                    Action = AdminActionTypes.Update,
+
+                    EntityId = category.Id,
+
+                    EntityName = category.Name,
+
+                    Description =
+                        $"Updated category '{category.Name}'.",
+
+                    CreatedOn = currentTime
+                };
+
+                await _db.AdminActions.AddAsync(
+                    adminAction,
+                    cancellationToken);
+
+                // ---------------------------------------------------------
+                // Save all changes
+                // ---------------------------------------------------------
+
+                await _db.SaveChangesAsync(
+                    cancellationToken);
+
+               
+
+                _logger.LogInformation(
+                    "Category {CategoryId} ({CategoryName}) was updated successfully by Admin {AdminId}.",
+                    category.Id,
+                    category.Name,
+                    adminId);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Category updated successfully.",
+                    Data = category.Id.ToString()
+                };
+            }
+            catch (DbUpdateException exception)
+                when (exception.InnerException is PostgresException
+                {
+                    SqlState: PostgresErrorCodes.UniqueViolation
+                })
+            {
+               
+
+                _logger.LogWarning(
+                    exception,
+                    "Unique constraint rejected category update. CategoryId: {CategoryId}, CategoryName: {CategoryName}",
+                    categoryId,
+                    categoryName);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status409Conflict,
+                    Success = false,
+                    Message = "Unable to update category.",
+                    Errors =
+                        "Another category with the same name or slug already exists."
+                };
+            }
+            catch (DbUpdateException exception)
+            {
+                
+
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while updating Category {CategoryId} ({CategoryName}).",
+                    categoryId,
+                    categoryName);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update the category.",
+                    Errors =
+                        "A database error occurred while saving the category. Please try again."
+                };
+            }
+            catch (OperationCanceledException)
+            {
+               
+
+                _logger.LogWarning(
+                    "Category update was cancelled. CategoryId: {CategoryId}, CategoryName: {CategoryName}",
+                    categoryId,
+                    categoryName);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The update category request was cancelled.",
+                    Errors ="The request was cancelled before the category could be update. Please try again.",
+                    
+                };
+            }
+            catch (Exception exception)
+            {
+                
+
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while updating Category {CategoryId} ({CategoryName}).",
+                    categoryId,
+                    categoryName);
+
+                return new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update the category.",
+                    Errors =
+                        "An unexpected error occurred while updating the category. Please try again later."
                 };
             }
         }
@@ -883,6 +1889,7 @@ namespace pramukhraj.Services
                        Slug = product.Slug,
                        CreatedOn = product.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
                        CategoryName = product.Category.Name,
+                       IsCategoryActive = product.Category.IsActive,
                        ImageUrl = "",
                        IsBestSeller = product.IsBestSeller,
                        IsFeatured = product.IsFeatured,

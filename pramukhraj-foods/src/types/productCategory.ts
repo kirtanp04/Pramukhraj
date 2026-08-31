@@ -1,7 +1,5 @@
-import type { Category } from "@/types/catalog";
-
 export interface ProductCategoryListRouteState {
-  createdCategory: Category;
+  createdCategoryId: string;
 }
 
 export interface AdminCategoryList {
@@ -27,3 +25,13 @@ export interface GetCategoryImagesRequestPayload {
 }
 
 export type CategoryImagesDictionary = Record<string, CategoryImage>;
+
+export interface ProductCategoryDetailsResponse {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  displayOrder: number;
+  isFeatured: boolean;
+  isActive: boolean;
+}

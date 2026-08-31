@@ -5,7 +5,6 @@ import { ProductRail } from '@/components/storefront/ProductRail'
 import { CategoryCard } from '@/components/storefront/CategoryCard'
 import { Testimonials } from '@/components/storefront/Testimonials'
 import { FAQSection } from '@/components/storefront/FAQSection'
-import { BlogPreview } from '@/components/storefront/BlogPreview'
 import { categories } from '@/mock'
 import type { Product } from '@/types/catalog'
 import { fetchTrending, fetchBestSellers, fetchNewArrivals, fetchDeals } from '@/services/catalogService'
@@ -51,7 +50,6 @@ export function Home() {
       <ProductRail title="New Arrivals" eyebrow="Just landed" products={newArrivals} viewAllHref="/products?sort=newest" loading={loading} />
 
       <Testimonials />
-      <BlogPreview />
       <FAQSection />
     </>
   )

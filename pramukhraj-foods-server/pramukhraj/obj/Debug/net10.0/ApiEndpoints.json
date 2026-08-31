@@ -1,106 +1,16 @@
 [
   {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "AddNewProduct",
-    "RelativePath": "api/admin/products/add",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "pramukhraj.DTOs.Product.AddProductRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "AddNewCategory",
-    "RelativePath": "api/admin/products/category/add",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "pramukhraj.DTOs.Product.AddProductCategoryRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "GetCategoryImages",
-    "RelativePath": "api/admin/products/category/get-category-images",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "pramukhraj.DTOs.Product.ProductCategoryRequestResponse\u002BGetProductCategoriesImagesRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "GetCategoryComboList",
-    "RelativePath": "api/admin/products/category/get-combo-list",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "GetCategoryList",
-    "RelativePath": "api/admin/products/category/get-list/{pageNumber}",
+    "ContainingType": "pramukhraj.Controllers.AdminActions",
+    "Method": "GetAdminActions",
+    "RelativePath": "api/admin/get-admin-actions",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "pageNumber",
-        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "System.Int32",
         "IsRequired": false
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "GetProductList",
-    "RelativePath": "api/admin/products/get-list/{pageNumber}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "pageNumber",
-        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "pramukhraj.Controllers.ProductController",
-    "Method": "GetProductImages",
-    "RelativePath": "api/admin/products/get-product-images",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "pramukhraj.DTOs.Product.GetProductImagesRequest",
-        "IsRequired": true
       }
     ],
     "ReturnTypes": []
@@ -180,6 +90,186 @@
       {
         "Name": "request",
         "Type": "pramukhraj.DTOs.Auth.CustomerRegisterRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetProductById",
+    "RelativePath": "api/products/admin/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "UpdateProduct",
+    "RelativePath": "api/products/admin/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "AddNewProduct",
+    "RelativePath": "api/products/admin/add",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryById",
+    "RelativePath": "api/products/admin/category/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "UpdateCategory",
+    "RelativePath": "api/products/admin/category/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductCategoryRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "AddNewCategory",
+    "RelativePath": "api/products/admin/category/add",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.AddProductCategoryRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryImages",
+    "RelativePath": "api/products/admin/category/get-category-images",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.ProductCategoryRequestResponse\u002BGetProductCategoriesImagesRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryComboList",
+    "RelativePath": "api/products/admin/category/get-combo-list",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetCategoryList",
+    "RelativePath": "api/products/admin/category/get-list/{pageNumber}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageNumber",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetProductList",
+    "RelativePath": "api/products/admin/get-list/{pageNumber}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageNumber",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetProductImages",
+    "RelativePath": "api/products/admin/get-product-images",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.GetProductImagesRequest",
         "IsRequired": true
       }
     ],

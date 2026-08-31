@@ -6,18 +6,26 @@ const AdminApiPaths = {
     login: "auth/admin/login",
     refresh: "auth/admin/refresh",
   },
+  adminAction: {
+    getList: (pageNumber: number) =>
+      `admin/get-admin-actions?pageNumber=${pageNumber}`,
+  },
   product: {
-    add: "admin/products/add",
+    add: "products/admin/add",
+    getById: (id: string) => `products/admin/${encodeURIComponent(id)}`,
+    update: (id: string) => `products/admin/${encodeURIComponent(id)}`,
      getAdminList: (pageNumber: number) =>
-      "admin/products/get-list/" + pageNumber,
-     getImagesListByIds: "admin/products/get-product-images",
+      "products/admin/get-list/" + pageNumber,
+     getImagesListByIds: "products/admin/get-product-images",
   },
   productCategory: {
-    add: "admin/products/category/add",
-    getComboList: "admin/products/category/get-combo-list",
+    add: "products/admin/category/add",
+    getById: (id: string) => `products/admin/category/${encodeURIComponent(id)}`,
+    update: (id: string) => `products/admin/category/${encodeURIComponent(id)}`,
+    getComboList: "products/admin/category/get-combo-list",
     getAdminList: (pageNumber: number) =>
-      "admin/products/category/get-list/" + pageNumber,
-    getImagesListByIds: "admin/products/category/get-category-images",
+      "products/admin/category/get-list/" + pageNumber,
+    getImagesListByIds: "products/admin/category/get-category-images",
   },
 };
 

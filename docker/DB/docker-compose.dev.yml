@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: ${VITE_DB_PASSWORD}
       TZ: ${VITE_DB_TIMEZONE}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       # Creates the data folder next to your .env files in Docker_Folder
       - ../pg-dev-data:/var/lib/postgresql/data

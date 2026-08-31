@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ShoppingBag,  Menu, X, ChevronDown, MapPin, Truck } from 'lucide-react'
+import { Heart, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react'
 import { Logo } from './Logo'
 import { SearchBar } from './SearchBar'
 import { categories } from '@/mock'

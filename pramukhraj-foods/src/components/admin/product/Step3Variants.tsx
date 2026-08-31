@@ -55,8 +55,8 @@ export function Step3Variants({ form }: Step3VariantsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2.5">
+        <div className='max-w-[80%]'>
           <h3 className="font-display text-base font-semibold text-ink">Variants</h3>
           <p className="text-xs text-ink-soft">
             Each weight must be unique within its unit. For example, 250 gm can appear once,
