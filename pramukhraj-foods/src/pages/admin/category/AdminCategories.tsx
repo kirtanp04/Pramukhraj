@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Pencil, Plus } from 'lucide-react'
 import { AsyncEntityThumbnail } from '@/components/admin/AsyncEntityThumbnail'
 import { DataTable } from '@/components/admin/DataTable'
-import { AdminDrawer } from '@/components/admin/AdminDrawer'
-import { Button } from '@/components/ui/Button'
 import { ServerError } from '@/components/ui/ApiErrorPage'
+import { Badge } from '@/components/ui/Badge'
 import { useAdminCategories } from '@/hooks/useAdminCategories'
 import { useUrlPageParam } from '@/hooks/useUrlPageParam'
-import { cn, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 import type {
   AdminCategoryList,
   ProductCategoryListRouteState,
@@ -34,32 +32,17 @@ export function AdminCategories() {
     imagesLoading,
     imagesError,
     retry,
-    updateCategoryDescription,
   } = useAdminCategories(page)
 
-  const [editing, setEditing] = useState<AdminCategoryList | null>(null)
-  const { register, handleSubmit, reset } = useForm<{ description: string }>()
-
   useEffect(() => {
-    if (!routeState?.createdCategory) return
+    if (!routeState?.createdCategoryId) return
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
-  }, [location.pathname, location.search, navigate, routeState?.createdCategory])
+  }, [location.pathname, location.search, navigate, routeState?.createdCategoryId])
 
   const handlePageChange = useCallback((nextPage: number) => {
     setPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [setPage])
-
-  const openEdit = useCallback((category: AdminCategoryList) => {
-    setEditing(category)
-    reset({ description: category.description ?? '' })
-  }, [reset])
-
-  function onSubmit(values: { description: string }) {
-    if (!editing) return
-    updateCategoryDescription(editing.id, values.description)
-    setEditing(null)
-  }
 
   const columns = useMemo<CategoryColumns>(() => [
     {
@@ -76,9 +59,8 @@ export function AdminCategories() {
               imageUrl={imageUrl}
               alt={category.name}
               loading={imagesLoading}
-              className="h-9 w-9 rounded-full"
             />
-            <span className="font-medium">{category.name}</span>
+            <span className="max-w-64 truncate font-medium">{category.name}</span>
           </div>
         )
       },
@@ -86,35 +68,29 @@ export function AdminCategories() {
     {
       header: 'Slug',
       accessorKey: 'slug',
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.slug}</span>,
+      cell: ({ row }) => (
+        <span className="block max-w-64 truncate font-mono text-xs text-ink-soft">
+          {row.original.slug}
+        </span>
+      ),
     },
     { header: 'Products', accessorKey: 'productCount' },
     {
       header: 'Featured',
       accessorKey: 'isFeatured',
       cell: ({ row }) => (
-        <span className={cn(
-          'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-          row.original.isFeatured
-            ? 'bg-turmeric/15 text-turmeric-deep'
-            : 'bg-ink/5 text-ink-soft',
-        )}>
+        <Badge variant={row.original.isFeatured ? 'turmeric' : 'soft'}>
           {row.original.isFeatured ? 'Yes' : 'No'}
-        </span>
+        </Badge>
       ),
     },
     {
       header: 'Status',
       accessorKey: 'isActive',
       cell: ({ row }) => (
-        <span className={cn(
-          'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-          row.original.isActive
-            ? 'bg-green-100 text-green-700'
-            : 'bg-ink/5 text-ink-soft',
-        )}>
+        <Badge variant={row.original.isActive ? 'success' : 'oxblood'}>
           {row.original.isActive ? 'Active' : 'Inactive'}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -145,7 +121,7 @@ export function AdminCategories() {
       cell: ({ row }: { row: { original: AdminCategoryList } }) => (
         <button
           type="button"
-          onClick={() => openEdit(row.original)}
+          onClick={() => navigate(`/admin/categories/${row.original.id}/edit`)}
           className="rounded-full p-1.5 text-ink-soft hover:bg-ink/5"
           aria-label={`Edit ${row.original.name}`}
         >
@@ -153,7 +129,7 @@ export function AdminCategories() {
         </button>
       ),
     }] : []),
-  ], [canManage, categoryImages, imagesLoading, openEdit])
+  ], [canManage, categoryImages, imagesLoading, navigate])
 
   return (
     <div className="space-y-8">
@@ -223,29 +199,6 @@ export function AdminCategories() {
           ))}
         </div>
       </div> */}
-
-      <AdminDrawer
-        open={!!editing}
-        onOpenChange={(open) => !open && setEditing(null)}
-        title={`Edit ${editing?.name ?? ''}`}
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-xs text-ink-soft">Description</span>
-            <textarea
-              {...register('description')}
-              rows={4}
-              className="admin-input resize-none"
-            />
-          </label>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Changes</Button>
-          </div>
-        </form>
-      </AdminDrawer>
     </div>
   )
 }

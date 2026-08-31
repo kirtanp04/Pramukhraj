@@ -10,7 +10,15 @@ namespace pramukhraj.Interfaces
     {
         public Task<ApiResponse<string>> AddNewProductAsync(AddProductRequest request, CancellationToken cancellationToken);
 
+        public Task<ApiResponse<string>> UpdateProductAsync(string productId,AddProductRequest request, CancellationToken cancellationToken);
+
+        public Task<ApiResponse<ProductDetailsResponse>> GetProductByIdAsync(string productId, CancellationToken cancellationToken = default);
+
         public Task<ApiResponse<string>> AddProductCategoryAsync(AddProductCategoryRequest request,CancellationToken cancellationToken = default);
+
+        public  Task<ApiResponse<string>> UpdateProductCategoryAsync(string strCategoryId,AddProductCategoryRequest request,CancellationToken cancellationToken = default);
+
+        public Task<ApiResponse<ProductCategoryDetailsResponse>> GetProductCategoryByIdAsync(string categoryId, CancellationToken cancellationToken = default);
 
         public Task<ApiResponse<List<ComboData>>> GetCategoryComboList(CancellationToken cancellationToken = default);
 

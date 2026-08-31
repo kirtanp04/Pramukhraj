@@ -37,7 +37,6 @@ const OrderConfirmation = lazyNamed(
 const TrackOrder = lazyNamed(() => import("@/pages/TrackOrder"), "TrackOrder");
 const Help = lazyNamed(() => import("@/pages/Help"), "Help");
 const About = lazyNamed(() => import("@/pages/About"), "About");
-const Blog = lazyNamed(() => import("@/pages/Blog"), "Blog");
 const BlogPost = lazyNamed(() => import("@/pages/BlogPost"), "BlogPost");
 const NotFound = lazyNamed(() => import("@/pages/NotFound"), "NotFound");
 const Login = lazyNamed(() => import("@/pages/auth/Login"), "Login");
@@ -185,9 +184,9 @@ const AdminUsers = lazyNamed(
   () => import("@/pages/admin/AdminUsers"),
   "AdminUsers"
 );
-const AdminAuditLogs = lazyNamed(
-  () => import("@/pages/admin/AdminAuditLogs"),
-  "AdminAuditLogs"
+const AdminActions = lazyNamed(
+  () => import("@/pages/admin/admin-action/AdminActions"),
+  "AdminActions"
 );
 const AdminSystemHealth = lazyNamed(
   () => import("@/pages/admin/AdminSystemHealth"),
@@ -239,7 +238,6 @@ export function AppRoutes() {
         { path: "/track-order", element: lazyElement(TrackOrder) },
         { path: "/help", element: lazyElement(Help) },
         { path: "/about", element: lazyElement(About) },
-        { path: "/blog", element: lazyElement(Blog) },
         { path: "/blog/:slug", element: lazyElement(BlogPost) },
         { path: "/login", element: lazyElement(Login) },
         { path: "/register", element: lazyElement(Register) },
@@ -294,6 +292,10 @@ export function AppRoutes() {
                   path: "new",
                   element: lazyElement(AdminAddProducts),
                 },
+                {
+                  path: ":id/edit",
+                  element: lazyElement(AdminAddProducts),
+                },
               ],
             },
             {
@@ -302,6 +304,7 @@ export function AppRoutes() {
               children: [
                 { index: true, element: lazyElement(AdminCategories) },
                 { path: "new", element: lazyElement(AdminAddCategory) },
+                { path: ":id/edit", element: lazyElement(AdminAddCategory) },
               ],
             },
             { path: "customers", element: lazyElement(AdminCustomers) },
@@ -321,7 +324,8 @@ export function AppRoutes() {
               element: lazyElement(AdminEmailTemplates),
             },
             { path: "users", element: lazyElement(AdminUsers) },
-            { path: "audit-logs", element: lazyElement(AdminAuditLogs) },
+            { path: "admin-actions", element: lazyElement(AdminActions) },
+            { path: "audit-logs", element: lazyElement(AdminActions) },
             { path: "system-health", element: lazyElement(AdminSystemHealth) },
             { path: "api-keys", element: lazyElement(AdminApiKeys) },
             { path: "integrations", element: lazyElement(AdminIntegrations) },

@@ -188,6 +188,7 @@ export interface AdminProductList {
   stock: number;
   /** Tilde-separated price and variant weight, e.g. "200~250gm". */
   price: string[];
+  isCategoryActive:boolean
 }
 
 export interface ProductImage {
@@ -200,3 +201,47 @@ export interface GetProductImagesRequestPayload {
 }
 
 export type ProductImagesDictionary = Record<string, ProductImage>;
+
+export interface ProductDetailsResponse {
+  id: string;
+  categoryId: string;
+  name: string;
+  shortDescription: string;
+  description: string;
+  brand: string;
+  isFeatured: boolean;
+  isBestSeller: boolean;
+  isTrending: boolean;
+  isNewArrival: boolean;
+  isActive: boolean;
+  countryOfOrigin: string;
+  isVegetarian: boolean;
+  shelfLife: string;
+  storageInstruction: string;
+  ingredients: string;
+  nutritionalInformation: string;
+  barcode: string | null;
+  images: Array<{
+    id: string;
+    imageUrl: string;
+    altText: string | null;
+    isPrimary: boolean;
+    displayOrder: number;
+  }>;
+  variants: Array<{
+    id: string;
+    name: string;
+    sku: string;
+    price: number;
+    mrp: number;
+    stockQuantity: number;
+    weight: number;
+    weightUnit: string;
+    isDefault: boolean;
+    isActive: boolean;
+  }>;
+  tags: Array<{
+    id: string;
+    name: string;
+  }>;
+}

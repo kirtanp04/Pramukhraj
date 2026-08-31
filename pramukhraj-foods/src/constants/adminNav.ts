@@ -39,7 +39,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     title: 'Catalog',
     items: [
       { label: 'Products', to: '/admin/products', icon: Package },
-      { label: 'Categories & Brands', to: '/admin/categories', icon: Tags },
+      { label: 'Categories', to: '/admin/categories', icon: Tags },
       { label: 'Inventory', to: '/admin/inventory', icon: Warehouse },
       { label: 'Coupons', to: '/admin/coupons', icon: Ticket },
     ],
@@ -65,7 +65,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     title: 'Administration',
     items: [
       { label: 'Admin Users', to: '/admin/users', icon: UserCog },
-      { label: 'Audit Logs', to: '/admin/audit-logs', icon: ScrollText },
+      { label: 'Admin Actions', to: '/admin/admin-actions?page=1', icon: ScrollText },
       { label: 'System Health', to: '/admin/system-health', icon: Activity },
       { label: 'API Keys', to: '/admin/api-keys', icon: KeyRound },
       { label: 'Integrations', to: '/admin/integrations', icon: Plug },

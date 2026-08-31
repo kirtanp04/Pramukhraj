@@ -60,6 +60,15 @@ namespace pramukhraj.Entities.Product
             [MaxLength(100)]
             public string? Barcode { get; set; }
 
+            [MaxLength(255)]
+            public string? MetaTitle { get; set; }
+
+            [MaxLength(500)]
+            public string? MetaDescription { get; set; }
+
+            [MaxLength(500)]
+            public string? MetaKeywords { get; set; }
+
             public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
             public DateTime UpdatedOn { get; set; } = DateTime.UtcNow;

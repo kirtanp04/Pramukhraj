@@ -104,7 +104,7 @@ namespace pramukhraj.Extensions
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 options.AddFixedWindowLimiter("rate-limit", opt =>
                 {
-                    opt.PermitLimit = 7;
+                    opt.PermitLimit = 100;
                     opt.Window = TimeSpan.FromMinutes(1);
                     opt.QueueLimit = 0;
                 });

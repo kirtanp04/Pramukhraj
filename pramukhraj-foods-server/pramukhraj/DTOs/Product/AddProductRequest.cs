@@ -82,6 +82,7 @@ namespace pramukhraj.DTOs.Product
         public bool? IsTrending { get; set; }
         public bool? IsNewArrival { get; set; }
         public bool? IsActive { get; set; }
+        public bool? IsCategoryActive { get; set; }
         public string ShelfLife { get; set; } = string.Empty;
         public string CreatedOn { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;

@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, LoaderCircle, Save } from 'lucide-react'
 import { productSchema, type ProductFormValues, STEP_FIELDS } from '@/types/productSchema'
 
 import { ProductFormStepper } from '@/components/admin/product/ProductFormStepper'
+import { ProductFormSkeleton } from '@/components/admin/product/ProductFormSkeleton'
+import { EntityFormError } from '@/components/admin/EntityFormError'
 import { Step1BasicInfo } from '@/components/admin/product/Step1BasicInfo'
 import { Step2Details } from '@/components/admin/product/Step2Details'
 import { Step3Variants } from '@/components/admin/product/Step3Variants'
@@ -17,7 +19,9 @@ import { useMessageDialog } from '@/hooks/useMessageDialog'
 import { useProductCategories } from '@/hooks/useProductCategories'
 
 import { cn } from '@/lib/utils'
-import { getApiErrorMessage } from '@/lib/apiClient'
+import { getApiErrorMessage, getApiErrorStatus } from '@/lib/apiClient'
+import { mapProductResponseToForm } from '@/lib/entityMappings'
+import { isValidGuid } from '@/lib/routeParams'
 import { PRODUCT_FORM_STEPS } from '@/model/Product'
 import { productApi } from '@/services/productApi'
 
@@ -46,10 +50,12 @@ const DEFAULT_VALUES: ProductFormValues = {
 }
 
 const TOTAL_STEPS = PRODUCT_FORM_STEPS.length
+type FormMode = 'create' | 'edit'
 
 export function ProductFormPage() {
   const { id } = useParams<{ id?: string }>()
-  const isEditing = !!id
+  const mode: FormMode = id ? 'edit' : 'create'
+  const isEditing = mode === 'edit'
   const navigate = useNavigate()
   const dialog = useMessageDialog()
   const {
@@ -61,6 +67,11 @@ export function ProductFormPage() {
 
   const [currentStep, setCurrentStep] = useState(1)
   const [maxVisitedStep, setMaxVisitedStep] = useState(1)
+  const [isInitialLoading, setIsInitialLoading] = useState(isEditing)
+  const [loadError, setLoadError] = useState<{ message: string; status?: number } | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
+  const mountedRef = useRef(true)
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -68,7 +79,8 @@ export function ProductFormPage() {
     mode: 'onChange',
   })
 
-  const { formState: { errors, isSubmitting } } = form
+  const { reset, formState: { errors, isSubmitting } } = form
+  const isBusy = isSubmitting || isSaving
   const categoryStepBlocked = currentStep === 1 && (
     categoriesLoading || !!categoriesError || categories.length === 0
   )
@@ -79,18 +91,57 @@ export function ProductFormPage() {
     return fields.some((f) => !!errors[f])
   })
 
-  // TODO: When editing, fetch product by `id` and reset form
   useEffect(() => {
-    if (isEditing && id) {
-      // fetch(`/api/products/${id}`) then form.reset(mapped data)
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
     }
-  }, [id, isEditing])
+  }, [])
+
+  useEffect(() => {
+    if (!isEditing) {
+      setIsInitialLoading(false)
+      setLoadError(null)
+      return
+    }
+
+    if (!isValidGuid(id)) {
+      setIsInitialLoading(false)
+      setLoadError({ message: 'The product ID in this URL is invalid.', status: 400 })
+      return
+    }
+
+    const productId = id
+
+    const controller = new AbortController()
+
+    async function loadProduct() {
+      setIsInitialLoading(true)
+      setLoadError(null)
+
+      try {
+        const product = await productApi.getById(productId, controller.signal)
+        if (controller.signal.aborted) return
+        if (!product) throw new Error('Product not found.')
+        reset(productSchema.parse(mapProductResponseToForm(product)))
+      } catch (error: unknown) {
+        if (controller.signal.aborted) return
+        setLoadError({
+          message: getApiErrorMessage(error),
+          status: getApiErrorStatus(error),
+        })
+      } finally {
+        if (!controller.signal.aborted) setIsInitialLoading(false)
+      }
+    }
+
+    void loadProduct()
+    return () => controller.abort()
+  }, [id, isEditing, loadAttempt, reset])
 
   // ─── Step navigation ────────────────────────────────────────────────────────
 
   async function goToStep(target: number) {
-    if (isSubmitting) return
-
     if (target > currentStep) {
       // Validate current step fields before advancing
       const fieldsToValidate = STEP_FIELDS[currentStep] as (keyof ProductFormValues)[]
@@ -118,28 +169,29 @@ export function ProductFormPage() {
   // ─── Submit ─────────────────────────────────────────────────────────────────
 
   async function onSubmit(values: ProductFormValues) {
-    if (isEditing) {
-      dialog.error('Product updates are not connected yet.', {
-        title: 'Update Unavailable',
-      })
-      return
-    }
-
+    setIsSaving(true)
     try {
-      await productApi.add(values)
+      const response = isEditing && isValidGuid(id)
+        ? await productApi.update(id, values)
+        : await productApi.add(values)
+
+      if (!mountedRef.current) return
 
       dialog.success(
-        'Product created successfully.',
+        response.message,
         {
-          title: 'Product Created',
+          title: isEditing ? 'Product Updated' : 'Product Created',
           actionLabel: 'Back to Products',
           onAction: () => navigate('/admin/products'),
         },
       )
     } catch (err: unknown) {
+      if (!mountedRef.current) return
       dialog.error(getApiErrorMessage(err), {
-        title: 'Could Not Create Product',
+        title: isEditing ? 'Could Not Update Product' : 'Could Not Create Product',
       })
+    } finally {
+      if (mountedRef.current) setIsSaving(false)
     }
   }
 
@@ -177,13 +229,26 @@ export function ProductFormPage() {
 
   const isLastStep = currentStep === TOTAL_STEPS
 
+  if (isInitialLoading) return <ProductFormSkeleton />
+
+  if (loadError) {
+    const isNotFound = loadError.status === 404
+    return (
+      <EntityFormError
+        title={isNotFound ? 'Product Not Found' : 'Unable to Load Product'}
+        message={isNotFound ? 'The requested product does not exist.' : loadError.message}
+        onBack={() => navigate('/admin/products')}
+        onRetry={loadError.status === 400 ? undefined : () => setLoadAttempt((value) => value + 1)}
+      />
+    )
+  }
+
   return (
     <div className="mx-auto max-w-5xl">
       {/* Page header */}
       <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
-          disabled={isSubmitting}
           onClick={() => navigate('/admin/products')}
           className="flex h-8 w-8 items-center justify-center rounded-full border border-ink/15 text-ink-soft hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Back to products"
@@ -210,7 +275,6 @@ export function ProductFormPage() {
           stepsWithErrors={stepsWithErrors}
           maxVisitedStep={maxVisitedStep}
           onStepClick={goToStep}
-          disabled={isSubmitting}
         />
       </div>
 
@@ -218,14 +282,13 @@ export function ProductFormPage() {
       <form
         onSubmit={form.handleSubmit(onSubmit, handleFormError)}
         noValidate
-        aria-busy={isSubmitting}
+        aria-busy={isBusy}
       >
         <div
           className={cn(
             'rounded-card border border-ink/10 bg-ivory px-5 py-6 transition-opacity md:px-8 md:py-8',
-            isSubmitting && 'pointer-events-none opacity-70',
+            isBusy && 'opacity-90',
           )}
-          aria-disabled={isSubmitting}
         >
           {renderStepContent()}
         </div>
@@ -240,7 +303,6 @@ export function ProductFormPage() {
           {currentStep > 1 && (
             <button
               type="button"
-              disabled={isSubmitting}
               onClick={handleBack}
               className="flex items-center gap-1.5 rounded-full border border-ink/15 px-5 py-2 text-sm text-ink hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -253,7 +315,7 @@ export function ProductFormPage() {
             {currentStep < TOTAL_STEPS && (
               <button
                 type="button"
-                disabled={isSubmitting || categoryStepBlocked}
+                disabled={categoryStepBlocked}
                 onClick={() => goToStep(TOTAL_STEPS)}
                 className="text-xs text-ink-soft hover:text-oxblood disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -265,7 +327,7 @@ export function ProductFormPage() {
               <button
                 key="next-step"
                 type="button"
-                disabled={isSubmitting || categoryStepBlocked}
+                disabled={categoryStepBlocked}
                 onClick={handleNext}
                 className="flex items-center gap-1.5 rounded-full bg-oxblood px-5 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -275,18 +337,18 @@ export function ProductFormPage() {
               <button
                 key="submit-product"
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isBusy}
                 className="flex min-w-40 items-center justify-center gap-1.5 rounded-full bg-oxblood px-6 py-2 text-sm font-medium text-ivory hover:bg-oxblood-deep disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSubmitting ? (
+                {isBusy ? (
                   <>
                     <LoaderCircle size={15} className="animate-spin" aria-hidden />
-                    <span>{isEditing ? 'Saving Changes...' : 'Creating Product...'}</span>
+                    <span>{isEditing ? 'Updating...' : 'Creating Product...'}</span>
                   </>
                 ) : (
                   <>
                     <Save size={15} aria-hidden />
-                    <span>{isEditing ? 'Save Changes' : 'Create Product'}</span>
+                    <span>{isEditing ? 'Update Product' : 'Create Product'}</span>
                   </>
                 )}
               </button>

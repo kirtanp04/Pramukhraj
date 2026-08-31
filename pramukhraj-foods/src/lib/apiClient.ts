@@ -152,6 +152,19 @@ export function getApiErrorMessage(error: unknown): string {
   return "An unexpected error occurred.";
 }
 
+export function getApiErrorStatus(error: unknown): number | undefined {
+  if (axios.isAxiosError(error)) return error.response?.status
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  ) {
+    return error.statusCode
+  }
+  return undefined
+}
+
 // ─── Centralized Data & Error Parsers ─────────────────────────────────────────
 
 /**
@@ -213,8 +226,7 @@ export async function apiGet<T>(
   config?: AxiosRequestConfig
 ): Promise<T | null> {
   try {
-    debugger
-    const response = await apiClient.get<ApiResponse<T>>(url, config);
+    const response = await apiClient.get<unknown>(url, config);
     const responsePayload = decodeApiResponse<T>(response.data);
     // parseResponseData(responsePayload);
     return parseResponseData(responsePayload);
@@ -261,19 +273,30 @@ export async function apiPut<T>(
   body?: unknown,
   config?: AxiosRequestConfig
 ): Promise<T | null> {
+  const response = await apiPutResponse<T>(url, body, config)
+  return response.data
+}
+
+export async function apiPutResponse<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig
+): Promise<ApiResponse<T>> {
   try {
     const encryptedData =
       body !== undefined && body !== null
-        ? CryptoService.encrypt(JSON.stringify(body) as any)
+        ? CryptoService.encrypt(JSON.stringify(body))
         : "null";
 
-    const response = await apiClient.put<ApiResponse<T>>(
+    const response = await apiClient.put<unknown>(
       url,
       encryptedData,
       config
     );
 
-    return parseResponseData(response.data);
+    const responsePayload = decodeApiResponse<T>(response.data)
+    parseResponseData(responsePayload)
+    return responsePayload
   } catch (error) {
     handleApiError(error);
   }
