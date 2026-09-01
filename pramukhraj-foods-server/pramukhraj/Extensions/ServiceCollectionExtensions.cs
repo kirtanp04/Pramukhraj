@@ -135,7 +135,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, pramukhraj.Validators.UpdateProductVariantInventoryRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<CreateCouponRequest>, pramukhraj.Validators.Coupon.CreateCouponRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, pramukhraj.Validators.Coupon.UpdateCouponRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<CouponSearchRequest>, pramukhraj.Validators.Coupon.CouponSearchRequestValidator>();
+            services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;
         }

@@ -28,12 +28,13 @@ describe('couponFormSchema', () => {
     expect(couponFormSchema.safeParse(values).success).toBe(false)
   })
 
-  it('does not allow maximum discount for flat coupons', () => {
+  it('clears maximum discount from flat coupon API payloads', () => {
     const values = valid()
     values.discountType = 'FlatAmount'
     values.discountValue = 50
     values.maximumDiscountAmount = 25
-    expect(couponFormSchema.safeParse(values).success).toBe(false)
+    expect(couponFormSchema.safeParse(values).success).toBe(true)
+    expect(mapCouponFormToRequest(values).maximumDiscountAmount).toBeNull()
   })
 
   it('requires products for a product-scoped coupon', () => {

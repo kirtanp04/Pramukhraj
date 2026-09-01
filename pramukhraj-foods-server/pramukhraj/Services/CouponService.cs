@@ -1,5 +1,4 @@
 using System.Data.Common;
-using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -20,24 +19,18 @@ public sealed class CouponService : ICouponService
     private readonly AppDbContext _db;
     private readonly ILogger<CouponService> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IValidator<CreateCouponRequest> _createValidator;
-    private readonly IValidator<UpdateCouponRequest> _updateValidator;
-    private readonly IValidator<CouponSearchRequest> _searchValidator;
+    private readonly IValidatorManager _validatorManager;
 
     public CouponService(
         AppDbContext db,
         ILogger<CouponService> logger,
         IHttpContextAccessor httpContextAccessor,
-        IValidator<CreateCouponRequest> createValidator,
-        IValidator<UpdateCouponRequest> updateValidator,
-        IValidator<CouponSearchRequest> searchValidator)
+        IValidatorManager validatorManager)
     {
         _db = db;
         _logger = logger;
         _httpContextAccessor = httpContextAccessor;
-        _createValidator = createValidator;
-        _updateValidator = updateValidator;
-        _searchValidator = searchValidator;
+        _validatorManager = validatorManager;
     }
 
     public async Task<ApiResponse<Guid>> CreateCouponAsync(
@@ -49,7 +42,7 @@ public sealed class CouponService : ICouponService
             return ApiResponse<Guid>.Fail("Coupon details are required.", StatusCodes.Status400BadRequest);
         }
 
-        var validation = await _createValidator.ValidateAsync(request, cancellationToken);
+        var validation = await _validatorManager.CreateCouponRequest.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid) return ValidationFailure<Guid>(validation);
 
         var admin = GetAdmin();
@@ -145,7 +138,7 @@ public sealed class CouponService : ICouponService
         if (couponId == Guid.Empty) return ApiResponse<Guid>.Fail("A valid coupon ID is required.", StatusCodes.Status400BadRequest);
         if (request is null) return ApiResponse<Guid>.Fail("Coupon details are required.", StatusCodes.Status400BadRequest);
 
-        var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
+        var validation = await _validatorManager.UpdateCouponRequest.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid) return ValidationFailure<Guid>(validation);
 
         var admin = GetAdmin();
@@ -338,36 +331,21 @@ public sealed class CouponService : ICouponService
     }
 
     public async Task<ApiResponse<CouponListPageResponse>> GetCouponListAsync(
-        CouponSearchRequest request,
+        int pageNumber,
         CancellationToken cancellationToken = default)
     {
-        request ??= new CouponSearchRequest();
-        request.PageSize = CouponPageSize;
-        var validation = await _searchValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid) return ValidationFailure<CouponListPageResponse>(validation);
+        pageNumber = Math.Max(pageNumber, 1);
 
         try
         {
             var now = DateTime.UtcNow;
             IQueryable<Coupon> query = _db.Coupons.AsNoTracking();
 
-            if (!string.IsNullOrWhiteSpace(request.Search))
-            {
-                var search = $"%{request.Search.Trim()}%";
-                query = query.Where(coupon => EF.Functions.ILike(coupon.Code, search) || EF.Functions.ILike(coupon.Name, search));
-            }
-            if (request.IsActive.HasValue) query = query.Where(coupon => coupon.IsActive == request.IsActive.Value);
-            if (request.DiscountType.HasValue) query = query.Where(coupon => coupon.DiscountType == request.DiscountType.Value);
-            if (request.ApplicationScope.HasValue) query = query.Where(coupon => coupon.ApplicationScope == request.ApplicationScope.Value);
-            if (request.StartsOnOrAfter.HasValue) query = query.Where(coupon => coupon.StartOn >= ToUtc(request.StartsOnOrAfter.Value));
-            if (request.EndsOnOrBefore.HasValue) query = query.Where(coupon => coupon.EndOn <= ToUtc(request.EndsOnOrBefore.Value));
-            if (request.Status.HasValue) query = ApplyStatusFilter(query, request.Status.Value, now);
-
             var totalCount = await query.CountAsync(cancellationToken);
-            query = ApplySorting(query, request.SortBy, request.SortDescending);
+            query = query.OrderByDescending(coupon => coupon.UpdatedOn).ThenByDescending(coupon => coupon.Id);
 
             var items = await query
-                .Skip((request.PageNumber - 1) * CouponPageSize)
+                .Skip((pageNumber - 1) * CouponPageSize)
                 .Take(CouponPageSize)
                 .Select(coupon => new CouponListItemResponse
                 {
@@ -382,8 +360,8 @@ public sealed class CouponService : ICouponService
                     TotalUsageLimit = coupon.TotalUsageLimit,
                     PerCustomerUsageLimit = coupon.PerCustomerUsageLimit,
                     RedeemedUsageCount = coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed),
-                    StartOn = coupon.StartOn,
-                    EndOn = coupon.EndOn,
+                    StartOn = coupon.StartOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd"),
+                    EndOn = coupon.EndOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd"),
                     IsActive = coupon.IsActive,
                     IsDeleted = coupon.IsDeleted,
                     ScopeItemCount = coupon.Scopes.Count,
@@ -411,7 +389,7 @@ public sealed class CouponService : ICouponService
             var page = new CouponListPageResponse
             {
                 Items = items,
-                PageNumber = request.PageNumber,
+                PageNumber = pageNumber,
                 PageSize = CouponPageSize,
                 TotalCount = totalCount,
                 TotalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)CouponPageSize)
@@ -551,32 +529,6 @@ public sealed class CouponService : ICouponService
         !coupon.Scopes.Select(scope => scope.ProductId ?? scope.CategoryId ?? Guid.Empty).Where(id => id != Guid.Empty).ToHashSet()
             .SetEquals(GetRequestedScopeIds(request));
 
-    private static IQueryable<Coupon> ApplyStatusFilter(IQueryable<Coupon> query, CouponDisplayStatus status, DateTime now) => status switch
-    {
-        CouponDisplayStatus.Archived => query.Where(coupon => coupon.IsDeleted),
-        CouponDisplayStatus.UsageLimitReached => query.Where(coupon => !coupon.IsDeleted && coupon.TotalUsageLimit.HasValue && coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed) >= coupon.TotalUsageLimit.Value),
-        CouponDisplayStatus.Inactive => query.Where(coupon => !coupon.IsDeleted && !coupon.IsActive && !(coupon.TotalUsageLimit.HasValue && coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed) >= coupon.TotalUsageLimit.Value)),
-        CouponDisplayStatus.Scheduled => query.Where(coupon => !coupon.IsDeleted && coupon.IsActive && coupon.StartOn > now && !(coupon.TotalUsageLimit.HasValue && coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed) >= coupon.TotalUsageLimit.Value)),
-        CouponDisplayStatus.Expired => query.Where(coupon => !coupon.IsDeleted && coupon.IsActive && coupon.StartOn <= now && coupon.EndOn <= now && !(coupon.TotalUsageLimit.HasValue && coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed) >= coupon.TotalUsageLimit.Value)),
-        _ => query.Where(coupon => !coupon.IsDeleted && coupon.IsActive && coupon.StartOn <= now && coupon.EndOn > now && !(coupon.TotalUsageLimit.HasValue && coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed) >= coupon.TotalUsageLimit.Value))
-    };
-
-    private static IQueryable<Coupon> ApplySorting(IQueryable<Coupon> query, string sortBy, bool descending) => (sortBy.ToLowerInvariant(), descending) switch
-    {
-        ("createdon", false) => query.OrderBy(coupon => coupon.CreatedOn).ThenBy(coupon => coupon.Id),
-        ("createdon", true) => query.OrderByDescending(coupon => coupon.CreatedOn).ThenByDescending(coupon => coupon.Id),
-        ("code", false) => query.OrderBy(coupon => coupon.Code).ThenBy(coupon => coupon.Id),
-        ("code", true) => query.OrderByDescending(coupon => coupon.Code).ThenByDescending(coupon => coupon.Id),
-        ("name", false) => query.OrderBy(coupon => coupon.Name).ThenBy(coupon => coupon.Id),
-        ("name", true) => query.OrderByDescending(coupon => coupon.Name).ThenByDescending(coupon => coupon.Id),
-        ("starton", false) => query.OrderBy(coupon => coupon.StartOn).ThenBy(coupon => coupon.Id),
-        ("starton", true) => query.OrderByDescending(coupon => coupon.StartOn).ThenByDescending(coupon => coupon.Id),
-        ("endon", false) => query.OrderBy(coupon => coupon.EndOn).ThenBy(coupon => coupon.Id),
-        ("endon", true) => query.OrderByDescending(coupon => coupon.EndOn).ThenByDescending(coupon => coupon.Id),
-        ("updatedon", false) => query.OrderBy(coupon => coupon.UpdatedOn).ThenBy(coupon => coupon.Id),
-        _ => query.OrderByDescending(coupon => coupon.UpdatedOn).ThenByDescending(coupon => coupon.Id)
-    };
-
     private (bool Success, Guid Id, string Name, int StatusCode, string Message, object? Errors) GetAdmin()
     {
         var result = Common.Common.GetAdminClaimInfo(_httpContextAccessor);
@@ -595,8 +547,15 @@ public sealed class CouponService : ICouponService
         string description,
         DateTime now) => new()
     {
-        Id = Guid.NewGuid(), AdminId = admin.Id, AdminName = admin.Name, Module = AdminActionModules.Coupon,
-        Action = action, EntityId = coupon.Id, EntityName = $"{coupon.Code} - {coupon.Name}", Description = description, CreatedOn = now
+            Id = Guid.NewGuid(), 
+            AdminId = admin.Id,
+            AdminName = admin.Name,
+            Module = AdminActionModules.Coupon,
+            Action = action,
+            EntityId = coupon.Id,
+            EntityName = $"{coupon.Code} - {coupon.Name}",
+            Description = description,
+            CreatedOn = now
     };
 
     private static DateTime ToUtc(DateTime value) => value.Kind switch

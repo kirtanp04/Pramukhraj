@@ -5,8 +5,6 @@ using pramukhraj.Database;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
-using FluentValidation;
-using pramukhraj.DTOs.Coupon;
 
 namespace pramukhraj.Extensions
 {
@@ -31,20 +29,16 @@ namespace pramukhraj.Extensions
             AppDbContext _db,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
-            IValidator<CreateCouponRequest> createCouponValidator,
-            IValidator<UpdateCouponRequest> updateCouponValidator,
-            IValidator<CouponSearchRequest> couponSearchValidator
+            IValidatorManager validatorManager
             )
         {
-            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor));
+            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager));
 
             _CouponService = new Lazy<ICouponService>(() => new CouponService(
                 _db,
                 loggerFactory.CreateLogger<CouponService>(),
                 httpContextAccessor,
-                createCouponValidator,
-                updateCouponValidator,
-                couponSearchValidator));
+                validatorManager));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 

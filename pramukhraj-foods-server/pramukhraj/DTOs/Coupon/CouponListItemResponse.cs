@@ -28,8 +28,8 @@ public sealed class CouponListItemResponse
     public int? TotalUsageLimit { get; set; }
     public int? PerCustomerUsageLimit { get; set; }
     public int RedeemedUsageCount { get; set; }
-    public DateTime StartOn { get; set; }
-    public DateTime EndOn { get; set; }
+    public string StartOn { get; set; } = string.Empty;
+    public string EndOn { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }
     public CouponDisplayStatus ComputedStatus { get; set; }

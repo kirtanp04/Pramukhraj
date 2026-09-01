@@ -34,3 +34,19 @@ export function formatDateTime(value: string): string {
     timeStyle: 'short',
   }).format(date)
 }
+
+export function formatDate(value: string): string {
+  if (!value?.trim()) return '—'
+
+  const normalizedValue = value.includes('T')
+    ? value
+    : value.replace(' ', 'T')
+
+  const date = new Date(normalizedValue)
+
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+  }).format(date)
+}

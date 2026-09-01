@@ -64,13 +64,4 @@ export interface CouponListPageResponse {
   totalPages: number
 }
 
-export interface CouponSearchParams {
-  pageNumber: number
-  search?: string
-  isActive?: boolean
-  status?: CouponStatus
-  discountType?: CouponDiscountType
-  applicationScope?: CouponApplicationScope
-}
-
 export type { ComboData }

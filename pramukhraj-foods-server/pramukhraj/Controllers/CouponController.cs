@@ -27,9 +27,9 @@ public sealed class CouponController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetCouponList([FromQuery] CouponSearchRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCouponList([FromQuery] int pageNumber = 1, CancellationToken cancellationToken = default)
     {
-        var response = await _serviceManager.CouponService.GetCouponListAsync(request, cancellationToken);
+        var response = await _serviceManager.CouponService.GetCouponListAsync(pageNumber, cancellationToken);
         return StatusCode(response.StatusCode, response);
     }
 

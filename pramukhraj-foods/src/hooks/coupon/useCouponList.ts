@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getApiErrorMessage } from '@/lib/apiClient'
 import { couponApi } from '@/services/couponApi'
-import type { CouponListPageResponse, CouponSearchParams } from '@/types/coupon'
+import type { CouponListPageResponse } from '@/types/coupon'
 
-export function useCouponList(params: CouponSearchParams) {
-  const { applicationScope, discountType, isActive, pageNumber, search, status } = params
+export function useCouponList(pageNumber: number) {
   const [data, setData] = useState<CouponListPageResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -17,7 +16,7 @@ export function useCouponList(params: CouponSearchParams) {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await couponApi.getList({ applicationScope, discountType, isActive, pageNumber, search, status }, controller.signal)
+        const response = await couponApi.getList(pageNumber, controller.signal)
         if (!controller.signal.aborted) setData(response)
       } catch (caught: unknown) {
         if (!controller.signal.aborted) setError(getApiErrorMessage(caught))
@@ -27,7 +26,7 @@ export function useCouponList(params: CouponSearchParams) {
     }
     void load()
     return () => controller.abort()
-  }, [applicationScope, discountType, isActive, pageNumber, search, status, refreshKey])
+  }, [pageNumber, refreshKey])
 
   return { data, error, isLoading, refresh }
 }
