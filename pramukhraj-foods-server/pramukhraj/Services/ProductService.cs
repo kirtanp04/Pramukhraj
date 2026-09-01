@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using FluentValidation.Results;
 using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Common;
@@ -21,13 +22,15 @@ namespace pramukhraj.Services
         private readonly AppDbContext _db;
         private readonly ILogger<ProductService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IValidatorManager _validatorManager;
 
 
-        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor)
+        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager)
         {
             _db = db;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
+            _validatorManager = validatorManager;
         }
 
        
@@ -46,6 +49,9 @@ namespace pramukhraj.Services
                     Errors = "Product details are required."
                 };
             }
+
+            var validation = await _validatorManager.ProductRequest.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid) return ValidationFailure<string>(validation, "Product validation failed.");
 
             if (!Guid.TryParse(request.CategoryId, out var categoryId))
             {
@@ -506,6 +512,9 @@ namespace pramukhraj.Services
                 };
             }
 
+            var validation = await _validatorManager.ProductRequest.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid) return ValidationFailure<string>(validation, "Product validation failed.");
+
             if (!Guid.TryParse(strProductId, out var productId) ||
                 productId == Guid.Empty)
             {
@@ -936,6 +945,9 @@ namespace pramukhraj.Services
                 };
             }
 
+            var validation = await _validatorManager.ProductCategoryRequest.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid) return ValidationFailure<string>(validation, "Product category validation failed.");
+
             var categoryName = request.Name?.Trim();
 
             if (string.IsNullOrWhiteSpace(categoryName))
@@ -1247,6 +1259,9 @@ namespace pramukhraj.Services
                     Errors = "Category details are required."
                 };
             }
+
+            var validation = await _validatorManager.ProductCategoryRequest.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid) return ValidationFailure<string>(validation, "Product category validation failed.");
 
             if (!Guid.TryParse(strCategoryId, out var categoryId) ||
                 categoryId == Guid.Empty)
@@ -1563,6 +1578,48 @@ namespace pramukhraj.Services
         }
 
 
+        public async Task<ApiResponse<List<ComboData>>> GetProductComboList(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var products = await _db.Products
+                    .AsNoTracking()
+                    .Where(product => product.IsActive)
+                    .OrderBy(product => product.Name)
+                    .ThenBy(product => product.Id)
+                    .Select(product => new ComboData
+                    {
+                        Id = product.Id.ToString(),
+                        Name = product.Name
+                    })
+                    .ToListAsync(cancellationToken);
+
+                return ApiResponse<List<ComboData>>.Ok(products,
+                    products.Count > 0 ? "Product combo list retrieved successfully." : "No active products were found.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return ApiResponse<List<ComboData>>.Fail(
+                    "The product combo-list request was cancelled before it could be completed.",
+                    StatusCodes.Status408RequestTimeout);
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(exception, "Database error occurred while retrieving the product combo list.");
+                return ApiResponse<List<ComboData>>.Fail(
+                    "A database error occurred while retrieving the product combo list. Please try again.",
+                    StatusCodes.Status500InternalServerError);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Unexpected error occurred while retrieving the product combo list.");
+                return ApiResponse<List<ComboData>>.Fail(
+                    "An unexpected error occurred while retrieving the product combo list. Please try again later.",
+                    StatusCodes.Status500InternalServerError);
+            }
+        }
+
+
         public async Task<ApiResponse<List<ComboData>>> GetCategoryComboList(CancellationToken cancellationToken = default)
         {
             try
@@ -1744,6 +1801,14 @@ namespace pramukhraj.Services
          List<string> categoryIds,
          CancellationToken cancellationToken = default)
         {
+            var validation = await _validatorManager.ProductCategoryImagesRequest.ValidateAsync(
+                new GetProductCategoriesImagesRequest { CategoryIds = categoryIds ?? [] },
+                cancellationToken);
+            if (!validation.IsValid)
+                return ValidationFailure<Dictionary<string, ProductCategoryImagesResponse>>(
+                    validation,
+                    "Category image request validation failed.");
+
             if (categoryIds == null || categoryIds.Count == 0)
             {
                 return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
@@ -1981,6 +2046,14 @@ namespace pramukhraj.Services
             List<string> productIds,
             CancellationToken cancellationToken = default)
         {
+            var validation = await _validatorManager.ProductImagesRequest.ValidateAsync(
+                new GetProductImagesRequest { ProductIds = productIds ?? [] },
+                cancellationToken);
+            if (!validation.IsValid)
+                return ValidationFailure<Dictionary<string, ProductImagesResponse>>(
+                    validation,
+                    "Product image request validation failed.");
+
             if (productIds == null || productIds.Count == 0)
             {
                 return new ApiResponse<Dictionary<string, ProductImagesResponse>>
@@ -2238,6 +2311,12 @@ namespace pramukhraj.Services
                     Errors = "Inventory update details are required."
                 };
             }
+
+            var validation = await _validatorManager.ProductInventoryRequest.ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid)
+                return ValidationFailure<UpdateProductVariantInventoryResponse>(
+                    validation,
+                    "Inventory update validation failed.");
 
             if (request.ProductId == Guid.Empty)
             {
@@ -2528,5 +2607,15 @@ namespace pramukhraj.Services
                 };
             }
         }
+
+        private static ApiResponse<T> ValidationFailure<T>(ValidationResult validation, string message) =>
+            ApiResponse<T>.Fail(
+                message,
+                StatusCodes.Status400BadRequest,
+                validation.Errors
+                    .GroupBy(error => error.PropertyName)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Select(error => error.ErrorMessage).Distinct().ToArray()));
     }
 }

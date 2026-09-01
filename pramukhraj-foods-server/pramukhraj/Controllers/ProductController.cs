@@ -141,6 +141,14 @@ namespace pramukhraj.Controllers
             return StatusCode(response.StatusCode, response);
         }
 
+        [HttpGet("admin/get-combo-list")]
+        [Authorize]
+        public async Task<IActionResult> GetProductComboList(CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService.GetProductComboList(cancellationToken);
+            return StatusCode(response.StatusCode, response);
+        }
+
 
         [HttpGet("admin/get-list/{pageNumber:int?}")]
         [Authorize]

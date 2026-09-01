@@ -11,6 +11,7 @@ using pramukhraj.Interfaces;
 using System.Text;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
+using pramukhraj.DTOs.Coupon;
 
 
 namespace pramukhraj.Extensions
@@ -132,6 +133,9 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, pramukhraj.Validators.ProductCategoryImageRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, pramukhraj.Validators.GetProductImageRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, pramukhraj.Validators.UpdateProductVariantInventoryRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CreateCouponRequest>, pramukhraj.Validators.Coupon.CreateCouponRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, pramukhraj.Validators.Coupon.UpdateCouponRequestValidator>();
+            services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;
         }

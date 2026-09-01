@@ -63,11 +63,20 @@ namespace pramukhraj.Entities.Coupon
 
         public bool IsActive { get; set; } = true;
 
+        public bool IsDeleted { get; set; }
+
         public DateTime? DeletedOn { get; set; }
+
+        public Guid? CreatedByAdminId { get; set; }
+
+        public Guid? UpdatedByAdminId { get; set; }
 
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedOn { get; set; } = DateTime.UtcNow;
+
+        [ConcurrencyCheck]
+        public Guid Version { get; set; } = Guid.NewGuid();
 
         public ICollection<CouponScope> Scopes { get; set; }
             = [];
