@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using pramukhraj.Entities;
 using pramukhraj.Entities.Cart;
+using pramukhraj.Entities.Coupon;
 using pramukhraj.Entities.Product; // Ensure this namespace covers your new models
 
 namespace pramukhraj.Database
@@ -27,6 +28,9 @@ namespace pramukhraj.Database
         public DbSet<Cart> Carts { get; set; } = null!;
         public DbSet<CartItem> CartItems { get; set; } = null!;
         public DbSet<AdminAction> AdminActions { get; set; } = null!;
+        public DbSet<Coupon> Coupons { get; set; } = null!;
+        public DbSet<CouponScope> CouponScopes { get; set; } = null!;
+        public DbSet<CouponUsage> CouponUsages { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -169,6 +173,163 @@ namespace pramukhraj.Database
                  .WithMany()
                  .HasForeignKey(ci => ci.VariantId)
                  .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // --- Coupon Configurations ---
+            builder.Entity<Coupon>(entity =>
+            {
+                entity.Property(coupon => coupon.DiscountType)
+                    .HasConversion<string>()
+                    .HasMaxLength(30);
+
+                entity.Property(coupon => coupon.ApplicationScope)
+                    .HasConversion<string>()
+                    .HasMaxLength(30);
+
+                entity.ToTable("Coupons", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_Coupons_CodeUppercase",
+                        "\"Code\" = UPPER(\"Code\")");
+
+                    table.HasCheckConstraint(
+                        "CK_Coupons_DateRange",
+                        "\"StartOn\" < \"EndOn\"");
+
+                    table.HasCheckConstraint(
+                        "CK_Coupons_DiscountValue",
+                        """
+                        (
+                            "DiscountType" = 'FreeShipping'
+                            AND "DiscountValue" = 0
+                        )
+                        OR
+                        (
+                            "DiscountType" = 'FlatAmount'
+                            AND "DiscountValue" > 0
+                        )
+                        OR
+                        (
+                            "DiscountType" = 'Percentage'
+                            AND "DiscountValue" > 0
+                            AND "DiscountValue" <= 100
+                        )
+                        """);
+
+                    table.HasCheckConstraint(
+                        "CK_Coupons_MinimumOrderAmount",
+                        "\"MinimumOrderAmount\" >= 0");
+
+                    table.HasCheckConstraint(
+                            "CK_Coupons_MaximumDiscountAmount",
+                            """
+                            "MaximumDiscountAmount" IS NULL
+                            OR "MaximumDiscountAmount" > 0
+                            """);
+
+                    table.HasCheckConstraint(
+                        "CK_Coupons_TotalUsageLimit",
+                        """
+                        "TotalUsageLimit" IS NULL
+                        OR "TotalUsageLimit" > 0
+                        """);
+
+                    table.HasCheckConstraint(
+                        "CK_Coupons_PerCustomerUsageLimit",
+                        """
+                        "PerCustomerUsageLimit" IS NULL
+                        OR "PerCustomerUsageLimit" > 0
+                        """);
+                });
+            });
+
+            builder.Entity<CouponScope>(entity =>
+            {
+                entity.Property(scope => scope.ScopeType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.HasIndex(scope => new
+                {
+                    scope.CouponId,
+                    scope.ProductId
+                })
+                    .IsUnique()
+                    .HasFilter("\"ProductId\" IS NOT NULL");
+
+                entity.HasIndex(scope => new
+                {
+                    scope.CouponId,
+                    scope.CategoryId
+                })
+                    .IsUnique()
+                    .HasFilter("\"CategoryId\" IS NOT NULL");
+
+                entity.HasOne(scope => scope.Coupon)
+                    .WithMany(coupon => coupon.Scopes)
+                    .HasForeignKey(scope => scope.CouponId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(scope => scope.Product)
+                    .WithMany()
+                    .HasForeignKey(scope => scope.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(scope => scope.Category)
+                    .WithMany()
+                    .HasForeignKey(scope => scope.CategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.ToTable("CouponScopes", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_CouponScopes_Target",
+                        """
+                        (
+                            "ScopeType" = 'Product'
+                            AND "ProductId" IS NOT NULL
+                            AND "CategoryId" IS NULL
+                        )
+                        OR
+                        (
+                            "ScopeType" = 'Category'
+                            AND "CategoryId" IS NOT NULL
+                            AND "ProductId" IS NULL
+                        )
+                        """);
+                });
+            });
+
+            builder.Entity<CouponUsage>(entity =>
+            {
+                
+
+                entity.HasIndex(usage => new
+                {
+                    usage.CouponId,
+                    usage.OrderId
+                })
+                    .IsUnique()
+                    .HasFilter("\"OrderId\" IS NOT NULL");
+
+                entity.HasOne(usage => usage.Coupon)
+                    .WithMany(coupon => coupon.Usages)
+                    .HasForeignKey(usage => usage.CouponId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.ToTable("CouponUsages", table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_CouponUsages_OrderSubtotal",
+                        "\"OrderSubtotal\" >= 0");
+
+                    table.HasCheckConstraint(
+                        "CK_CouponUsages_DiscountAmount",
+                        """
+                        "DiscountAmount" >= 0
+                        AND "DiscountAmount" <= "OrderSubtotal"
+                        """);
+                 });
             });
         }
     }

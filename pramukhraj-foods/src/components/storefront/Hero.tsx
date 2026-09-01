@@ -19,7 +19,7 @@ export function Hero() {
       />
       <div aria-hidden="true" className="pointer-events-none absolute -left-28 top-20 -z-10 h-72 w-72 rounded-full bg-oxblood/5 blur-3xl" />
 
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-10 sm:py-14 md:px-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-14 lg:py-20 xl:gap-20">
+      <div className="mx-auto  grid max-w-7xl items-center gap-10 px-4 py-10 sm:py-14 md:px-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-14 lg:py-20 xl:gap-20">
         <motion.div
           className="relative z-10"
           initial={{ opacity: 0, y: 16 }}
@@ -28,7 +28,7 @@ export function Hero() {
         >
           <div className="stamp-badge mb-5 flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-oxblood">
             <span className="h-2 w-2 rounded-full bg-oxblood" />
-            Since 1995 · Gujarat
+            Since 1997 · Gujarat
           </div>
 
           <h1 className="max-w-xl font-display text-[2.8rem] leading-[0.98] tracking-[-0.035em] min-[420px]:text-5xl sm:text-6xl lg:text-[4.35rem]">

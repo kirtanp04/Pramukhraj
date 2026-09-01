@@ -64,7 +64,7 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
-    config.headers["Time-zone"] = new Date().getTimezoneOffset()
+    config.headers["Time-zone"] = new Date().getTimezoneOffset();
     return config;
   },
   error => Promise.reject(error)
@@ -74,7 +74,7 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error:any) =>{
+  (error: any) => {
     return Promise.reject(error);
   }
 );
@@ -106,7 +106,9 @@ function decodeApiResponse<T>(payload: unknown): ApiResponse<T> {
   return decoded as ApiResponse<T>;
 }
 
-function tryDecodeApiResponse(payload: unknown): ApiResponse<unknown> | undefined {
+function tryDecodeApiResponse(
+  payload: unknown
+): ApiResponse<unknown> | undefined {
   try {
     return decodeApiResponse(payload);
   } catch {
@@ -153,16 +155,16 @@ export function getApiErrorMessage(error: unknown): string {
 }
 
 export function getApiErrorStatus(error: unknown): number | undefined {
-  if (axios.isAxiosError(error)) return error.response?.status
+  if (axios.isAxiosError(error)) return error.response?.status;
   if (
     error !== null &&
     typeof error === "object" &&
     "statusCode" in error &&
     typeof error.statusCode === "number"
   ) {
-    return error.statusCode
+    return error.statusCode;
   }
-  return undefined
+  return undefined;
 }
 
 // ─── Centralized Data & Error Parsers ─────────────────────────────────────────
@@ -254,11 +256,7 @@ export async function apiPostResponse<T>(
       body !== undefined && body !== null
         ? CryptoService.encrypt(JSON.stringify(body))
         : "null";
-    const response = await apiClient.post<unknown>(
-      url,
-      encryptedData,
-      config
-    );
+    const response = await apiClient.post<unknown>(url, encryptedData, config);
 
     const responsePayload = decodeApiResponse<T>(response.data);
     parseResponseData(responsePayload);
@@ -273,8 +271,8 @@ export async function apiPut<T>(
   body?: unknown,
   config?: AxiosRequestConfig
 ): Promise<T | null> {
-  const response = await apiPutResponse<T>(url, body, config)
-  return response.data
+  const response = await apiPutResponse<T>(url, body, config);
+  return response.data;
 }
 
 export async function apiPutResponse<T>(
@@ -288,25 +286,21 @@ export async function apiPutResponse<T>(
         ? CryptoService.encrypt(JSON.stringify(body))
         : "null";
 
-    const response = await apiClient.put<unknown>(
-      url,
-      encryptedData,
-      config
-    );
+    const response = await apiClient.put<unknown>(url, encryptedData, config);
 
-    const responsePayload = decodeApiResponse<T>(response.data)
-    parseResponseData(responsePayload)
-    return responsePayload
+    const responsePayload = decodeApiResponse<T>(response.data);
+    parseResponseData(responsePayload);
+    return responsePayload;
   } catch (error) {
     handleApiError(error);
   }
 }
 
-export async function apiPatch<T>(
+export async function apiPatchResponse<T>(
   url: string,
   body?: unknown,
   config?: AxiosRequestConfig
-): Promise<T | null> {
+): Promise<ApiResponse<T>> {
   try {
     const encryptedData =
       body !== undefined && body !== null
@@ -319,7 +313,9 @@ export async function apiPatch<T>(
       config
     );
 
-    return parseResponseData(response.data);
+    const responsePayload = decodeApiResponse<T>(response.data);
+    parseResponseData(responsePayload);
+    return responsePayload;
   } catch (error) {
     handleApiError(error);
   }

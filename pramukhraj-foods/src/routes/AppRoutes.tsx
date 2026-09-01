@@ -144,7 +144,7 @@ const AdminCoupons = lazyNamed(
   "AdminCoupons"
 );
 const AdminInventory = lazyNamed(
-  () => import("@/pages/admin/AdminInventory"),
+  () => import("@/pages/admin/inventory/AdminInventory"),
   "AdminInventory"
 );
 const AdminSales = lazyNamed(

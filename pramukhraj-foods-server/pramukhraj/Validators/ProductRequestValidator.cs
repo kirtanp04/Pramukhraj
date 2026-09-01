@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using pramukhraj.DTOs.Product;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
+using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 
 namespace pramukhraj.Validators
 {
@@ -187,6 +188,24 @@ namespace pramukhraj.Validators
 
             RuleFor(x => x.IsActive)
                 .NotNull().WithMessage("IsActive must be specified");
+        }
+    }
+
+    public sealed class UpdateProductVariantInventoryRequestValidator: AbstractValidator<UpdateProductVariantInventoryRequest>
+    {
+        public UpdateProductVariantInventoryRequestValidator()
+        {
+            RuleFor(request => request.ProductId)
+                .NotEmpty()
+                .WithMessage("Product ID is required.");
+
+            RuleFor(request => request.VariantId)
+                .NotEmpty()
+                .WithMessage("Product variant ID is required.");
+
+            RuleFor(request => request.Stock)
+                .GreaterThanOrEqualTo(0)
+                .WithMessage("Stock quantity cannot be negative.");
         }
     }
 }

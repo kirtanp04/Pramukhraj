@@ -26,11 +26,11 @@ namespace pramukhraj.Middleware
             _next = next;
             _logger = logger;
             // reuse EncryptionSettings.ApiPathPrefix as configuration for prefixes if desired; default to /api/admin
-            _adminPrefix = options?.Value?.ApiPathPrefix ?? "/api";
+            _adminPrefix = options?.Value?.ApiPathPrefix ?? "/admin";
             if (!_adminPrefix.EndsWith("/admin", StringComparison.OrdinalIgnoreCase))
             {
                 // if configured prefix is "/api" then admin endpoints usually start with /api/admin
-                _adminPrefix = _adminPrefix.TrimEnd('/') + "/admin";
+                _adminPrefix =  "/admin";
             }
         }
 

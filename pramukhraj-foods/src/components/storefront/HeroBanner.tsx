@@ -131,7 +131,7 @@ export function HeroBanner({ slides = HOME_BANNERS }: HeroBannerProps) {
         style={{ right: 'clamp(0.75rem, 2vw, 1.25rem)', bottom: 'clamp(0.75rem, 2vw, 1.25rem)' }}
       >
         <span className="stamp-badge hidden text-[9px] uppercase tracking-[0.16em] text-ivory/75 sm:block">Authentic taste</span>
-        <span className="font-display text-base italic leading-none sm:mt-1 sm:text-lg lg:text-xl">Since 1995</span>
+        <span className="font-display text-base italic leading-none sm:mt-1 sm:text-lg lg:text-xl">Since 1997</span>
         <span className="mt-1 h-px w-7 bg-ivory/40 sm:mt-1.5 sm:w-8" />
         <span className="mt-1 text-[8px] text-ivory/75 sm:mt-1.5 sm:text-[9px]">Made in Gujarat</span>
       </div>

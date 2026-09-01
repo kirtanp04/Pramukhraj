@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
+using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 
 namespace pramukhraj.Controllers
 {
@@ -40,6 +41,38 @@ namespace pramukhraj.Controllers
         {
             var response = await _serviceManager.ProductService
                 .GetProductByIdAsync(id, cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpGet("admin/get-inventory-list/{pageNumber:int?}")]
+        [Authorize]
+        public async Task<IActionResult> GetInventoryProductList([FromRoute] int? pageNumber, CancellationToken cancellationToken)
+        {
+            var productPage = pageNumber.GetValueOrDefault(0);
+
+            if (productPage < 0)
+            {
+                productPage = 0;
+            }
+
+            var response = await _serviceManager.ProductService.GetInventoryProductList(
+                productPage,
+                cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpPatch("admin/inventory/variant")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProductVariantInventory(
+            [FromBody] UpdateProductVariantInventoryRequest request,
+            CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService
+                .UpdateProductVariantInventoryAsync(
+                    request,
+                    cancellationToken);
 
             return StatusCode(response.StatusCode, response);
         }
