@@ -349,7 +349,7 @@ export function CouponForm({
         </div>
       </section>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col-reverse gap-3 rounded-card border border-ink/10 bg-ivory px-5 py-4 sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="outline"
