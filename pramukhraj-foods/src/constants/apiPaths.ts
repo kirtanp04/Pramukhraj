@@ -17,6 +17,7 @@ const AdminApiPaths = {
      getAdminList: (pageNumber: number) =>
       "products/admin/get-list/" + pageNumber,
      getImagesListByIds: "products/admin/get-product-images",
+     getComboList: "products/admin/get-combo-list",
   },
   inventory: {
     getAdminList: (pageNumber: number) =>
@@ -32,6 +33,13 @@ const AdminApiPaths = {
     getAdminList: (pageNumber: number) =>
       "products/admin/category/get-list/" + pageNumber,
     getImagesListByIds: "products/admin/category/get-category-images",
+  },
+  coupon: {
+    create: "admin/coupons",
+    getList: "admin/coupons",
+    getById: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
+    update: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
+    archive: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
   },
 };
 

@@ -167,6 +167,18 @@ export function getApiErrorStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+export function getApiValidationErrors(error: unknown): Record<string, string[]> {
+  if (error === null || typeof error !== 'object' || !('errors' in error)) return {};
+  const errors = error.errors;
+  if (errors === null || typeof errors !== 'object' || Array.isArray(errors)) return {};
+  const result: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(errors)) {
+    if (Array.isArray(value)) result[key] = value.filter((item): item is string => typeof item === 'string');
+    else if (typeof value === 'string') result[key] = [value];
+  }
+  return result;
+}
+
 // ─── Centralized Data & Error Parsers ─────────────────────────────────────────
 
 /**
@@ -326,8 +338,8 @@ export async function apiDelete<T>(
   config?: AxiosRequestConfig
 ): Promise<T | null> {
   try {
-    const response = await apiClient.delete<ApiResponse<T>>(url, config);
-    return parseResponseData(response.data);
+    const response = await apiClient.delete<unknown>(url, config);
+    return parseResponseData(decodeApiResponse<T>(response.data));
   } catch (error) {
     handleApiError(error);
   }

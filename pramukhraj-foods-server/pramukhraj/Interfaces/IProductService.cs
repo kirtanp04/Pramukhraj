@@ -23,6 +23,8 @@ namespace pramukhraj.Interfaces
 
         public Task<ApiResponse<List<ComboData>>> GetCategoryComboList(CancellationToken cancellationToken = default);
 
+        public Task<ApiResponse<List<ComboData>>> GetProductComboList(CancellationToken cancellationToken = default);
+
         public Task<ApiResponse<List<ProductCategorylistResponse>>> GetCategoryList(int PageNumber,CancellationToken cancellationToken = default);
 
         public Task<ApiResponse<Dictionary<string,ProductCategoryImagesResponse>>> GetCategoryImagesByCategoryIds(List<string> categoryIds, CancellationToken cancellationToken = default);

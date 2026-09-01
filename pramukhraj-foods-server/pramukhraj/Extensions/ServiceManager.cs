@@ -5,12 +5,16 @@ using pramukhraj.Database;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
+using FluentValidation;
+using pramukhraj.DTOs.Coupon;
 
 namespace pramukhraj.Extensions
 {
     public class ServiceManager: IServiceManager
     {
         private readonly Lazy<IProductService> _ProductService;
+
+        private readonly Lazy<ICouponService> _CouponService;
 
         private readonly Lazy<ITokenService> _TokenService;
 
@@ -26,10 +30,21 @@ namespace pramukhraj.Extensions
             IOptions<JwtSettings> jwtOptions,
             AppDbContext _db,
             IHttpContextAccessor httpContextAccessor,
-            ILoggerFactory loggerFactory
+            ILoggerFactory loggerFactory,
+            IValidator<CreateCouponRequest> createCouponValidator,
+            IValidator<UpdateCouponRequest> updateCouponValidator,
+            IValidator<CouponSearchRequest> couponSearchValidator
             )
         {
             _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor));
+
+            _CouponService = new Lazy<ICouponService>(() => new CouponService(
+                _db,
+                loggerFactory.CreateLogger<CouponService>(),
+                httpContextAccessor,
+                createCouponValidator,
+                updateCouponValidator,
+                couponSearchValidator));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 
@@ -39,6 +54,7 @@ namespace pramukhraj.Extensions
         }
 
         public IProductService ProductService => _ProductService.Value;
+        public ICouponService CouponService => _CouponService.Value;
         public ITokenService TokenService => _TokenService.Value;
         public UserManager<ApplicationUser> UserManager => _UserManager.Value;
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;

@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Net.NetworkInformation;
 using static pramukhraj.Entities.Coupon.CouponEnums;
 
 namespace pramukhraj.Entities.Coupon
@@ -37,7 +36,16 @@ namespace pramukhraj.Entities.Coupon
         [Column(TypeName = "decimal(18,2)")]
         public decimal DiscountAmount { get; set; }
 
+        public CouponUsageStatus Status { get; set; } = CouponUsageStatus.Reserved;
+
+        public DateTime? ReservationExpiresOn { get; set; }
+
         public DateTime? RedeemedOn { get; set; }
+
+        public DateTime? ReleasedOn { get; set; }
+
+        [MaxLength(500)]
+        public string? ReleaseReason { get; set; }
 
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 

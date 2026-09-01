@@ -178,6 +178,11 @@ namespace pramukhraj.Database
             // --- Coupon Configurations ---
             builder.Entity<Coupon>(entity =>
             {
+                entity.Property(coupon => coupon.Version)
+                    .IsConcurrencyToken();
+
+                entity.HasIndex(coupon => coupon.IsDeleted);
+
                 entity.Property(coupon => coupon.DiscountType)
                     .HasConversion<string>()
                     .HasMaxLength(30);
@@ -302,7 +307,12 @@ namespace pramukhraj.Database
 
             builder.Entity<CouponUsage>(entity =>
             {
-                
+                entity.Property(usage => usage.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                entity.Property(usage => usage.ReleaseReason)
+                    .HasMaxLength(500);
 
                 entity.HasIndex(usage => new
                 {

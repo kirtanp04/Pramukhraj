@@ -386,6 +386,9 @@ namespace pramukhraj.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("CreatedByAdminId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
@@ -411,6 +414,9 @@ namespace pramukhraj.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsFirstOrderOnly")
                         .HasColumnType("boolean");
 
@@ -434,13 +440,22 @@ namespace pramukhraj.Migrations
                     b.Property<int?>("TotalUsageLimit")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("IsDeleted");
 
                     b.HasIndex("IsActive", "StartOn", "EndOn");
 
@@ -536,6 +551,21 @@ namespace pramukhraj.Migrations
 
                     b.Property<DateTime?>("RedeemedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReleaseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReleasedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReservationExpiresOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 

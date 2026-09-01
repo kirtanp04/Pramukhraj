@@ -1563,6 +1563,48 @@ namespace pramukhraj.Services
         }
 
 
+        public async Task<ApiResponse<List<ComboData>>> GetProductComboList(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var products = await _db.Products
+                    .AsNoTracking()
+                    .Where(product => product.IsActive)
+                    .OrderBy(product => product.Name)
+                    .ThenBy(product => product.Id)
+                    .Select(product => new ComboData
+                    {
+                        Id = product.Id.ToString(),
+                        Name = product.Name
+                    })
+                    .ToListAsync(cancellationToken);
+
+                return ApiResponse<List<ComboData>>.Ok(products,
+                    products.Count > 0 ? "Product combo list retrieved successfully." : "No active products were found.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return ApiResponse<List<ComboData>>.Fail(
+                    "The product combo-list request was cancelled before it could be completed.",
+                    StatusCodes.Status408RequestTimeout);
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(exception, "Database error occurred while retrieving the product combo list.");
+                return ApiResponse<List<ComboData>>.Fail(
+                    "A database error occurred while retrieving the product combo list. Please try again.",
+                    StatusCodes.Status500InternalServerError);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Unexpected error occurred while retrieving the product combo list.");
+                return ApiResponse<List<ComboData>>.Fail(
+                    "An unexpected error occurred while retrieving the product combo list. Please try again later.",
+                    StatusCodes.Status500InternalServerError);
+            }
+        }
+
+
         public async Task<ApiResponse<List<ComboData>>> GetCategoryComboList(CancellationToken cancellationToken = default)
         {
             try

@@ -7,6 +7,7 @@
             public const string Product = "Product";
             public const string Category = "Category";
             public const string Inventory = "Inventory";
+            public const string Coupon = "Coupon";
         }
 
         public static class AdminActionTypes

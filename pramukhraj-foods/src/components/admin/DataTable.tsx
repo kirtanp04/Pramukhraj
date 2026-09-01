@@ -26,6 +26,8 @@ interface DataTableProps<T> {
   emptyMessage?: string
   serverPagination?: ServerPaginationOptions
   hideFooter?: boolean
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }
 
 export function DataTable<T>({
@@ -39,19 +41,23 @@ export function DataTable<T>({
   emptyMessage = 'No results found.',
   serverPagination,
   hideFooter = false,
+  searchValue,
+  onSearchChange,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
+  const activeFilter = onSearchChange ? (searchValue ?? '') : globalFilter
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter: activeFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    manualFiltering: Boolean(onSearchChange),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize } },
   })
@@ -65,8 +71,8 @@ export function DataTable<T>({
         <div className="flex min-w-52 flex-1 items-center gap-2 rounded-full border border-ink/15 bg-ivory-dim px-3 py-1.5">
           <Search size={14} className="text-ink-soft" />
           <input
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={activeFilter}
+            onChange={(e) => onSearchChange ? onSearchChange(e.target.value) : setGlobalFilter(e.target.value)}
             placeholder={searchPlaceholder}
             className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft/60"
           />
