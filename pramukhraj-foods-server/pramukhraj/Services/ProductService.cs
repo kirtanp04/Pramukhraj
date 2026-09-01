@@ -11,6 +11,7 @@ using pramukhraj.Interfaces;
 using System.Data.Common;
 using static pramukhraj.Common.AdminActions;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
+using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace pramukhraj.Services
@@ -2086,6 +2087,444 @@ namespace pramukhraj.Services
                     Message = "Unable to retrieve product images.",
                     Errors = "An unexpected error occurred while retrieving product images.",
                     Data = []
+                };
+            }
+        }
+
+
+        public async Task<ApiResponse<List<ProductInventoryResponse>>>GetInventoryProductList(int pageNumber,CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid page number.",
+                    Errors = "Page number must be greater than or equal to 1.",
+                    Data = []
+                };
+            }
+            int InventoryPageSize = 20;
+
+            var recordsToSkip =
+                ((long)pageNumber - 1) * InventoryPageSize;
+
+            if (recordsToSkip > int.MaxValue)
+            {
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid page number.",
+                    Errors = "The requested page number exceeds the supported range.",
+                    Data = []
+                };
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var inventory = await _db.ProductVariants
+                    .AsNoTracking()
+                    .OrderBy(variant => variant.Product.Name)
+                    .ThenBy(variant => variant.Weight)
+                    .ThenBy(variant => variant.Id)
+                    .Skip((int)recordsToSkip)
+                    .Take(InventoryPageSize)
+                    .Select(variant => new ProductInventoryResponse
+                    {
+
+                        Id = variant.Id.ToString(),
+                        ProductId = variant.ProductId.ToString(),
+                        Name = variant.Product.Name,
+                        Slug = variant.Product.Slug,
+                        CategoryId =
+                            variant.Product.CategoryId.ToString(),
+                        CategoryName =
+                            variant.Product.Category.Name,
+                        Stock = variant.StockQuantity,
+                        ImageUrl = string.Empty,
+                        Weight = variant.Weight,
+                        WeightUnit =
+                            variant.WeightUnit ?? string.Empty,
+                        IsVariantActive = variant.IsActive,
+                        IsProductActive = variant.Product.IsActive
+                    })
+                    .ToListAsync(cancellationToken);
+
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+
+                    Message = inventory.Count > 0
+                        ? "Product inventory retrieved successfully."
+                        : "No inventory records were found for the requested page.",
+
+                    Data = inventory
+                };
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation(
+                    exception,
+                    "Product inventory request was cancelled. PageNumber: {PageNumber}, PageSize: {PageSize}.",
+                    pageNumber,
+                    InventoryPageSize);
+
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The product inventory request was cancelled.",
+                    Errors =
+                        "The request was cancelled before the inventory records could be retrieved.",
+                    Data = []
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving product inventory. PageNumber: {PageNumber}, PageSize: {PageSize}.",
+                    pageNumber,
+                    InventoryPageSize);
+
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve product inventory.",
+                    Errors =
+                        "A database error occurred while retrieving the inventory records. Please try again.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving product inventory. PageNumber: {PageNumber}, PageSize: {PageSize}.",
+                    pageNumber,
+                    InventoryPageSize);
+
+                return new ApiResponse<List<ProductInventoryResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve product inventory.",
+                    Errors =
+                        "An unexpected error occurred while retrieving the inventory records. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+        public async Task<ApiResponse<UpdateProductVariantInventoryResponse>>
+    UpdateProductVariantInventoryAsync(
+        UpdateProductVariantInventoryRequest request,
+        CancellationToken cancellationToken = default)
+        {
+            if (request is null)
+            {
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid inventory update request.",
+                    Errors = "Inventory update details are required."
+                };
+            }
+
+            if (request.ProductId == Guid.Empty)
+            {
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid product ID.",
+                    Errors = "A valid product ID is required."
+                };
+            }
+
+            if (request.VariantId == Guid.Empty)
+            {
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid product variant ID.",
+                    Errors = "A valid product variant ID is required."
+                };
+            }
+
+            if (request.Stock < 0)
+            {
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Success = false,
+                    Message = "Invalid stock quantity.",
+                    Errors = "Stock quantity cannot be negative."
+                };
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var adminResult = Common.Common.GetAdminClaimInfo(
+                    _httpContextAccessor);
+
+                if (!adminResult.Success ||
+                    adminResult.Data is null)
+                {
+                    return new ApiResponse<UpdateProductVariantInventoryResponse>
+                    {
+                        StatusCode = adminResult.StatusCode,
+                        Success = false,
+                        Message = adminResult.Message,
+                        Errors = adminResult.Errors
+                    };
+                }
+
+                if (!Guid.TryParse(
+                        adminResult.Data.Id.ToString(),
+                        out var adminId))
+                {
+                    return new ApiResponse<UpdateProductVariantInventoryResponse>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Invalid administrator information.",
+                        Errors =
+                            "The authenticated administrator ID is missing or invalid."
+                    };
+                }
+
+                var adminName = adminResult.Data.UserName?.Trim();
+
+                if (string.IsNullOrWhiteSpace(adminName))
+                {
+                    return new ApiResponse<UpdateProductVariantInventoryResponse>
+                    {
+                        StatusCode = StatusCodes.Status401Unauthorized,
+                        Success = false,
+                        Message = "Invalid administrator information.",
+                        Errors =
+                            "The authenticated administrator name is missing."
+                    };
+                }
+
+              
+
+                var inventoryRecord = await _db.ProductVariants
+                    .Where(variant =>
+                        variant.Id == request.VariantId &&
+                        variant.ProductId == request.ProductId)
+                    .Select(variant => new
+                    {
+                        Variant = variant,
+                        ProductName = variant.Product.Name,
+                        Product = variant.Product,
+                    })
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                if (inventoryRecord is null)
+                {
+                    _logger.LogWarning(
+                        "Inventory update rejected because product variant was not found. ProductId: {ProductId}, VariantId: {VariantId}, AdminId: {AdminId}.",
+                        request.ProductId,
+                        request.VariantId,
+                        adminId);
+
+                    return new ApiResponse<UpdateProductVariantInventoryResponse>
+                    {
+                        StatusCode = StatusCodes.Status404NotFound,
+                        Success = false,
+                        Message = "Product variant not found.",
+                        Errors =
+                            "The product variant does not exist or does not belong to the specified product."
+                    };
+                }
+
+                var variant = inventoryRecord.Variant;
+
+                var previousStock = variant.StockQuantity;
+                var previousActiveStatus = variant.IsActive;
+
+                var currentTime = DateTime.UtcNow;
+
+                // Avoid unnecessary database writes and audit records.
+                if (previousStock == request.Stock &&
+                    previousActiveStatus == request.IsActive)
+                {
+                    return new ApiResponse<UpdateProductVariantInventoryResponse>
+                    {
+                        StatusCode = StatusCodes.Status200OK,
+                        Success = true,
+                        Message =
+                            "Product variant inventory already matches the requested values.",
+
+                        Data = new UpdateProductVariantInventoryResponse
+                        {
+                            ProductId = variant.ProductId,
+                            VariantId = variant.Id,
+                            Stock = variant.StockQuantity,
+                            IsActive = variant.IsActive,
+                        }
+                    };
+                }
+
+                variant.StockQuantity = request.Stock;
+                variant.IsActive = request.IsActive;
+                variant.Product.UpdatedOn = currentTime;
+
+
+                var entityName =
+                    $"{inventoryRecord.ProductName} - {variant.Name}";
+
+                if (entityName.Length > 250)
+                {
+                    entityName = entityName[..250];
+                }
+
+                var adminAction = new AdminAction
+                {
+                    Id = Guid.NewGuid(),
+                    AdminId = adminId,
+                    AdminName = adminName,
+                    Module = AdminActionModules.Inventory,
+                    Action = AdminActionTypes.Update,
+                    EntityId = variant.Id,
+                    EntityName = entityName,
+
+                    Description =
+                        $"Updated inventory for variant '{variant.Name}'. " +
+                        $"Stock changed from {previousStock} to {request.Stock}. " +
+                        $"Active status changed from {previousActiveStatus} " +
+                        $"to {request.IsActive}.",
+
+                    CreatedOn = currentTime
+                };
+
+                _db.AdminActions.Add(adminAction);
+
+                await _db.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Product variant inventory updated successfully. ProductId: {ProductId}, VariantId: {VariantId}, OldStock: {OldStock}, NewStock: {NewStock}, OldActiveStatus: {OldActiveStatus}, NewActiveStatus: {NewActiveStatus}, AdminId: {AdminId}.",
+                    variant.ProductId,
+                    variant.Id,
+                    previousStock,
+                    variant.StockQuantity,
+                    previousActiveStatus,
+                    variant.IsActive,
+                    adminId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = "Product variant inventory updated successfully.",
+
+                    Data = new UpdateProductVariantInventoryResponse
+                    {
+                        ProductId = variant.ProductId,
+                        VariantId = variant.Id,
+                        Stock = variant.StockQuantity,
+                        IsActive = variant.IsActive,
+                    }
+                };
+            }
+            catch (OperationCanceledException exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation(
+                    exception,
+                    "Product variant inventory update was cancelled. ProductId: {ProductId}, VariantId: {VariantId}.",
+                    request.ProductId,
+                    request.VariantId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status408RequestTimeout,
+                    Success = false,
+                    Message = "The inventory update request was cancelled.",
+                    Errors =
+                        "The request was cancelled before the product variant inventory could be updated."
+                };
+            }
+            catch (DbUpdateConcurrencyException exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Concurrent product variant inventory update detected. ProductId: {ProductId}, VariantId: {VariantId}.",
+                    request.ProductId,
+                    request.VariantId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status409Conflict,
+                    Success = false,
+                    Message =
+                        "The product variant inventory was modified by another request.",
+                    Errors =
+                        "Refresh the inventory record and try the update again."
+                };
+            }
+            catch (DbUpdateException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database update error occurred while updating product variant inventory. ProductId: {ProductId}, VariantId: {VariantId}.",
+                    request.ProductId,
+                    request.VariantId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update product variant inventory.",
+                    Errors =
+                        "A database error occurred while saving the inventory changes. Please try again."
+                };
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving product variant inventory. ProductId: {ProductId}, VariantId: {VariantId}.",
+                    request.ProductId,
+                    request.VariantId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update product variant inventory.",
+                    Errors =
+                        "A database error occurred while processing the inventory update. Please try again."
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while updating product variant inventory. ProductId: {ProductId}, VariantId: {VariantId}.",
+                    request.ProductId,
+                    request.VariantId);
+
+                return new ApiResponse<UpdateProductVariantInventoryResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to update product variant inventory.",
+                    Errors =
+                        "An unexpected error occurred while updating the inventory. Please try again later."
                 };
             }
         }

@@ -453,7 +453,6 @@ D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\staticwebasse
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\staticwebassets.development.json
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\staticwebassets.build.endpoints.json
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\swae.build.ex.cache
-D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\pramukhraj.csproj.Up2Date
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\pramukhraj.dll
 D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\obj\Debug\net10.0\refint\pramukhraj.dll

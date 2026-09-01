@@ -245,6 +245,22 @@
   },
   {
     "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "GetInventoryProductList",
+    "RelativePath": "api/products/admin/get-inventory-list/{pageNumber}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageNumber",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
     "Method": "GetProductList",
     "RelativePath": "api/products/admin/get-list/{pageNumber}",
     "HttpMethod": "GET",
@@ -270,6 +286,22 @@
       {
         "Name": "request",
         "Type": "pramukhraj.DTOs.Product.GetProductImagesRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "pramukhraj.Controllers.ProductController",
+    "Method": "UpdateProductVariantInventory",
+    "RelativePath": "api/products/admin/inventory/variant",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "pramukhraj.DTOs.Product.ProductInventoryRequestResponse\u002BUpdateProductVariantInventoryRequest",
         "IsRequired": true
       }
     ],

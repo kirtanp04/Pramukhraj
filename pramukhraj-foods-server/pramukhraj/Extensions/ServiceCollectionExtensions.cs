@@ -10,6 +10,7 @@ using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using System.Text;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
+using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 
 
 namespace pramukhraj.Extensions
@@ -130,6 +131,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductRequest>, pramukhraj.Validators.ProductRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, pramukhraj.Validators.ProductCategoryImageRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, pramukhraj.Validators.GetProductImageRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, pramukhraj.Validators.UpdateProductVariantInventoryRequestValidator>();
 
             return services;
         }

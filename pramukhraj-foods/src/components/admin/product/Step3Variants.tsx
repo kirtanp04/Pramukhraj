@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useFieldArray, type UseFormReturn } from 'react-hook-form'
 import { Plus, Trash2, Star } from 'lucide-react'
 import type { ProductFormValues } from '@/types/productSchema'
-import { FormField, inputCls } from '@/components/admin/product/FormField'
+import { FormField, ToggleField, inputCls } from '@/components/admin/product/FormField'
 
 import { cn } from '@/lib/utils'
 import { Product, WEIGHT_UNITS } from '@/model/Product'
@@ -202,6 +202,18 @@ export function Step3Variants({ form }: Step3VariantsProps) {
                     </select>
                   </div>
                 </FormField>
+
+                <ToggleField
+                  label="Active"
+                  description="Allow customers to purchase this variant"
+                  checked={v?.isActive ?? true}
+                  onCheckedChange={(isActive) => {
+                    setValue(`variants.${index}.isActive`, isActive, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }}
+                />
               </div>
             </div>
           )

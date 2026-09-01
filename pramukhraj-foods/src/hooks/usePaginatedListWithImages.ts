@@ -12,6 +12,7 @@ interface PaginatedListWithImagesOptions<TItem, TImage> {
   page: number
   pageSize: number
   getItemId: (item: TItem) => string
+  getImageId?: (item: TItem) => string
   fetchPage: (page: number, signal: AbortSignal) => Promise<TItem[] | null>
   fetchImages: (ids: string[], signal: AbortSignal) => Promise<Record<string, TImage> | null>
 }
@@ -32,6 +33,7 @@ export function usePaginatedListWithImages<TItem, TImage>({
   page,
   pageSize,
   getItemId,
+  getImageId = getItemId,
   fetchPage,
   fetchImages,
 }: PaginatedListWithImagesOptions<TItem, TImage>) {
@@ -62,7 +64,7 @@ export function usePaginatedListWithImages<TItem, TImage>({
 
       const itemIds = Array.from(new Set(
         items
-          .map((item) => getItemId(item).trim())
+          .map((item) => getImageId(item).trim())
           .filter((id) => id.length > 0),
       ))
 
@@ -89,7 +91,7 @@ export function usePaginatedListWithImages<TItem, TImage>({
     } finally {
       if (activeRequest.current === controller) activeRequest.current = null
     }
-  }, [fetchImages, fetchPage, getItemId, page])
+  }, [fetchImages, fetchPage, getImageId, page])
 
   useEffect(() => {
     const requestTimer = window.setTimeout(() => void loadPage(), 0)

@@ -212,6 +212,16 @@ export function Step6Review({ form, categories }: Step6ReviewProps) {
                         Default
                       </span>
                     )}
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase',
+                        v.isActive
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-oxblood/10 text-oxblood',
+                      )}
+                    >
+                      {v.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-3 text-ink-soft">
                     {/* <span>SKU: {v.sku || '—'}</span> */}

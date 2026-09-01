@@ -18,6 +18,12 @@ const AdminApiPaths = {
       "products/admin/get-list/" + pageNumber,
      getImagesListByIds: "products/admin/get-product-images",
   },
+  inventory: {
+    getAdminList: (pageNumber: number) =>
+      `products/admin/get-inventory-list/${pageNumber}`,
+    getImagesListByProductIds: "products/admin/get-product-images",
+    updateVariant: "products/admin/inventory/variant",
+  },
   productCategory: {
     add: "products/admin/category/add",
     getById: (id: string) => `products/admin/category/${encodeURIComponent(id)}`,
