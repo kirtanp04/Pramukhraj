@@ -57,7 +57,12 @@ export const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (config.url !== undefined && config.url.includes("auth/admin")) {
+    const isPublicRequest = config.url !== undefined && (
+      config.url.includes("auth/admin") ||
+      config.url.includes("/customer/")
+    );
+    if (isPublicRequest) {
+      config.headers["Time-zone"] = new Date().getTimezoneOffset();
       return config;
     }
     const token = getAccessToken();

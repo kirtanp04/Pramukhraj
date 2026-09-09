@@ -1,2 +1,0 @@
-wwwroot\swagger-ui\moonlight.css
-D:\Pramukhraj\pramukhraj-foods-server\pramukhraj\wwwroot\swagger-ui\moonlight.css

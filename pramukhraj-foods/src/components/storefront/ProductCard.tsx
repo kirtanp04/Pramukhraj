@@ -7,6 +7,7 @@ import { Rating } from '@/components/ui/Rating'
 import { Button } from '@/components/ui/Button'
 import { cn, formatINR } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
+import { LazyProductImage } from './LazyProductImage'
 
 export function ProductCard({ product, className }: { product: Product; className?: string }) {
   const addToCart = useCartStore((s) => s.addToCart)
@@ -26,15 +27,14 @@ export function ProductCard({ product, className }: { product: Product; classNam
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-      className={cn('group relative flex flex-col overflow-hidden rounded-card bg-ivory-dim shadow-sm hover:shadow-lg transition-shadow', className)}
+      className={cn('group relative flex flex-col overflow-hidden rounded-lg bg-ivory-dim shadow-sm hover:shadow-lg transition-shadow', className)}
     >
-      <div className="scallop-top h-3 w-full bg-ivory-dim" aria-hidden />
+      {/* <div className="scallop-top h-3 w-full bg-ivory-dim" aria-hidden /> */}
       <Link to={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-tan">
-        <img
+        <LazyProductImage
+          productId={product.id}
           src={product.thumbnail}
           alt={product.name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         {badge && (
           <Badge variant={badge.variant} className="absolute left-3 top-3">
@@ -69,7 +69,8 @@ export function ProductCard({ product, className }: { product: Product; classNam
         <Link to={`/product/${product.slug}`} className="line-clamp-2 font-display text-[15px] leading-snug hover:text-oxblood">
           {product.name}
         </Link>
-        <Rating value={product.rating} count={product.reviewCount} />
+        <span className="text-[11px] uppercase tracking-wide text-ink-soft">{product.category.name}</span>
+        {/* <Rating value={product.rating} count={product.reviewCount} /> */}
         <div className="mt-1 flex items-baseline gap-2">
           <span className="font-mono text-base font-semibold text-oxblood">{formatINR(product.price)}</span>
           {product.discountPercent > 0 && (

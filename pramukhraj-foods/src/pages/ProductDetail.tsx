@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { ProductRail } from '@/components/storefront/ProductRail'
+import { productsByCategoryUrl } from '@/constants/searchQueryParams'
 import { useCartStore } from '@/store/cartStore'
 
 export function ProductDetail() {
@@ -32,7 +33,7 @@ export function ProductDetail() {
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
       <nav className="mb-5 flex flex-wrap gap-1 text-xs text-ink-soft">
         <Link to="/">Home</Link><span>/</span>
-        <Link to={`/category/${product.category.slug}`}>{product.category.name}</Link><span>/</span>
+        <Link to={productsByCategoryUrl(product.category.slug)}>{product.category.name}</Link><span>/</span>
         <span className="text-ink">{product.name}</span>
       </nav>
 

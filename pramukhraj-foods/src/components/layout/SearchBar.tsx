@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { products } from '@/mock'
 import { formatINR, cn } from '@/lib/utils'
+import { searchQueryParams } from '@/constants/searchQueryParams'
 
 const popularSearches = ['Khakhra', 'Kaju Katli', 'Masala Papad', 'Dry Fruit Gift Box', 'Filter Coffee']
 
@@ -19,7 +20,7 @@ export function SearchBar({ className, onNavigate }: { className?: string; onNav
   }, [query])
 
   function submit(term: string) {
-    navigate(`/products?search=${encodeURIComponent(term)}`)
+    navigate(`/products?${searchQueryParams.search}=${encodeURIComponent(term)}`)
     setFocused(false)
     setQuery('')
     onNavigate?.()
