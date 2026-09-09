@@ -19,8 +19,8 @@ namespace pramukhraj.Extensions
         private readonly Lazy<UserManager<ApplicationUser>> _UserManager;
 
         private readonly Lazy<SignInManager<ApplicationUser>> _SignInManager;
+        private readonly Lazy<IReviewService> _ReviewService;
 
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ServiceManager(
             UserManager<ApplicationUser> userManager,
@@ -34,17 +34,15 @@ namespace pramukhraj.Extensions
         {
             _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager));
 
-            _CouponService = new Lazy<ICouponService>(() => new CouponService(
-                _db,
-                loggerFactory.CreateLogger<CouponService>(),
-                httpContextAccessor,
-                validatorManager));
+            _CouponService = new Lazy<ICouponService>(() => new CouponService(_db,loggerFactory.CreateLogger<CouponService>(),httpContextAccessor,validatorManager));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 
             _UserManager = new Lazy<UserManager<ApplicationUser>>(() => userManager);
 
             _SignInManager = new Lazy<SignInManager<ApplicationUser>>(() => signInManager);
+
+            _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager));
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -52,5 +50,6 @@ namespace pramukhraj.Extensions
         public ITokenService TokenService => _TokenService.Value;
         public UserManager<ApplicationUser> UserManager => _UserManager.Value;
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;
+        public IReviewService ReviewService => _ReviewService.Value;
     }
 }

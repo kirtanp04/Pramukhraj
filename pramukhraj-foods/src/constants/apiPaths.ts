@@ -50,6 +50,13 @@ const AdminApiPaths = {
     update: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
     archive: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
   },
+  review: {
+    create: "review/admin/add",
+    getById: (id: string) => `review/admin/${encodeURIComponent(id)}`,
+    update: (id: string) => `review/admin/${encodeURIComponent(id)}`,
+    getList: (pageNumber: number) =>
+      `review/admin/get-list/${pageNumber}`,
+  },
 };
 
 export const ApiPath = {

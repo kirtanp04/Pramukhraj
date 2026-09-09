@@ -136,8 +136,12 @@ const AdminCustomers = lazyNamed(
   "AdminCustomers"
 );
 const AdminReviews = lazyNamed(
-  () => import("@/pages/admin/AdminReviews"),
+  () => import("@/pages/admin/review/AdminReviews"),
   "AdminReviews"
+);
+const AdminReviewForm = lazyNamed(
+  () => import("@/pages/admin/review/AdminReviewFormPage"),
+  "AdminReviewFormPage"
 );
 const CouponList = lazyNamed(
   () => import("@/pages/admin/coupon/CouponList"),
@@ -308,7 +312,15 @@ export function AppRoutes() {
               ],
             },
             { path: "customers", element: lazyElement(AdminCustomers) },
-            { path: "reviews", element: lazyElement(AdminReviews) },
+            {
+              path: "reviews",
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(AdminReviews) },
+                { path: "new", element: lazyElement(AdminReviewForm) },
+                { path: ":id/edit", element: lazyElement(AdminReviewForm) },
+              ],
+            },
             {
               path: "coupons",
               element: <Outlet />,
