@@ -27,5 +27,13 @@
             public List<string> CategoryIds { get; set; } = new List<string>();
         }
 
+        public class CustomerAllCategoriesResponse
+        {
+            public string CategoryId { get; set; } = string.Empty;
+            public string CategoryName { get; set; } = string.Empty;
+            public string Slug { get; set; } = string.Empty;
+            public int ProductCount { get; set; } = 0;
+        }
+
     }
 }

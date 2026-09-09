@@ -3,7 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using pramukhraj.Entities;
 using pramukhraj.Entities.Cart;
 using pramukhraj.Entities.Coupon;
-using pramukhraj.Entities.Product; // Ensure this namespace covers your new models
+using pramukhraj.Entities.Product;
+using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 
 namespace pramukhraj.Database
 {
@@ -16,21 +17,22 @@ namespace pramukhraj.Database
         {
         }
 
-        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
-        public DbSet<Customer> Customers { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<Customer> Customers => Set<Customer>();
 
         // --- New E-Commerce DbSets ---
-        public DbSet<Product> Products { get; set; } = null!;
-        public DbSet<ProductCategory> ProductCategories { get; set; } = null!;
-        public DbSet<ProductImage> ProductImages { get; set; } = null!;
-        public DbSet<ProductTag> ProductTags { get; set; } = null!;
-        public DbSet<ProductVariant> ProductVariants { get; set; } = null!;
-        public DbSet<Cart> Carts { get; set; } = null!;
-        public DbSet<CartItem> CartItems { get; set; } = null!;
-        public DbSet<AdminAction> AdminActions { get; set; } = null!;
-        public DbSet<Coupon> Coupons { get; set; } = null!;
-        public DbSet<CouponScope> CouponScopes { get; set; } = null!;
-        public DbSet<CouponUsage> CouponUsages { get; set; } = null!;
+        public DbSet<Product> Products => Set<Product>();
+        public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+        public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+        public DbSet<ProductTag> ProductTags => Set<ProductTag>();
+        public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+        public DbSet<Cart> Carts => Set<Cart>();
+        public DbSet<CartItem> CartItems => Set<CartItem>();
+        public DbSet<AdminAction> AdminActions => Set<AdminAction>();
+        public DbSet<Coupon> Coupons => Set<Coupon>();
+        public DbSet<CouponScope> CouponScopes => Set<CouponScope>();
+        public DbSet<CouponUsage> CouponUsages => Set<CouponUsage>();
+        public DbSet<Review> Reviews => Set<Review>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -116,6 +118,13 @@ namespace pramukhraj.Database
                  .WithMany()
                  .HasForeignKey(p => p.CategoryId)
                  .OnDelete(DeleteBehavior.Restrict);
+
+                builder.Entity<Product>()
+                .HasIndex(product => new
+                {
+                    product.CategoryId,
+                    product.IsActive
+                });
             });
 
             // --- Product Image Configurations ---
@@ -340,6 +349,64 @@ namespace pramukhraj.Database
                         AND "DiscountAmount" <= "OrderSubtotal"
                         """);
                  });
+            });
+
+            // --- Review Configurations ---
+            builder.Entity<Review>(review =>
+            {
+                        review.Property(item => item.ReviewType)
+                            .HasConversion<int>();
+
+                        review.Property(item => item.Source)
+                            .HasConversion<int>();
+
+                        review.Property(item => item.Status)
+                            .HasConversion<int>();
+
+                        review.HasOne(item => item.Customer)
+                            .WithMany()
+                            .HasForeignKey(item => item.CustomerId)
+                            .OnDelete(DeleteBehavior.SetNull);
+
+                        review.HasOne(item => item.Product)
+                            .WithMany()
+                            .HasForeignKey(item => item.ProductId)
+                            .OnDelete(DeleteBehavior.Restrict);
+
+                        review.HasIndex(item => item.OrderItemId)
+                            .IsUnique()
+                            .HasFilter("\"OrderItemId\" IS NOT NULL");
+
+                        review.ToTable("Reviews", table =>
+                        {
+                            table.HasCheckConstraint(
+                                "CK_Reviews_Rating",
+                                "\"Rating\" BETWEEN 1 AND 5");
+
+                            table.HasCheckConstraint(
+                                "CK_Reviews_ProductReview_Product",
+                                "\"ReviewType\" <> 1 OR \"ProductId\" IS NOT NULL");
+
+                            table.HasCheckConstraint(
+                                "CK_Reviews_FeaturedApproved",
+                                "NOT \"IsFeatured\" OR \"Status\" = 2");
+
+                            table.HasCheckConstraint(
+                                "CK_Reviews_VerifiedPurchase",
+                                """
+                                NOT "IsVerifiedPurchase"
+                                OR (
+                                    "CustomerId" IS NOT NULL
+                                    AND "ProductId" IS NOT NULL
+                                    AND "OrderId" IS NOT NULL
+                                    AND "OrderItemId" IS NOT NULL
+                                )
+                                """);
+
+                            table.HasCheckConstraint(
+                                "CK_Reviews_TestimonialConsent",
+                                "\"ReviewType\" <> 2 OR \"HasCustomerConsent\" = TRUE");
+                        });
             });
         }
     }

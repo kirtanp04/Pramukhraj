@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using pramukhraj.Database;
@@ -11,9 +12,11 @@ using pramukhraj.Database;
 namespace pramukhraj.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901150312_OptimizeCustomerCategoryQueries")]
+    partial class OptimizeCustomerCategoryQueries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -960,117 +963,6 @@ namespace pramukhraj.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("pramukhraj.Entities.Review.Review", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Comment")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("CreatedByAdminId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CustomerCity")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid?>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CustomerName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<bool>("HasCustomerConsent")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsFeatured")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsVerifiedPurchase")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid?>("ModeratedByAdminId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ModeratedByAdminName")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<DateTime?>("ModeratedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("OrderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("OrderItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ProductId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("ReviewType")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Source")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
-
-                    b.Property<DateTime>("UpdatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("OrderItemId")
-                        .IsUnique()
-                        .HasFilter("\"OrderItemId\" IS NOT NULL");
-
-                    b.HasIndex("CustomerId", "CreatedOn");
-
-                    b.HasIndex("ProductId", "Status", "IsActive", "CreatedOn");
-
-                    b.HasIndex("ReviewType", "Status", "IsFeatured", "IsActive", "CreatedOn");
-
-                    b.ToTable("Reviews", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Reviews_FeaturedApproved", "NOT \"IsFeatured\" OR \"Status\" = 2");
-
-                            t.HasCheckConstraint("CK_Reviews_ProductReview_Product", "\"ReviewType\" <> 1 OR \"ProductId\" IS NOT NULL");
-
-                            t.HasCheckConstraint("CK_Reviews_Rating", "\"Rating\" BETWEEN 1 AND 5");
-
-                            t.HasCheckConstraint("CK_Reviews_TestimonialConsent", "\"ReviewType\" <> 2 OR \"HasCustomerConsent\" = TRUE");
-
-                            t.HasCheckConstraint("CK_Reviews_VerifiedPurchase", "NOT \"IsVerifiedPurchase\"\r\nOR (\r\n    \"CustomerId\" IS NOT NULL\r\n    AND \"ProductId\" IS NOT NULL\r\n    AND \"OrderId\" IS NOT NULL\r\n    AND \"OrderItemId\" IS NOT NULL\r\n)");
-                        });
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1244,23 +1136,6 @@ namespace pramukhraj.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("pramukhraj.Entities.Review.Review", b =>
-                {
-                    b.HasOne("pramukhraj.Entities.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("pramukhraj.Entities.Product.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("pramukhraj.Entities.Cart.Cart", b =>

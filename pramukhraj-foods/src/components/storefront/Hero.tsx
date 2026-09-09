@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Truck, ShieldCheck, Leaf } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { HeroBanner } from '@/components/storefront/HeroBanner'
+import { productsByCategoryUrl } from '@/constants/searchQueryParams'
 
 export function Hero() {
   return (
@@ -51,7 +52,7 @@ export function Hero() {
               <Link to="/products">Shop All Products <ArrowRight size={16} /></Link>
             </Button>
             <Button size="lg" variant="outline" className="w-full px-4 text-sm sm:w-auto sm:px-7 sm:text-base" asChild>
-              <Link to="/category/festival-specials">Festival Specials</Link>
+              <Link to={productsByCategoryUrl('festival-specials')}>Festival Specials</Link>
             </Button>
           </div>
 

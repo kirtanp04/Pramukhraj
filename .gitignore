@@ -1,6 +1,96 @@
 pramukhraj-foods-server/.vs/
 pramukhraj-foods-server/.env
 
+# =======================================================
+# Pramukhraj Foods Server — ASP.NET Core
+# =======================================================
+
+# Build output
+pramukhraj-foods-server/**/[Bb]in/
+pramukhraj-foods-server/**/[Oo]bj/
+pramukhraj-foods-server/**/[Dd]ebug/
+pramukhraj-foods-server/**/[Rr]elease/
+pramukhraj-foods-server/**/artifacts/
+pramukhraj-foods-server/**/publish/
+
+# Visual Studio / VS Code
+pramukhraj-foods-server/.vs/
+pramukhraj-foods-server/**/.vs/
+pramukhraj-foods-server/**/*.user
+pramukhraj-foods-server/**/*.suo
+pramukhraj-foods-server/**/*.rsuser
+
+pramukhraj-foods-server/.vscode/*
+pramukhraj-foods-server/.vscode/extensions.json
+pramukhraj-foods-server/.vscode/tasks.json
+
+# Environment and local configuration
+pramukhraj-foods-server/**/.env
+pramukhraj-foods-server/**/.env.*
+pramukhraj-foods-server/**/.env.example
+
+pramukhraj-foods-server/**/secrets.json
+pramukhraj-foods-server/**/appsettings.Local.json
+pramukhraj-foods-server/**/appsettings.*.Local.json
+
+# Certificates and private keys
+pramukhraj-foods-server/**/*.pfx
+pramukhraj-foods-server/**/*.p12
+pramukhraj-foods-server/**/*.key
+pramukhraj-foods-server/**/*.private.pem
+pramukhraj-foods-server/**/*.publishsettings
+pramukhraj-foods-server/**/DataProtection-Keys/
+
+# Logs
+pramukhraj-foods-server/**/[Ll]og/
+pramukhraj-foods-server/**/[Ll]ogs/
+pramukhraj-foods-server/**/*.log
+
+# Test and coverage output
+pramukhraj-foods-server/**/TestResults/
+pramukhraj-foods-server/**/coverage/
+pramukhraj-foods-server/**/coverage.*
+pramukhraj-foods-server/**/*.trx
+
+# PostgreSQL and Docker runtime data
+pramukhraj-foods-server/**/pg-dev-data/
+pramukhraj-foods-server/**/postgres-data/
+pramukhraj-foods-server/**/backups/
+pramukhraj-foods-server/**/*.bak
+pramukhraj-foods-server/**/*.dump
+
+# Runtime-uploaded files
+pramukhraj-foods-server/**/uploads/
+pramukhraj-foods-server/**/wwwroot/uploads/
+
+# AI agent local credentials and history
+pramukhraj-foods-server/**/.mcp.json
+pramukhraj-foods-server/**/.codex/auth.json
+pramukhraj-foods-server/**/.codex/history.jsonl
+pramukhraj-foods-server/**/.codex/sessions/
+pramukhraj-foods-server/**/.claude/settings.local.json
+pramukhraj-foods-server/**/.claude/history/
+pramukhraj-foods-server/**/.cursor/mcp.json
+pramukhraj-foods-server/**/.cursor/cache/
+pramukhraj-foods-server/**/.continue/config.yaml
+pramukhraj-foods-server/**/.aider.chat.history.md
+pramukhraj-foods-server/**/.aider.input.history
+
+# Keep safe example configuration
+pramukhraj-foods-server/**/.mcp.example.json
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 docker/.env.dev

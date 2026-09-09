@@ -21,8 +21,8 @@ const RequireAuth = lazyNamed(
 );
 const Home = lazyNamed(() => import("@/pages/Home"), "Home");
 const ProductListing = lazyNamed(
-  () => import("@/pages/ProductListing"),
-  "ProductListing"
+  () => import("@/pages/product-listing/ProductListingPage"),
+  "ProductListingPage"
 );
 const ProductDetail = lazyNamed(
   () => import("@/pages/ProductDetail"),
@@ -228,10 +228,6 @@ export function AppRoutes() {
       children: [
         { path: "/", element: lazyElement(Home) },
         { path: "/products", element: lazyElement(ProductListing) },
-        {
-          path: "/category/:categorySlug",
-          element: lazyElement(ProductListing),
-        },
         { path: "/product/:slug", element: lazyElement(ProductDetail) },
         { path: "/cart", element: lazyElement(Cart) },
         { path: "/checkout", element: lazyElement(Checkout) },

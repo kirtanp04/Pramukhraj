@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FluentValidation.Results;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using FluentValidation.Results;
 using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Common;
@@ -10,7 +10,9 @@ using pramukhraj.Entities.Product;
 using pramukhraj.Helper;
 using pramukhraj.Interfaces;
 using System.Data.Common;
+using System.Linq.Expressions;
 using static pramukhraj.Common.AdminActions;
+using static pramukhraj.DTOs.Product.CustomerHomePageProductRequestResponse;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -2296,8 +2298,7 @@ namespace pramukhraj.Services
             }
         }
 
-        public async Task<ApiResponse<UpdateProductVariantInventoryResponse>>
-    UpdateProductVariantInventoryAsync(
+        public async Task<ApiResponse<UpdateProductVariantInventoryResponse>>UpdateProductVariantInventoryAsync(
         UpdateProductVariantInventoryRequest request,
         CancellationToken cancellationToken = default)
         {
@@ -2606,6 +2607,281 @@ namespace pramukhraj.Services
                         "An unexpected error occurred while updating the inventory. Please try again later."
                 };
             }
+        }
+
+        public async Task<ApiResponse<List<CustomerAllCategoriesResponse>>> GetCustomerAllCategoriesPatchInfo(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var activeProductCounts = _db.Products
+                    .AsNoTracking()
+                    .Where(product => product.IsActive)
+                    .GroupBy(product => product.CategoryId)
+                    .Select(group => new
+                    {
+                        CategoryId = group.Key,
+                        ProductCount = group.Count()
+                    });
+
+                var categories = await (
+                    from category in _db.ProductCategories.AsNoTracking()
+                    where category.IsActive
+
+                    join productCount in activeProductCounts
+                        on category.Id equals productCount.CategoryId
+                        into productCountGroup
+
+                    from productCount in productCountGroup.DefaultIfEmpty()
+
+                    orderby category.DisplayOrder, category.Name
+
+                    select new CustomerAllCategoriesResponse
+                    {
+                        CategoryId = category.Id.ToString(),
+                        CategoryName = category.Name,
+                        Slug = category.Slug,
+                        ProductCount = productCount == null
+                            ? 0
+                            : productCount.ProductCount
+                    })
+                    .ToListAsync(cancellationToken);
+
+                return new ApiResponse<List<CustomerAllCategoriesResponse>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+
+                    Message = categories.Count > 0
+                        ? "Categories retrieved successfully."
+                        : "No active categories were found.",
+
+                    Data = categories
+                };
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation(
+                    "The customer category request was cancelled.");
+
+                // Preserve ASP.NET Core request cancellation.
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving customer categories.");
+
+                return new ApiResponse<List<CustomerAllCategoriesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve categories.",
+                    Errors =
+                        "A database error occurred while retrieving categories. Please try again.",
+                    Data = []
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving customer categories.");
+
+                return new ApiResponse<List<CustomerAllCategoriesResponse>>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve categories.",
+                    Errors =
+                        "An unexpected error occurred while retrieving categories. Please try again later.",
+                    Data = []
+                };
+            }
+        }
+
+        public async Task<ApiResponse<CustomerHomeProductGroupsResponse>>GetCustomerHomeProductGroupsAsync(CancellationToken cancellationToken = default)
+        {
+            const int productsPerGroup = 4;
+
+            try
+            {
+                var usedProductIds = new HashSet<Guid>();
+
+                async Task<List<CustomerProductCardResponse>> LoadGroupAsync(Expression<Func<Product, bool>> groupFilter,bool newestFirst = false)
+                {
+                    var query = _db.Products
+                        .AsNoTracking()
+                        .Where(product =>
+                            product.IsActive &&
+                            product.Category.IsActive &&
+                            product.Variants.Any(variant => variant.IsActive))
+                        .Where(groupFilter);
+
+                    if (usedProductIds.Count > 0)
+                    {
+                        query = query.Where(product =>
+                            !usedProductIds.Contains(product.Id));
+                    }
+
+                    IOrderedQueryable<Product> orderedQuery;
+
+                    if (newestFirst)
+                    {
+                        orderedQuery = query
+                            .OrderByDescending(product => product.CreatedOn)
+                            .ThenBy(product => product.Name);
+                    }
+                    else
+                    {
+                        orderedQuery = query
+                            .OrderByDescending(product => product.UpdatedOn)
+                            .ThenBy(product => product.Name);
+                    }
+
+                    var products = await orderedQuery
+                        .Take(productsPerGroup)
+                        .Select(product => new CustomerProductCardResponse
+                        {
+                            Id = product.Id.ToString(),
+                            CategoryId = product.CategoryId.ToString(),
+                            CategoryName = product.Category.Name,
+                            Name = product.Name,
+                            Slug = product.Slug,
+
+                            ImageUrl = string.Empty,
+
+                            Price = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.Price)
+                                .FirstOrDefault(),
+
+                            Mrp = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.MRP)
+                                .FirstOrDefault(),
+
+                            Weight = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.Weight)
+                                .FirstOrDefault(),
+
+                            WeightUnit = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.WeightUnit)
+                                .FirstOrDefault() ?? string.Empty,
+
+                            IsInStock = product.Variants.Any(variant =>
+                                variant.IsActive &&
+                                variant.StockQuantity > 0),
+
+                            IsFeatured = product.IsFeatured,
+                            IsBestSeller = product.IsBestSeller,
+                            IsNewArrival = product.IsNewArrival,
+                            IsTrending = product.IsTrending
+                        })
+                        .ToListAsync(cancellationToken);
+
+                    usedProductIds.UnionWith(
+                        products.Select(product => Guid.Parse(product.Id)));
+
+                    return products;
+                }
+
+                // Priority 1
+                var featuredProducts = await LoadGroupAsync(
+                    product => product.IsFeatured);
+
+                // Priority 2
+                var bestSellerProducts = await LoadGroupAsync(
+                    product => product.IsBestSeller);
+
+                // Priority 3
+                var newArrivalProducts = await LoadGroupAsync(
+                    product => product.IsNewArrival,
+                    newestFirst: true);
+
+                // Priority 4
+                var trendingProducts = await LoadGroupAsync(
+                    product => product.IsTrending);
+
+                var result = new CustomerHomeProductGroupsResponse
+                {
+                    FeaturedProducts = featuredProducts,
+                    BestSellerProducts = bestSellerProducts,
+                    NewArrivalProducts = newArrivalProducts,
+                    TrendingProducts = trendingProducts
+                };
+
+                return new ApiResponse<CustomerHomeProductGroupsResponse>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    Success = true,
+                    Message = HasAnyProducts(result)
+                        ? "Homepage products retrieved successfully."
+                        : "No homepage products were found.",
+                    Data = result
+                };
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation(
+                    "The customer homepage product request was cancelled.");
+
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Database error occurred while retrieving homepage products.");
+
+                return new ApiResponse<CustomerHomeProductGroupsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve homepage products.",
+                    Errors =
+                        "A database error occurred while retrieving products. Please try again.",
+                    Data = new CustomerHomeProductGroupsResponse()
+                };
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Unexpected error occurred while retrieving homepage products.");
+
+                return new ApiResponse<CustomerHomeProductGroupsResponse>
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError,
+                    Success = false,
+                    Message = "Unable to retrieve homepage products.",
+                    Errors =
+                        "An unexpected error occurred while retrieving products. Please try again later.",
+                    Data = new CustomerHomeProductGroupsResponse()
+                };
+            }
+        }
+
+        private static bool HasAnyProducts(
+            CustomerHomeProductGroupsResponse response)
+        {
+            return response.FeaturedProducts.Count > 0 ||
+                   response.BestSellerProducts.Count > 0 ||
+                   response.NewArrivalProducts.Count > 0 ||
+                   response.TrendingProducts.Count > 0;
         }
 
         private static ApiResponse<T> ValidationFailure<T>(ValidationResult validation, string message) =>

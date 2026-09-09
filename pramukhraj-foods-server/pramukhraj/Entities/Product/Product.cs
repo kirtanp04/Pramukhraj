@@ -6,7 +6,7 @@ namespace pramukhraj.Entities.Product
 {
         [Table("Products")]
         [Index(nameof(Slug), IsUnique = true)]
-        [Index(nameof(CategoryId))]
+        [Index(nameof(CategoryId), nameof(IsActive))]
         public class Product
         {
             [Key]

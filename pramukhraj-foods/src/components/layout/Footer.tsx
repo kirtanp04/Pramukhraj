@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Smartphone, Send } from 'lucide-react'
 import { Logo } from './Logo'
 import { Button } from '@/components/ui/Button'
+import { productsByCategoryUrl, productsByStatusUrl, productStatuses } from '@/constants/searchQueryParams'
 
 const socialLinks = ['IG', 'FB', 'X', 'YT']
 
@@ -10,10 +11,10 @@ const columns = [
     title: 'Shop',
     links: [
       { label: 'All Products', to: '/products' },
-      { label: "Today's Deals", to: '/products?deals=1' },
-      { label: 'New Arrivals', to: '/products?sort=newest' },
-      { label: 'Gift Packs', to: '/category/gift-packs' },
-      { label: 'Festival Specials', to: '/category/festival-specials' },
+      { label: "Today's Deals", to: productsByStatusUrl(productStatuses.deals) },
+      { label: 'New Arrivals', to: productsByStatusUrl(productStatuses.newArrivals) },
+      { label: 'Gift Packs', to: productsByCategoryUrl('gift-packs') },
+      { label: 'Festival Specials', to: productsByCategoryUrl('festival-specials') },
     ],
   },
   {

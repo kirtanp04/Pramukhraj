@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Interfaces;
+using pramukhraj.Services;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 
@@ -208,6 +209,51 @@ namespace pramukhraj.Controllers
         {
             var response = await _serviceManager.ProductService.GetCategoryImagesByCategoryIds(
                 request.CategoryIds,
+                cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpGet("customer/category/get-list")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCustomerCategoryList(CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService
+                .GetCustomerAllCategoriesPatchInfo(cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpPost("customer/category/get-category-images")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCustomerCategoryImages(
+            [FromBody] GetProductCategoriesImagesRequest request,
+            CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService
+                .GetCategoryImagesByCategoryIds(request.CategoryIds, cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpGet("customer/home-product-groups")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCustomerHomeProductGroups(CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService
+                .GetCustomerHomeProductGroupsAsync(cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpPost("customer/get-product-images")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCustomerProductImages(
+            [FromBody] GetProductImagesRequest request,
+            CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService.GetProductImagesByProductIds(
+                request.ProductIds,
                 cancellationToken);
 
             return StatusCode(response.StatusCode, response);

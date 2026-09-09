@@ -2,6 +2,7 @@
 using pramukhraj.Common;
 using pramukhraj.DTOs.Common;
 using pramukhraj.DTOs.Product;
+using static pramukhraj.DTOs.Product.CustomerHomePageProductRequestResponse;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 
@@ -35,6 +36,11 @@ namespace pramukhraj.Interfaces
 
         public Task<ApiResponse<List<ProductInventoryResponse>>> GetInventoryProductList(int pageNumber, CancellationToken cancellationToken = default);
 
-        Task<ApiResponse<UpdateProductVariantInventoryResponse>>UpdateProductVariantInventoryAsync(UpdateProductVariantInventoryRequest request, CancellationToken cancellationToken = default);
+        public Task<ApiResponse<UpdateProductVariantInventoryResponse>>UpdateProductVariantInventoryAsync(UpdateProductVariantInventoryRequest request, CancellationToken cancellationToken = default);
+
+        public Task<ApiResponse<List<CustomerAllCategoriesResponse>>> GetCustomerAllCategoriesPatchInfo(CancellationToken cancellationToken = default);
+
+        public Task<ApiResponse<CustomerHomeProductGroupsResponse>> GetCustomerHomeProductGroupsAsync(CancellationToken cancellationToken = default);
+
     }
 }

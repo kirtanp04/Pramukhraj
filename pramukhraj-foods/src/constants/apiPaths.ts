@@ -1,4 +1,13 @@
-const GuestApiPaths = {};
+const CustomerApiPaths = {
+  product: {
+    getHomeGroups: "products/customer/home-product-groups",
+    getImagesByIds: "products/customer/get-product-images",
+  },
+  productCategory: {
+    getList: "products/customer/category/get-list",
+    getImagesListByIds: "products/customer/category/get-category-images",
+  },
+};
 
 const AdminApiPaths = {
   auth: {
@@ -45,5 +54,5 @@ const AdminApiPaths = {
 
 export const ApiPath = {
   admin: AdminApiPaths,
-  guest: GuestApiPaths,
+  customer: CustomerApiPaths,
 };
