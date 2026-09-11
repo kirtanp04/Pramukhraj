@@ -73,8 +73,16 @@ namespace pramukhraj.DTOs.Review
             public bool IsVerifiedPurchase { get; set; }
             public bool IsFeatured { get; set; }
             public bool IsActive { get; set; }
-            public string CreatedOn { get; set; }
+            public string CreatedOn { get; set; } = string.Empty;
 
+        }
+
+        public sealed class CustomerTestimonialResponse
+        {
+            public int Stars { get; set; }
+            public string Message { get; set; } = string.Empty;
+            public string CustomerName { get; set; } = string.Empty;
+            public string Location { get; set; } = string.Empty;
         }
     }
 }

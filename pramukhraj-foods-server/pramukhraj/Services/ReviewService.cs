@@ -21,13 +21,16 @@ namespace pramukhraj.Services
         private readonly ILogger<ReviewService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IValidatorManager _validatorManager;
+        private readonly ICacheService _cache;
+        private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
 
-        public ReviewService(AppDbContext db, ILogger<ReviewService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager)
+        public ReviewService(AppDbContext db, ILogger<ReviewService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager, ICacheService cache)
         {
             _db = db;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _validatorManager = validatorManager;
+            _cache = cache;
         }
 
         public async Task<ApiResponse<string>>CreateAdminReviewAsync(CreateAdminReviewRequest request,CancellationToken cancellationToken = default)
@@ -163,6 +166,7 @@ namespace pramukhraj.Services
 
                 // EF Core automatically uses one transaction for this call.
                 await _db.SaveChangesAsync(cancellationToken);
+                _cache.RemoveByPrefix(CacheKey.Reviews.AllPrefix);
 
                 return new ApiResponse<string>
                 {
@@ -375,6 +379,7 @@ namespace pramukhraj.Services
                 _db.AdminActions.Add(adminAction);
 
                 await _db.SaveChangesAsync(cancellationToken);
+                _cache.RemoveByPrefix(CacheKey.Reviews.AllPrefix);
 
                 return new ApiResponse<string>
                 {
@@ -476,30 +481,35 @@ namespace pramukhraj.Services
 
             try
             {
-                var review = await _db.Reviews
-                    .AsNoTracking()
-                    .Where(item => item.Id == parsedReviewId)
-                    .Select(item => new AdminReviewDetailsResponse
-                    {
-                        Id = item.Id.ToString(),
-                        CustomerName = item.CustomerName,
-                        CustomerCity = item.CustomerCity,
-                        ProductId = item.ProductId.HasValue
-                            ? item.ProductId.Value.ToString()
-                            : null,
-                        ProductName = item.Product != null ? item.Product.Name : null,
-                        ReviewType = item.ReviewType,
-                        Source = item.Source,
-                        Rating = item.Rating,
-                        Title = item.Title,
-                        Comment = item.Comment,
-                        Status = item.Status,
-                        RejectionReason = item.RejectionReason,
-                        HasCustomerConsent = item.HasCustomerConsent,
-                        IsFeatured = item.IsFeatured,
-                        IsActive = item.IsActive
-                    })
-                    .SingleOrDefaultAsync(cancellationToken);
+                var review = await _cache.GetOrCreateAsync(
+                    CacheKey.Reviews.Details(parsedReviewId),
+                    token => _db.Reviews
+                        .AsNoTracking()
+                        .Where(item => item.Id == parsedReviewId)
+                        .Select(item => new AdminReviewDetailsResponse
+                        {
+                            Id = item.Id.ToString(),
+                            CustomerName = item.CustomerName,
+                            CustomerCity = item.CustomerCity,
+                            ProductId = item.ProductId.HasValue
+                                ? item.ProductId.Value.ToString()
+                                : null,
+                            ProductName = item.Product != null ? item.Product.Name : null,
+                            ReviewType = item.ReviewType,
+                            Source = item.Source,
+                            Rating = item.Rating,
+                            Title = item.Title,
+                            Comment = item.Comment,
+                            Status = item.Status,
+                            RejectionReason = item.RejectionReason,
+                            HasCustomerConsent = item.HasCustomerConsent,
+                            IsFeatured = item.IsFeatured,
+                            IsActive = item.IsActive
+                        })
+                        .SingleOrDefaultAsync(token),
+                    CacheExpiration,
+                    size: 2,
+                    cancellationToken);
 
                 if (review is null)
                 {
@@ -567,30 +577,36 @@ namespace pramukhraj.Services
                 pageNumber = Math.Max(pageNumber, 1);
 
                 var skip = (pageNumber - 1) * pageSize;
+                var timeZoneOffset = Common.Common.GetTimeZone(_httpContextAccessor);
 
-                var reviews = await _db.Reviews
-                  .AsNoTracking()
-                  .OrderByDescending(product => product.CreatedOn)
-                  .Skip(skip)
-                  .Take(pageSize)
-                  .Select(r => new AdminReviewListResponse
-                  {
-                      CommentPreview = r.Comment.Length > 100 ? r.Comment.Substring(0, 100) + "..." : r.Comment,
-                      CreatedOn = r.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
-                      CustomerCity = r.CustomerCity ?? string.Empty,
-                      CustomerName = r.CustomerName ?? string.Empty,
-                      ProductName = r.Product != null ? r.Product.Name ?? string.Empty : string.Empty,
-                      ReviewType = r.ReviewType,
-                      Source = r.Source,
-                      Status = r.Status,
-                      Rating = r.Rating,
-                      Title = r.Title ?? string.Empty,
-                      IsVerifiedPurchase = r.IsVerifiedPurchase,
-                      IsFeatured = r.IsFeatured,
-                      IsActive = r.IsActive,
-                      Id = r.Id.ToString()
-                  })
-                  .ToListAsync(cancellationToken);
+                var reviews = await _cache.GetOrCreateAsync(
+                    CacheKey.Reviews.List(pageNumber, timeZoneOffset),
+                    token => _db.Reviews
+                        .AsNoTracking()
+                        .OrderByDescending(review => review.CreatedOn)
+                        .Skip(skip)
+                        .Take(pageSize)
+                        .Select(r => new AdminReviewListResponse
+                        {
+                            CommentPreview = r.Comment.Length > 100 ? r.Comment.Substring(0, 100) + "..." : r.Comment,
+                            CreatedOn = r.CreatedOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd HH:mm:ss"),
+                            CustomerCity = r.CustomerCity ?? string.Empty,
+                            CustomerName = r.CustomerName ?? string.Empty,
+                            ProductName = r.Product != null ? r.Product.Name ?? string.Empty : string.Empty,
+                            ReviewType = r.ReviewType,
+                            Source = r.Source,
+                            Status = r.Status,
+                            Rating = r.Rating,
+                            Title = r.Title ?? string.Empty,
+                            IsVerifiedPurchase = r.IsVerifiedPurchase,
+                            IsFeatured = r.IsFeatured,
+                            IsActive = r.IsActive,
+                            Id = r.Id.ToString()
+                        })
+                        .ToListAsync(token),
+                    CacheExpiration,
+                    size: 10,
+                    cancellationToken);
 
                 _logger.LogInformation(
                     "Retrieved {reviewCount} reviews for page {PageNumber}.",
@@ -658,6 +674,63 @@ namespace pramukhraj.Services
                         "An unexpected error occurred while retrieving the reviews. Please try again later.",
                     Data = []
                 };
+            }
+        }
+
+        public async Task<ApiResponse<List<CustomerTestimonialResponse>>> GetTopTestimonialsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var testimonials = await _cache.GetOrCreateAsync(
+                    CacheKey.Reviews.TopTestimonials,
+                    token => _db.Reviews
+                        .AsNoTracking()
+                        .Where(review =>
+                            review.ReviewType == ReviewType.BrandTestimonial &&
+                            review.Status == ReviewStatus.Approved &&
+                            review.IsFeatured &&
+                            review.IsActive &&
+                            review.HasCustomerConsent)
+                        .OrderByDescending(review => review.Rating)
+                        .ThenByDescending(review => review.CreatedOn)
+                        .ThenByDescending(review => review.Id)
+                        .Take(3)
+                        .Select(review => new CustomerTestimonialResponse
+                        {
+                            Stars = review.Rating,
+                            Message = review.Comment,
+                            CustomerName = review.CustomerName,
+                            Location = review.CustomerCity ?? string.Empty
+                        })
+                        .ToListAsync(token),
+                    CacheExpiration,
+                    size: 3,
+                    cancellationToken);
+
+                return ApiResponse<List<CustomerTestimonialResponse>>.Ok(
+                    testimonials,
+                    testimonials.Count > 0
+                        ? "Testimonials retrieved successfully."
+                        : "No testimonials were found.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(exception, "Database error occurred while retrieving top testimonials.");
+                return ApiResponse<List<CustomerTestimonialResponse>>.Fail(
+                    "A database error occurred while retrieving testimonials. Please try again.",
+                    StatusCodes.Status500InternalServerError);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Unexpected error occurred while retrieving top testimonials.");
+                return ApiResponse<List<CustomerTestimonialResponse>>.Fail(
+                    "An unexpected error occurred while retrieving testimonials. Please try again later.",
+                    StatusCodes.Status500InternalServerError);
             }
         }
 

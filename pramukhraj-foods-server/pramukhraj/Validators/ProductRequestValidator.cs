@@ -106,9 +106,9 @@ namespace pramukhraj.Validators
                 .NotEmpty()
                 .WithMessage("Variant name is required.");
 
-            RuleFor(x => x.Sku)
-                .NotEmpty()
-                .WithMessage("SKU is required.");
+            //RuleFor(x => x.Sku)
+            //    .NotEmpty()
+            //    .WithMessage("SKU is required.");
 
             RuleFor(x => x.Mrp)
                 .GreaterThan(0)

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using pramukhraj.Entities;
 using pramukhraj.Entities.Cart;
 using pramukhraj.Entities.Coupon;
+using pramukhraj.Entities.FAQs;
 using pramukhraj.Entities.Product;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 
@@ -33,6 +34,7 @@ namespace pramukhraj.Database
         public DbSet<CouponScope> CouponScopes => Set<CouponScope>();
         public DbSet<CouponUsage> CouponUsages => Set<CouponUsage>();
         public DbSet<Review> Reviews => Set<Review>();
+        public DbSet<FAQs> Faqs => Set<FAQs>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -377,6 +379,17 @@ namespace pramukhraj.Database
                             .IsUnique()
                             .HasFilter("\"OrderItemId\" IS NOT NULL");
 
+                        review.HasIndex(item => new
+                            {
+                                item.Rating,
+                                item.CreatedOn,
+                                item.Id
+                            })
+                            .HasDatabaseName("IX_Reviews_PublicTestimonials")
+                            .IsDescending()
+                            .HasFilter(
+                                "\"ReviewType\" = 2 AND \"Status\" = 2 AND \"IsFeatured\" AND \"IsActive\" AND \"HasCustomerConsent\"");
+
                         review.ToTable("Reviews", table =>
                         {
                             table.HasCheckConstraint(
@@ -406,6 +419,28 @@ namespace pramukhraj.Database
                             table.HasCheckConstraint(
                                 "CK_Reviews_TestimonialConsent",
                                 "\"ReviewType\" <> 2 OR \"HasCustomerConsent\" = TRUE");
+                        });
+            });
+
+            // -- FAQs Configurations ---
+            builder.Entity<FAQs>(faq =>
+            {
+                        faq.Property(item => item.Category)
+                            .HasConversion<int>();
+
+                        faq.ToTable("Faqs", table =>
+                        {
+                            table.HasCheckConstraint(
+                                "CK_Faqs_DisplayOrder",
+                                "\"DisplayOrder\" >= 0");
+
+                            table.HasCheckConstraint(
+                                "CK_Faqs_Question_NotEmpty",
+                                "LENGTH(TRIM(\"Question\")) > 0");
+
+                            table.HasCheckConstraint(
+                                "CK_Faqs_Answer_NotEmpty",
+                                "LENGTH(TRIM(\"Answer\")) > 0");
                         });
             });
         }

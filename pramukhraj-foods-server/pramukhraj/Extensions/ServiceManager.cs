@@ -32,14 +32,14 @@ namespace pramukhraj.Extensions
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IValidatorManager validatorManager,
-            MemoryCacheService memoryCache
+            ICacheService cache
             )
         {
           
 
-            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager, memoryCache));
+            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager, cache));
 
-            _CouponService = new Lazy<ICouponService>(() => new CouponService(_db,loggerFactory.CreateLogger<CouponService>(),httpContextAccessor,validatorManager));
+            _CouponService = new Lazy<ICouponService>(() => new CouponService(_db,loggerFactory.CreateLogger<CouponService>(),httpContextAccessor,validatorManager, cache));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 
@@ -47,7 +47,7 @@ namespace pramukhraj.Extensions
 
             _SignInManager = new Lazy<SignInManager<ApplicationUser>>(() => signInManager);
 
-            _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager));
+            _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager, cache));
         }
 
         public IProductService ProductService => _ProductService.Value;

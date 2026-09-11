@@ -72,5 +72,15 @@ namespace pramukhraj.Controllers
 
             return StatusCode(response.StatusCode, response);
         }
+
+        [HttpGet("customer/top-testimonials")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetTopTestimonials(CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ReviewService
+                .GetTopTestimonialsAsync(cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
     }
 }

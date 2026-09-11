@@ -7,6 +7,9 @@ const CustomerApiPaths = {
     getList: "products/customer/category/get-list",
     getImagesListByIds: "products/customer/category/get-category-images",
   },
+  review: {
+    getTopTestimonials: "review/customer/top-testimonials",
+  },
 };
 
 const AdminApiPaths = {

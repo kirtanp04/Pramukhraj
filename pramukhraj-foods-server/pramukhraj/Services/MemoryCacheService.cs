@@ -155,7 +155,13 @@ namespace pramukhraj.Services
                 .RegisterPostEvictionCallback(
                     (_, _, reason, _) =>
                     {
-                        _keys.TryRemove(key, out _);
+                        // Replacing an entry also triggers this callback. Keep the
+                        // key registered when a newer value already exists so
+                        // prefix invalidation can still find it.
+                        if (!_cache.TryGetValue(key, out object? _))
+                        {
+                            _keys.TryRemove(key, out _);
+                        }
 
                         _logger.LogDebug(
                             "Cache entry {CacheKey} evicted. Reason: {Reason}",

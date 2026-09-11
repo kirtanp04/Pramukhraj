@@ -64,6 +64,13 @@ export interface AdminReviewDetailsResponse extends UpdateAdminReviewRequest {
   reviewType: ReviewType
 }
 
+export interface CustomerTestimonial {
+  stars: number
+  message: string
+  customerName: string
+  location: string
+}
+
 export const REVIEW_SOURCE_LABELS: Record<ReviewSource, string> = {
   1: 'Website',
   2: 'Offline store',

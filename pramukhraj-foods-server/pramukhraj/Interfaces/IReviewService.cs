@@ -14,5 +14,7 @@ namespace pramukhraj.Interfaces
        public Task<ApiResponse<AdminReviewDetailsResponse>> GetAdminReviewByIdAsync(string reviewId, CancellationToken cancellationToken = default);
 
        public Task<ApiResponse<List<AdminReviewListResponse>>> GetAllReviewListList(int PageNumber, CancellationToken cancellationToken = default);
+
+       public Task<ApiResponse<List<CustomerTestimonialResponse>>> GetTopTestimonialsAsync(CancellationToken cancellationToken = default);
     }
 }

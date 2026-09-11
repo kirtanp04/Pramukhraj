@@ -5,9 +5,13 @@ import type {
   AdminReviewListItem,
   CreateAdminReviewRequest,
   UpdateAdminReviewRequest,
+  CustomerTestimonial,
 } from '@/types/review'
 
 export const reviewApi = {
+  getTopTestimonials(signal?: AbortSignal) {
+    return apiGet<CustomerTestimonial[]>(ApiPath.customer.review.getTopTestimonials, { signal })
+  },
   getAdminList(pageNumber: number, signal?: AbortSignal) {
     return apiGet<AdminReviewListItem[]>(ApiPath.admin.review.getList(pageNumber), { signal })
   },
