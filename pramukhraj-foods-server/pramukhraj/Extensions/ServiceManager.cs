@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
@@ -19,9 +20,10 @@ namespace pramukhraj.Extensions
         private readonly Lazy<UserManager<ApplicationUser>> _UserManager;
 
         private readonly Lazy<SignInManager<ApplicationUser>> _SignInManager;
+
         private readonly Lazy<IReviewService> _ReviewService;
 
-
+      
         public ServiceManager(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
@@ -29,10 +31,13 @@ namespace pramukhraj.Extensions
             AppDbContext _db,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
-            IValidatorManager validatorManager
+            IValidatorManager validatorManager,
+            MemoryCacheService memoryCache
             )
         {
-            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager));
+          
+
+            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager, memoryCache));
 
             _CouponService = new Lazy<ICouponService>(() => new CouponService(_db,loggerFactory.CreateLogger<CouponService>(),httpContextAccessor,validatorManager));
 
@@ -51,5 +56,6 @@ namespace pramukhraj.Extensions
         public UserManager<ApplicationUser> UserManager => _UserManager.Value;
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;
         public IReviewService ReviewService => _ReviewService.Value;
+      
     }
 }

@@ -9,6 +9,7 @@ using pramukhraj.DTOs.Coupon;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
+using pramukhraj.Services;
 using System.Text;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -113,6 +114,16 @@ namespace pramukhraj.Extensions
                 });
             });
 
+            // caching setup
+            services.AddMemoryCache(options =>
+            {
+                options.SizeLimit = 10_000;
+                options.CompactionPercentage = 0.20;
+                options.ExpirationScanFrequency = TimeSpan.FromMinutes(2);
+            });
+
+
+            services.AddSingleton<ICacheService, MemoryCacheService>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
 

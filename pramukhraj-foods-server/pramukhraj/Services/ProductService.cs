@@ -26,13 +26,16 @@ namespace pramukhraj.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IValidatorManager _validatorManager;
 
+        private readonly MemoryCacheService memoryCache;
 
-        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager)
+
+        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager, MemoryCacheService memoryCache)
         {
             _db = db;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _validatorManager = validatorManager;
+            this.memoryCache = memoryCache;
         }
 
        
@@ -299,7 +302,8 @@ namespace pramukhraj.Services
                 // Single database SaveChanges
                 await _db.SaveChangesAsync(cancellationToken);
 
-                //await transaction.CommitAsync(cancellationToken);
+
+
 
                 return new ApiResponse<string>
                 {
@@ -377,67 +381,80 @@ namespace pramukhraj.Services
 
             try
             {
-                var product = await _db.Products
-                    .AsNoTracking()
-                    .Where(entity => entity.Id == productId)
-                    .Select(entity => new ProductDetailsResponse
-                    {
-                        Id = entity.Id.ToString(),
-                        CategoryId = entity.CategoryId.ToString(),
-                        Name = entity.Name,
-                        ShortDescription = entity.ShortDescription,
-                        Description = entity.Description,
-                        Brand = entity.Brand,
-                        IsFeatured = entity.IsFeatured,
-                        IsBestSeller = entity.IsBestSeller,
-                        IsTrending = entity.IsTrending,
-                        IsNewArrival = entity.IsNewArrival,
-                        IsActive = entity.IsActive,
-                        CountryOfOrigin = entity.CountryOfOrigin,
-                        IsVegetarian = entity.IsVegetarian,
-                        ShelfLife = entity.ShelfLife,
-                        StorageInstruction = entity.StorageInstruction,
-                        Ingredients = entity.Ingredients,
-                        NutritionalInformation = entity.NutritionalInformation,
-                        Barcode = entity.Barcode,
-                        Images = entity.Images
-                            .OrderBy(image => image.DisplayOrder)
-                            .Select(image => new ProductImageDetailsResponse
-                            {
-                                Id = image.Id.ToString(),
-                                ImageUrl = image.ImageUrl,
-                                AltText = image.AltText,
-                                IsPrimary = image.IsPrimary,
-                                DisplayOrder = image.DisplayOrder
-                            })
-                            .ToArray(),
-                        Variants = entity.Variants
-                            .OrderByDescending(variant => variant.IsDefault)
-                            .ThenBy(variant => variant.Name)
-                            .Select(variant => new ProductVariantDetailsResponse
-                            {
-                                Id = variant.Id.ToString(),
-                                Name = variant.Name,
-                                Sku = variant.SKU,
-                                Price = variant.Price,
-                                Mrp = variant.MRP,
-                                StockQuantity = variant.StockQuantity,
-                                Weight = variant.Weight,
-                                WeightUnit = variant.WeightUnit,
-                                IsDefault = variant.IsDefault,
-                                IsActive = variant.IsActive
-                            })
-                            .ToArray(),
-                        Tags = entity.Tags
-                            .OrderBy(tag => tag.Name)
-                            .Select(tag => new ProductTagDetailsResponse
-                            {
-                                Id = tag.Id.ToString(),
-                                Name = tag.Name
-                            })
-                            .ToArray()
-                    })
-                    .SingleOrDefaultAsync(cancellationToken);
+
+                var cacheKey = CacheKey.Products.Details(productId);
+
+                var product = await memoryCache.GetOrCreateAsync(
+                        cacheKey,
+                        async token =>
+                        {
+                            return await _db.Products
+                                    .AsNoTracking()
+                                    .Where(entity => entity.Id == productId)
+                                    .Select(entity => new ProductDetailsResponse
+                                    {
+                                        Id = entity.Id.ToString(),
+                                        CategoryId = entity.CategoryId.ToString(),
+                                        Name = entity.Name,
+                                        ShortDescription = entity.ShortDescription,
+                                        Description = entity.Description,
+                                        Brand = entity.Brand,
+                                        IsFeatured = entity.IsFeatured,
+                                        IsBestSeller = entity.IsBestSeller,
+                                        IsTrending = entity.IsTrending,
+                                        IsNewArrival = entity.IsNewArrival,
+                                        IsActive = entity.IsActive,
+                                        CountryOfOrigin = entity.CountryOfOrigin,
+                                        IsVegetarian = entity.IsVegetarian,
+                                        ShelfLife = entity.ShelfLife,
+                                        StorageInstruction = entity.StorageInstruction,
+                                        Ingredients = entity.Ingredients,
+                                        NutritionalInformation = entity.NutritionalInformation,
+                                        Barcode = entity.Barcode,
+                                        Images = entity.Images
+                                            .OrderBy(image => image.DisplayOrder)
+                                            .Select(image => new ProductImageDetailsResponse
+                                            {
+                                                Id = image.Id.ToString(),
+                                                ImageUrl = image.ImageUrl,
+                                                AltText = image.AltText,
+                                                IsPrimary = image.IsPrimary,
+                                                DisplayOrder = image.DisplayOrder
+                                            })
+                                            .ToArray(),
+                                        Variants = entity.Variants
+                                            .OrderByDescending(variant => variant.IsDefault)
+                                            .ThenBy(variant => variant.Name)
+                                            .Select(variant => new ProductVariantDetailsResponse
+                                            {
+                                                Id = variant.Id.ToString(),
+                                                Name = variant.Name,
+                                                Sku = variant.SKU,
+                                                Price = variant.Price,
+                                                Mrp = variant.MRP,
+                                                StockQuantity = variant.StockQuantity,
+                                                Weight = variant.Weight,
+                                                WeightUnit = variant.WeightUnit,
+                                                IsDefault = variant.IsDefault,
+                                                IsActive = variant.IsActive
+                                            })
+                                            .ToArray(),
+                                        Tags = entity.Tags
+                                            .OrderBy(tag => tag.Name)
+                                            .Select(tag => new ProductTagDetailsResponse
+                                            {
+                                                Id = tag.Id.ToString(),
+                                                Name = tag.Name
+                                            })
+                                            .ToArray()
+                                    })
+                                    .SingleOrDefaultAsync(cancellationToken);
+                        },
+                        TimeSpan.FromMinutes(60),
+                        size: 5,
+                        cancellationToken);
+
+               
 
                 if (product is null)
                 {
@@ -1944,39 +1961,49 @@ namespace pramukhraj.Services
 
                 var skip = (pageNumber - 1) * pageSize;
 
-                var products = await _db.Products
-                   .AsNoTracking()
-                   .OrderByDescending(product => product.CreatedOn)
-                   .Skip(skip)
-                   .Take(pageSize)
-                   .Select(product => new AdminProductList
-                   {
-                       Id = product.Id.ToString(),
-                       Name = product.Name,
-                       IsActive = product.IsActive,
-                       Slug = product.Slug,
-                       CreatedOn = product.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
-                       CategoryName = product.Category.Name,
-                       IsCategoryActive = product.Category.IsActive,
-                       ImageUrl = "",
-                       IsBestSeller = product.IsBestSeller,
-                       IsFeatured = product.IsFeatured,
-                       IsNewArrival = product.IsNewArrival,
-                       IsTrending = product.IsTrending,
-                       ShelfLife = product.ShelfLife,
-                       Stock = _db.ProductVariants
-                            .AsNoTracking()
-                           .Where(variant => variant.ProductId == product.Id)
-                           .Sum(variant => variant.StockQuantity),
-                      Price  =  _db.ProductVariants
-                                    .Where(variant => variant.ProductId == product.Id)
-                                    //.OrderBy(variant => variant.Weight)
-                                    .Select(variant =>
-                                        $"{variant.Price:0.##}~{variant.Weight:0.##}{variant.WeightUnit}")
-                                    .ToArray()
-                   })
-                   .ToListAsync(cancellationToken);
+                var cacheKey = CacheKey.Products.List(pageNumber);
 
+                var products = await memoryCache.GetOrCreateAsync(cacheKey,
+                    async token =>
+                    {
+                        return await _db.Products
+                       .AsNoTracking()
+                       .OrderByDescending(product => product.CreatedOn)
+                       .Skip(skip)
+                       .Take(pageSize)
+                       .Select(product => new AdminProductList
+                       {
+                           Id = product.Id.ToString(),
+                           Name = product.Name,
+                           IsActive = product.IsActive,
+                           Slug = product.Slug,
+                           CreatedOn = product.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
+                           CategoryName = product.Category.Name,
+                           IsCategoryActive = product.Category.IsActive,
+                           ImageUrl = "",
+                           IsBestSeller = product.IsBestSeller,
+                           IsFeatured = product.IsFeatured,
+                           IsNewArrival = product.IsNewArrival,
+                           IsTrending = product.IsTrending,
+                           ShelfLife = product.ShelfLife,
+                           Stock = _db.ProductVariants
+                                .AsNoTracking()
+                               .Where(variant => variant.ProductId == product.Id)
+                               .Sum(variant => variant.StockQuantity),
+                           Price = _db.ProductVariants
+                                        .Where(variant => variant.ProductId == product.Id)
+                                        //.OrderBy(variant => variant.Weight)
+                                        .Select(variant =>
+                                            $"{variant.Price:0.##}~{variant.Weight:0.##}{variant.WeightUnit}")
+                                        .ToArray()
+                       })
+                        .ToListAsync(cancellationToken);
+                    },
+                    expiration: TimeSpan.FromMinutes(60),
+                    size: 60,
+                    cancellationToken);
+
+               
                 _logger.LogInformation(
                     "Retrieved {productCount} products for page {PageNumber}.",
                     products.Count,
