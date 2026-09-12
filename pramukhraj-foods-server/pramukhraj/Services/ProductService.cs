@@ -2911,22 +2911,49 @@ namespace pramukhraj.Services
                     return products;
                 }
 
+                var HomePageCMS = await _db.HomepageCms.AsNoTracking().FirstOrDefaultAsync(h => h.Id == 1);
+                bool canfetchFeature = true;
+                bool canfetchBestSeller = true;
+                bool canfetchNewArrival= true;
+                bool canfetchTrending = true;
+
+                if(HomePageCMS != null)
+                {
+                    if(!HomePageCMS.ShowFeaturedProducts)
+                    {
+                        canfetchFeature = false;
+                    }
+                    if(!HomePageCMS.ShowBestSellerProducts)
+                    {
+                        canfetchBestSeller = false;
+                    }
+                    if(!HomePageCMS.ShowNewArrivalProducts)
+                    {
+                        canfetchNewArrival = false;
+                    }
+                    if(!HomePageCMS.ShowTrendingProducts)
+                    {
+                        canfetchTrending = false;
+                    }
+                }
+
+
                 // Priority 1
-                var featuredProducts = await LoadGroupAsync(
-                    product => product.IsFeatured);
+                var featuredProducts = canfetchFeature ? await LoadGroupAsync(
+                    product => product.IsFeatured) : new List<CustomerProductCardResponse>();
 
                 // Priority 2
-                var bestSellerProducts = await LoadGroupAsync(
-                    product => product.IsBestSeller);
+                var bestSellerProducts =canfetchBestSeller ? await LoadGroupAsync(
+                    product => product.IsBestSeller) : new List<CustomerProductCardResponse>();
 
                 // Priority 3
-                var newArrivalProducts = await LoadGroupAsync(
+                var newArrivalProducts = canfetchNewArrival ? await LoadGroupAsync(
                     product => product.IsNewArrival,
-                    newestFirst: true);
+                    newestFirst: true) : new List<CustomerProductCardResponse>();
 
                 // Priority 4
-                var trendingProducts = await LoadGroupAsync(
-                    product => product.IsTrending);
+                var trendingProducts = canfetchTrending ? await LoadGroupAsync(
+                    product => product.IsTrending) : new List<CustomerProductCardResponse>();
 
                 var result = new CustomerHomeProductGroupsResponse
                 {

@@ -94,6 +94,13 @@
             public static string CustomerHome => $"{Base}:customer-home";
         }
 
+        public static class HomepageCms
+        {
+            private const string Base = $"{Prefix}:homepage-cms";
+
+            public static string CustomerHero => $"{Base}:customer-hero";
+        }
+
         public static class Store
         {
             public static string Settings

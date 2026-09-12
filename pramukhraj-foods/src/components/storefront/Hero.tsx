@@ -4,8 +4,64 @@ import { ArrowRight, Truck, ShieldCheck, Leaf } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { HeroBanner } from '@/components/storefront/HeroBanner'
 import { productsByCategoryUrl } from '@/constants/searchQueryParams'
+import { cn } from '@/lib/utils'
 
-export function Hero() {
+interface HeroProps {
+  badge?: string
+  headline?: string
+  subtext?: string
+  imageSrc?: string
+  imageAlt?: string
+  happyCustomersCount?: string | null
+  happyCustomersLabel?: string | null
+  productCount?: string | null
+  productCountLabel?: string | null
+  averageRating?: string | null
+  averageRatingLabel?: string | null
+}
+
+const DEFAULT_BADGE = 'Since 1997 · Gujarat'
+const DEFAULT_HEADLINE = 'Traditional taste, modern shopping.'
+const DEFAULT_SUBTEXT =
+  'Hand-rolled papad, stone-ground masala and small-batch sweets — sourced from home kitchens across Gujarat and shipped to your door.'
+const DEFAULT_IMAGE_ALT = 'Shree Pramukhraj papad, mathiya, cholafali and namkeen product range'
+
+function HeroHeadline({ headline }: { headline: string }) {
+  const commaIndex = headline.indexOf(',')
+
+  if (commaIndex === -1) return <>{headline}</>
+
+  return (
+    <>
+      {headline.slice(0, commaIndex + 1).trim()}
+      <br />
+      <span className="italic text-oxblood">{headline.slice(commaIndex + 1).trim()}</span>
+    </>
+  )
+}
+
+export function Hero({
+  badge = DEFAULT_BADGE,
+  headline = DEFAULT_HEADLINE,
+  subtext = DEFAULT_SUBTEXT,
+  imageSrc,
+  imageAlt = DEFAULT_IMAGE_ALT,
+  happyCustomersCount,
+  happyCustomersLabel,
+  productCount,
+  productCountLabel,
+  averageRating,
+  averageRatingLabel,
+}: HeroProps = {}) {
+  const previewSlides = imageSrc
+    ? [{ src: imageSrc, alt: imageAlt }]
+    : undefined
+  const statistics = [
+    { value: happyCustomersCount?.trim() ?? '', label: happyCustomersLabel?.trim() ?? '' },
+    { value: productCount?.trim() ?? '', label: productCountLabel?.trim() ?? '' },
+    { value: averageRating?.trim() ?? '', label: averageRatingLabel?.trim() ?? '' },
+  ].filter(statistic => Boolean(statistic.value || statistic.label))
+
   return (
     <section className="relative isolate overflow-hidden border-b border-ink/10 bg-gradient-to-br from-ivory via-ivory to-tan/55">
       <div
@@ -29,18 +85,15 @@ export function Hero() {
         >
           <div className="stamp-badge mb-5 flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-oxblood">
             <span className="h-2 w-2 rounded-full bg-oxblood" />
-            Since 1997 · Gujarat
+            {badge}
           </div>
 
           <h1 className="max-w-xl font-display text-[2.8rem] leading-[0.98] tracking-[-0.035em] min-[420px]:text-5xl sm:text-6xl lg:text-[4.35rem]">
-            Traditional taste,
-            <br />
-            <span className="italic text-oxblood">modern shopping.</span>
+            <HeroHeadline headline={headline} />
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-ink-soft">
-            Hand-rolled papad, stone-ground masala and small-batch sweets — sourced from home kitchens across
-            Gujarat and shipped to your door.
+            {subtext}
           </p>
 
           <div className="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
@@ -56,23 +109,22 @@ export function Hero() {
             </Button>
           </div>
 
-          <dl className="mt-11 grid max-w-lg grid-cols-3 divide-x divide-ink/10 border-t border-ink/10 pt-6">
-            <div className="pr-4">
-              <dt className="sr-only">Happy customers</dt>
-              <dd className="font-display text-2xl font-medium sm:text-3xl">40k+</dd>
-              <dd className="mt-0.5 text-[11px] text-ink-soft sm:text-xs">Happy customers</dd>
-            </div>
-            <div className="px-4 sm:px-6">
-              <dt className="sr-only">Products</dt>
-              <dd className="font-display text-2xl font-medium sm:text-3xl">200+</dd>
-              <dd className="mt-0.5 text-[11px] text-ink-soft sm:text-xs">Products</dd>
-            </div>
-            <div className="pl-4 sm:pl-6">
-              <dt className="sr-only">Rating</dt>
-              <dd className="font-display text-2xl font-medium sm:text-3xl">4.7★</dd>
-              <dd className="mt-0.5 text-[11px] text-ink-soft sm:text-xs">Avg. rating</dd>
-            </div>
-          </dl>
+          {statistics.length > 0 && (
+            <dl className={cn(
+              'mt-11 grid max-w-lg divide-x divide-ink/10 border-t border-ink/10 pt-6',
+              statistics.length === 1 && 'grid-cols-1',
+              statistics.length === 2 && 'grid-cols-2',
+              statistics.length === 3 && 'grid-cols-3',
+            )}>
+              {statistics.map((statistic, index) => (
+                <div key={`${index}-${statistic.value}-${statistic.label}`} className="px-4 first:pl-0 last:pr-0 sm:px-6">
+                  <dt className="sr-only">{statistic.label || `Statistic ${index + 1}`}</dt>
+                  {statistic.value && <dd className="font-display text-2xl font-medium sm:text-3xl">{statistic.value}</dd>}
+                  {statistic.label && <dd className="mt-0.5 text-[11px] text-ink-soft sm:text-xs">{statistic.label}</dd>}
+                </div>
+              ))}
+            </dl>
+          )}
         </motion.div>
 
         <motion.div
@@ -82,7 +134,7 @@ export function Hero() {
           transition={{ duration: 0.65, delay: 0.08 }}
         >
           <div aria-hidden="true" className="absolute -right-2 -top-2 h-full w-full border border-oxblood/15 sm:-right-3 sm:-top-3" />
-          <HeroBanner />
+          <HeroBanner slides={previewSlides} />
         </motion.div>
       </div>
 

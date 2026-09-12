@@ -5,9 +5,9 @@ import { useTopTestimonials } from '@/hooks/useTopTestimonials'
 
 export function Testimonials() {
   const { ref, hasEnteredView } = useInViewOnce<HTMLElement>()
-  const { testimonials, isLoading, hasLoaded, error, retry } = useTopTestimonials(hasEnteredView)
+  const { testimonials, isLoading, hasLoaded, error } = useTopTestimonials(hasEnteredView)
 
-  if (hasLoaded && testimonials.length === 0) return null
+  if (error || (hasLoaded && testimonials.length === 0)) return null
 
   return (
     <section ref={ref} className="min-h-80 bg-teal py-14 text-white">
@@ -27,15 +27,6 @@ export function Testimonials() {
               <p className="text-xs text-white/65">{testimonial.location}</p>
             </article>
           ))}
-
-          {!isLoading && error && (
-            <div className="text-center md:col-span-3">
-              <p className="text-sm text-white/80">Testimonials could not be loaded.</p>
-              <button type="button" onClick={() => void retry()} className="mt-3 text-sm font-medium text-amber-300 hover:underline">
-                Try again
-              </button>
-            </div>
-          )}
 
         </div>
       </div>

@@ -35,6 +35,7 @@ namespace pramukhraj.Database
         public DbSet<CouponUsage> CouponUsages => Set<CouponUsage>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<FAQs> Faqs => Set<FAQs>();
+        public DbSet<HomepageCMS> HomepageCms => Set<HomepageCMS>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -442,6 +443,39 @@ namespace pramukhraj.Database
                                 "CK_Faqs_Answer_NotEmpty",
                                 "LENGTH(TRIM(\"Answer\")) > 0");
                         });
+            });
+
+            builder.Entity<HomepageCMS>(homepage =>
+            {
+                homepage.Property(item => item.Id)
+                    .ValueGeneratedNever();
+
+                homepage.Property(item => item.HeroImageUrl)
+                    .HasColumnType("text");
+
+                homepage.ToTable("HomepageCms", table =>
+                {
+                    // Guarantees that only one row with Id = 1 can exist.
+                    table.HasCheckConstraint(
+                        "CK_HomepageCms_SingleRow",
+                        "\"Id\" = 1");
+
+                    table.HasCheckConstraint(
+                        "CK_HomepageCms_Headline_NotEmpty",
+                        "LENGTH(TRIM(\"Headline\")) > 0");
+
+                    table.HasCheckConstraint(
+                        "CK_HomepageCms_EyebrowBadge_NotEmpty",
+                        "LENGTH(TRIM(\"EyebrowBadge\")) > 0");
+
+                    table.HasCheckConstraint(
+                        "CK_HomepageCms_Subtext_NotEmpty",
+                        "LENGTH(TRIM(\"Subtext\")) > 0");
+
+                    table.HasCheckConstraint(
+                        "CK_HomepageCms_HeroImageAltText_NotEmpty",
+                        "LENGTH(TRIM(\"HeroImageAltText\")) > 0");
+                });
             });
         }
     }

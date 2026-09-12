@@ -13,6 +13,9 @@ const CustomerApiPaths = {
   faq: {
     getHome: "faqs/customer/home",
   },
+  homepageCms: {
+    getHero: "homepage-cms/customer/hero",
+  },
 };
 
 const AdminApiPaths = {
@@ -68,6 +71,10 @@ const AdminApiPaths = {
     getList: (pageNumber: number) => `admin/faqs?pageNumber=${pageNumber}`,
     getById: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
     update: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
+  },
+  homepageCms: {
+    get: "admin/homepage-cms",
+    replace: "admin/homepage-cms",
   },
 };
 

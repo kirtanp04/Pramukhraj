@@ -12,8 +12,10 @@ import {
   productStatuses,
 } from "@/constants/searchQueryParams";
 import { useCustomerHomeProducts } from "@/hooks/useCustomerHomeProducts";
+import { useCustomerHomepageHero } from "@/hooks/homepage-cms/useCustomerHomepageHero";
 
 export function Home() {
+  const { hero, isLoading: heroLoading, error: heroError } = useCustomerHomepageHero();
   const {
     groups,
     isLoading: productsLoading,
@@ -34,7 +36,22 @@ export function Home() {
 
   return (
     <>
-      <Hero />
+      <div aria-busy={heroLoading}>
+        <Hero
+          badge={hero?.eyebrowBadge}
+          headline={hero?.headline}
+          subtext={hero?.subtext}
+          imageSrc={hero?.heroImageBase64 || undefined}
+          imageAlt={hero?.heroImageAltText}
+          happyCustomersCount={hero?.happyCustomersCount}
+          happyCustomersLabel={hero?.happyCustomersLabel}
+          productCount={hero?.productCount}
+          productCountLabel={hero?.productCountLabel}
+          averageRating={hero?.averageRating}
+          averageRatingLabel={hero?.averageRatingLabel}
+        />
+        {heroError && <span className="sr-only" role="status">Homepage content could not be refreshed. Default content is shown.</span>}
+      </div>
 
       <section className="mx-auto max-w-7xl px-4 py-12 md:px-6">
         <div className="mb-6 flex items-end justify-between">

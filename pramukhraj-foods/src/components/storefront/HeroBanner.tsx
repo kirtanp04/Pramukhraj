@@ -77,7 +77,8 @@ export function HeroBanner({ slides = HOME_BANNERS }: HeroBannerProps) {
                 <img
                   src={slide.src}
                   alt={slide.alt}
-                  loading="lazy"
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={index === 0 ? 'high' : 'auto'}
                   decoding="async"
                   draggable={false}
                   sizes="(min-width: 1024px) 58vw, 100vw"
