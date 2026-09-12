@@ -17,7 +17,7 @@ jobs:
     # Set the working directory for all run steps in this job
     defaults:
       run:
-        working-directory: ./pramukhraj-foods-server
+        working-directory: ./pramukhraj-foods-server/pramukhraj
 
     steps:
     - uses: actions/checkout@v4
