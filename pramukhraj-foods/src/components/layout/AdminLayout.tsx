@@ -84,7 +84,7 @@ export function AdminLayout() {
         )}
       </AnimatePresence>
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink/10 bg-ivory/90 px-4 py-3 backdrop-blur md:px-6">
           <button className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
           <div className="hidden items-center gap-2 rounded-full border border-ink/15 bg-ivory-dim px-3 py-1.5 md:flex md:w-72">
@@ -132,7 +132,7 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6">
+        <main className="min-w-0 max-w-full flex-1 overflow-x-hidden p-4 md:p-6">
           <Outlet />
         </main>
       </div>

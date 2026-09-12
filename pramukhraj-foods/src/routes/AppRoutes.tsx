@@ -111,6 +111,10 @@ const AdminAnalytics = lazyNamed(
   () => import("@/pages/admin/AdminAnalytics"),
   "AdminAnalytics"
 );
+const AdminCacheMetrics = lazyNamed(
+  () => import("@/pages/admin/cache-metrics/AdminCacheMetrics"),
+  "AdminCacheMetrics"
+);
 const AdminOrders = lazyNamed(
   () => import("@/pages/admin/AdminOrders"),
   "AdminOrders"
@@ -291,6 +295,7 @@ export function AppRoutes() {
           children: [
             { index: true, element: lazyElement(AdminDashboard) },
             { path: "analytics", element: lazyElement(AdminAnalytics) },
+            { path: "cache-metrics", element: lazyElement(AdminCacheMetrics) },
             { path: "orders", element: lazyElement(AdminOrders) },
             {
               path: "products",

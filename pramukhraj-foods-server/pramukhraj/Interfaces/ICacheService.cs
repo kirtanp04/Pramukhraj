@@ -18,8 +18,16 @@
             int size = 1,
             CancellationToken cancellationToken = default);
 
-        void Remove(string key);
+        void Remove(string key, string? invalidationReason = null);
 
-        void RemoveByPrefix(string prefix);
+        void RemoveByPrefix(string prefix, string? invalidationReason = null);
+
+        DTOs.CacheMetrics.CacheMetricsResponse GetMetrics();
+
+        bool InvalidateKey(string key, string invalidationReason);
+
+        int InvalidateModule(string module, string invalidationReason);
+
+        int Clear(string invalidationReason);
     }
 }
