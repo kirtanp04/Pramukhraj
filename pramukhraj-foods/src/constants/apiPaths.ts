@@ -7,6 +7,12 @@ const CustomerApiPaths = {
     getList: "products/customer/category/get-list",
     getImagesListByIds: "products/customer/category/get-category-images",
   },
+  review: {
+    getTopTestimonials: "review/customer/top-testimonials",
+  },
+  faq: {
+    getHome: "faqs/customer/home",
+  },
 };
 
 const AdminApiPaths = {
@@ -49,6 +55,19 @@ const AdminApiPaths = {
     getById: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
     update: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
     archive: (id: string) => `admin/coupons/${encodeURIComponent(id)}`,
+  },
+  review: {
+    create: "review/admin/add",
+    getById: (id: string) => `review/admin/${encodeURIComponent(id)}`,
+    update: (id: string) => `review/admin/${encodeURIComponent(id)}`,
+    getList: (pageNumber: number) =>
+      `review/admin/get-list/${pageNumber}`,
+  },
+  faq: {
+    create: "admin/faqs",
+    getList: (pageNumber: number) => `admin/faqs?pageNumber=${pageNumber}`,
+    getById: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
+    update: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
   },
 };
 

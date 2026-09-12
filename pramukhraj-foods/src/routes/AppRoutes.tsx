@@ -136,8 +136,20 @@ const AdminCustomers = lazyNamed(
   "AdminCustomers"
 );
 const AdminReviews = lazyNamed(
-  () => import("@/pages/admin/AdminReviews"),
+  () => import("@/pages/admin/review/AdminReviews"),
   "AdminReviews"
+);
+const AdminReviewForm = lazyNamed(
+  () => import("@/pages/admin/review/AdminReviewFormPage"),
+  "AdminReviewFormPage"
+);
+const FaqList = lazyNamed(
+  () => import("@/pages/admin/faq/FaqList"),
+  "FaqList"
+);
+const FaqFormPage = lazyNamed(
+  () => import("@/pages/admin/faq/FaqFormPage"),
+  "FaqFormPage"
 );
 const CouponList = lazyNamed(
   () => import("@/pages/admin/coupon/CouponList"),
@@ -308,7 +320,15 @@ export function AppRoutes() {
               ],
             },
             { path: "customers", element: lazyElement(AdminCustomers) },
-            { path: "reviews", element: lazyElement(AdminReviews) },
+            {
+              path: "reviews",
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(AdminReviews) },
+                { path: "new", element: lazyElement(AdminReviewForm) },
+                { path: ":id/edit", element: lazyElement(AdminReviewForm) },
+              ],
+            },
             {
               path: "coupons",
               element: <Outlet />,
@@ -316,6 +336,15 @@ export function AppRoutes() {
                 { index: true, element: lazyElement(CouponList) },
                 { path: "new", element: lazyElement(CouponFormPage) },
                 { path: ":id/edit", element: lazyElement(CouponFormPage) },
+              ],
+            },
+            {
+              path: "faqs",
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(FaqList) },
+                { path: "new", element: lazyElement(FaqFormPage) },
+                { path: ":id/edit", element: lazyElement(FaqFormPage) },
               ],
             },
             { path: "inventory", element: lazyElement(AdminInventory) },

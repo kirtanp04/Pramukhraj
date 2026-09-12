@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard, BarChart3, ShoppingCart, Package, Tags, Users, Star, Ticket, Warehouse,
   Truck, RotateCcw, CreditCard, Bell, Image, UserCog, Settings,
-  Receipt, ScrollText, Activity, DatabaseBackup, KeyRound, Plug, Mail, ToggleLeft, BookOpen,
+  Receipt, ScrollText, Activity, DatabaseBackup, KeyRound, Plug, Mail, ToggleLeft, BookOpen, CircleHelp,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -55,6 +55,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     title: 'Content',
     items: [
       { label: 'Homepage CMS', to: '/admin/cms', icon: LayoutDashboard },
+      { label: 'FAQs', to: '/admin/faqs', icon: CircleHelp },
       { label: 'Blog', to: '/admin/blog', icon: BookOpen },
       { label: 'Media Library', to: '/admin/media', icon: Image },
       { label: 'Email Templates', to: '/admin/email-templates', icon: Mail },

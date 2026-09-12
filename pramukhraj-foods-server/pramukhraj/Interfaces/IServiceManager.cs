@@ -10,5 +10,7 @@ namespace pramukhraj.Interfaces
         ITokenService TokenService { get; }
         UserManager<ApplicationUser> UserManager { get; }
         SignInManager<ApplicationUser> SignInManager { get; }
+        IReviewService ReviewService { get; }
+        IFaqService FaqService { get; }
     }
 }

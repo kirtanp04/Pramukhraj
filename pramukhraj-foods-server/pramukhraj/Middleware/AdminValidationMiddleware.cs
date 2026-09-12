@@ -43,7 +43,7 @@ namespace pramukhraj.Middleware
             try
             {
                
-                string timeZone = context.Request.Headers["time-zone"];
+                var timeZone = context.Request.Headers["time-zone"];
 
                 if (!string.IsNullOrEmpty(timeZone))
                 {

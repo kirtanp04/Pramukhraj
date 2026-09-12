@@ -629,6 +629,67 @@ namespace pramukhraj.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("pramukhraj.Entities.FAQs.FAQs", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NormalizedQuestion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category", "NormalizedQuestion")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedOn", "Id")
+                        .IsDescending();
+
+                    b.HasIndex("Category", "IsActive", "DisplayOrder");
+
+                    b.HasIndex("IsActive", "IsFeatured", "Category", "DisplayOrder");
+
+                    b.ToTable("Faqs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Faqs_Answer_NotEmpty", "LENGTH(TRIM(\"Answer\")) > 0");
+
+                            t.HasCheckConstraint("CK_Faqs_DisplayOrder", "\"DisplayOrder\" >= 0");
+
+                            t.HasCheckConstraint("CK_Faqs_Question_NotEmpty", "LENGTH(TRIM(\"Question\")) > 0");
+                        });
+                });
+
             modelBuilder.Entity("pramukhraj.Entities.Product.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1052,6 +1113,11 @@ namespace pramukhraj.Migrations
                         .HasFilter("\"OrderItemId\" IS NOT NULL");
 
                     b.HasIndex("CustomerId", "CreatedOn");
+
+                    b.HasIndex("Rating", "CreatedOn", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("IX_Reviews_PublicTestimonials")
+                        .HasFilter("\"ReviewType\" = 2 AND \"Status\" = 2 AND \"IsFeatured\" AND \"IsActive\" AND \"HasCustomerConsent\"");
 
                     b.HasIndex("ProductId", "Status", "IsActive", "CreatedOn");
 

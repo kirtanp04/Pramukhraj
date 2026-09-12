@@ -26,13 +26,17 @@ namespace pramukhraj.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IValidatorManager _validatorManager;
 
+        private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
+        private readonly ICacheService _cache;
 
-        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager)
+
+        public ProductService(AppDbContext db, ILogger<ProductService> logger, IHttpContextAccessor httpContextAccessor, IValidatorManager validatorManager, ICacheService cache)
         {
             _db = db;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _validatorManager = validatorManager;
+            _cache = cache;
         }
 
        
@@ -298,8 +302,10 @@ namespace pramukhraj.Services
 
                 // Single database SaveChanges
                 await _db.SaveChangesAsync(cancellationToken);
+                InvalidateProductAndCategoryCaches();
 
-                //await transaction.CommitAsync(cancellationToken);
+
+
 
                 return new ApiResponse<string>
                 {
@@ -377,67 +383,80 @@ namespace pramukhraj.Services
 
             try
             {
-                var product = await _db.Products
-                    .AsNoTracking()
-                    .Where(entity => entity.Id == productId)
-                    .Select(entity => new ProductDetailsResponse
-                    {
-                        Id = entity.Id.ToString(),
-                        CategoryId = entity.CategoryId.ToString(),
-                        Name = entity.Name,
-                        ShortDescription = entity.ShortDescription,
-                        Description = entity.Description,
-                        Brand = entity.Brand,
-                        IsFeatured = entity.IsFeatured,
-                        IsBestSeller = entity.IsBestSeller,
-                        IsTrending = entity.IsTrending,
-                        IsNewArrival = entity.IsNewArrival,
-                        IsActive = entity.IsActive,
-                        CountryOfOrigin = entity.CountryOfOrigin,
-                        IsVegetarian = entity.IsVegetarian,
-                        ShelfLife = entity.ShelfLife,
-                        StorageInstruction = entity.StorageInstruction,
-                        Ingredients = entity.Ingredients,
-                        NutritionalInformation = entity.NutritionalInformation,
-                        Barcode = entity.Barcode,
-                        Images = entity.Images
-                            .OrderBy(image => image.DisplayOrder)
-                            .Select(image => new ProductImageDetailsResponse
-                            {
-                                Id = image.Id.ToString(),
-                                ImageUrl = image.ImageUrl,
-                                AltText = image.AltText,
-                                IsPrimary = image.IsPrimary,
-                                DisplayOrder = image.DisplayOrder
-                            })
-                            .ToArray(),
-                        Variants = entity.Variants
-                            .OrderByDescending(variant => variant.IsDefault)
-                            .ThenBy(variant => variant.Name)
-                            .Select(variant => new ProductVariantDetailsResponse
-                            {
-                                Id = variant.Id.ToString(),
-                                Name = variant.Name,
-                                Sku = variant.SKU,
-                                Price = variant.Price,
-                                Mrp = variant.MRP,
-                                StockQuantity = variant.StockQuantity,
-                                Weight = variant.Weight,
-                                WeightUnit = variant.WeightUnit,
-                                IsDefault = variant.IsDefault,
-                                IsActive = variant.IsActive
-                            })
-                            .ToArray(),
-                        Tags = entity.Tags
-                            .OrderBy(tag => tag.Name)
-                            .Select(tag => new ProductTagDetailsResponse
-                            {
-                                Id = tag.Id.ToString(),
-                                Name = tag.Name
-                            })
-                            .ToArray()
-                    })
-                    .SingleOrDefaultAsync(cancellationToken);
+
+                var cacheKey = CacheKey.Products.Details(productId);
+
+                var product = await _cache.GetOrCreateAsync(
+                        cacheKey,
+                        async token =>
+                        {
+                            return await _db.Products
+                                    .AsNoTracking()
+                                    .Where(entity => entity.Id == productId)
+                                    .Select(entity => new ProductDetailsResponse
+                                    {
+                                        Id = entity.Id.ToString(),
+                                        CategoryId = entity.CategoryId.ToString(),
+                                        Name = entity.Name,
+                                        ShortDescription = entity.ShortDescription,
+                                        Description = entity.Description,
+                                        Brand = entity.Brand,
+                                        IsFeatured = entity.IsFeatured,
+                                        IsBestSeller = entity.IsBestSeller,
+                                        IsTrending = entity.IsTrending,
+                                        IsNewArrival = entity.IsNewArrival,
+                                        IsActive = entity.IsActive,
+                                        CountryOfOrigin = entity.CountryOfOrigin,
+                                        IsVegetarian = entity.IsVegetarian,
+                                        ShelfLife = entity.ShelfLife,
+                                        StorageInstruction = entity.StorageInstruction,
+                                        Ingredients = entity.Ingredients,
+                                        NutritionalInformation = entity.NutritionalInformation,
+                                        Barcode = entity.Barcode,
+                                        Images = entity.Images
+                                            .OrderBy(image => image.DisplayOrder)
+                                            .Select(image => new ProductImageDetailsResponse
+                                            {
+                                                Id = image.Id.ToString(),
+                                                ImageUrl = image.ImageUrl,
+                                                AltText = image.AltText,
+                                                IsPrimary = image.IsPrimary,
+                                                DisplayOrder = image.DisplayOrder
+                                            })
+                                            .ToArray(),
+                                        Variants = entity.Variants
+                                            .OrderByDescending(variant => variant.IsDefault)
+                                            .ThenBy(variant => variant.Name)
+                                            .Select(variant => new ProductVariantDetailsResponse
+                                            {
+                                                Id = variant.Id.ToString(),
+                                                Name = variant.Name,
+                                                Sku = variant.SKU,
+                                                Price = variant.Price,
+                                                Mrp = variant.MRP,
+                                                StockQuantity = variant.StockQuantity,
+                                                Weight = variant.Weight,
+                                                WeightUnit = variant.WeightUnit,
+                                                IsDefault = variant.IsDefault,
+                                                IsActive = variant.IsActive
+                                            })
+                                            .ToArray(),
+                                        Tags = entity.Tags
+                                            .OrderBy(tag => tag.Name)
+                                            .Select(tag => new ProductTagDetailsResponse
+                                            {
+                                                Id = tag.Id.ToString(),
+                                                Name = tag.Name
+                                            })
+                                            .ToArray()
+                                    })
+                                    .SingleOrDefaultAsync(token);
+                        },
+                        CacheExpiration,
+                        size: 5,
+                        cancellationToken);
+
+               
 
                 if (product is null)
                 {
@@ -856,6 +875,7 @@ namespace pramukhraj.Services
                 // ---------------------------------------------------------
 
                 await _db.SaveChangesAsync(cancellationToken);
+                InvalidateProductAndCategoryCaches();
 
                
              
@@ -1077,6 +1097,7 @@ namespace pramukhraj.Services
                 _db.AdminActions.Add(adminAction);
 
                 await _db.SaveChangesAsync(cancellationToken);
+                InvalidateProductAndCategoryCaches();
 
                 return new ApiResponse<string>
                 {
@@ -1176,8 +1197,9 @@ namespace pramukhraj.Services
 
             try
             {
-                var category = await _db.ProductCategories
-                    .AsNoTracking()
+                var category = await _cache.GetOrCreateAsync(
+                    CacheKey.Categories.Details(categoryId),
+                    token => _db.ProductCategories.AsNoTracking()
                     .Where(entity => entity.Id == categoryId)
                     .Select(entity => new ProductCategoryDetailsResponse
                     {
@@ -1189,7 +1211,10 @@ namespace pramukhraj.Services
                         IsFeatured = entity.IsFeatured,
                         IsActive = entity.IsActive
                     })
-                    .SingleOrDefaultAsync(cancellationToken);
+                    .SingleOrDefaultAsync(token),
+                    CacheExpiration,
+                    size: 2,
+                    cancellationToken);
 
                 if (category is null)
                 {
@@ -1481,6 +1506,7 @@ namespace pramukhraj.Services
 
                 await _db.SaveChangesAsync(
                     cancellationToken);
+                InvalidateProductAndCategoryCaches();
 
                
 
@@ -1584,6 +1610,11 @@ namespace pramukhraj.Services
         {
             try
             {
+                var cachedProducts = await _cache.GetAsync<List<ComboData>>(CacheKey.Products.Combo, cancellationToken);
+                if (cachedProducts is not null)
+                    return ApiResponse<List<ComboData>>.Ok(cachedProducts,
+                        cachedProducts.Count > 0 ? "Product combo list retrieved successfully." : "No active products were found.");
+
                 var products = await _db.Products
                     .AsNoTracking()
                     .Where(product => product.IsActive)
@@ -1595,6 +1626,8 @@ namespace pramukhraj.Services
                         Name = product.Name
                     })
                     .ToListAsync(cancellationToken);
+
+                await _cache.SetAsync(CacheKey.Products.Combo, products, CacheExpiration, products.Count, cancellationToken);
 
                 return ApiResponse<List<ComboData>>.Ok(products,
                     products.Count > 0 ? "Product combo list retrieved successfully." : "No active products were found.");
@@ -1626,6 +1659,11 @@ namespace pramukhraj.Services
         {
             try
             {
+                var cachedCategories = await _cache.GetAsync<List<ComboData>>(CacheKey.Categories.Combo, cancellationToken);
+                if (cachedCategories is not null)
+                    return ApiResponse<List<ComboData>>.Ok(cachedCategories,
+                        cachedCategories.Count > 0 ? "Category list retrieved successfully." : "No active categories were found.");
+
                 var categories = await _db.ProductCategories
                     .AsNoTracking()
                     .Where(category => category.IsActive)
@@ -1637,6 +1675,8 @@ namespace pramukhraj.Services
                         Name = category.Name
                     })
                     .ToListAsync(cancellationToken);
+
+                await _cache.SetAsync(CacheKey.Categories.Combo, categories, CacheExpiration, categories.Count, cancellationToken);
 
                 return new ApiResponse<List<ComboData>>
                 {
@@ -1711,6 +1751,15 @@ namespace pramukhraj.Services
                 pageNumber = Math.Max(pageNumber, 1);
 
                 var skip = (pageNumber - 1) * pageSize;
+                var timeZoneOffset = Common.Common.GetTimeZone(_httpContextAccessor);
+                var cacheKey = CacheKey.Categories.List(pageNumber, timeZoneOffset);
+                var cachedCategories = await _cache.GetAsync<List<ProductCategorylistResponse>>(cacheKey, cancellationToken);
+                if (cachedCategories is not null)
+                {
+                    return ApiResponse<List<ProductCategorylistResponse>>.Ok(
+                        cachedCategories,
+                        cachedCategories.Count > 0 ? "Product categories retrieved successfully." : "No product categories were found.");
+                }
 
                 var categories = await _db.ProductCategories
                     .AsNoTracking()
@@ -1729,9 +1778,11 @@ namespace pramukhraj.Services
                         ProductCount = _db.Products.Count(product =>
                             product.CategoryId == category.Id),
                         Slug = category.Slug,
-                        CreatedOn = category.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss")
+                        CreatedOn = category.CreatedOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd HH:mm:ss")
                     })
                     .ToListAsync(cancellationToken);
+
+                await _cache.SetAsync(cacheKey, categories, CacheExpiration, categories.Count, cancellationToken);
 
                 _logger.LogInformation(
                     "Retrieved {CategoryCount} product categories for page {PageNumber}.",
@@ -1847,6 +1898,13 @@ namespace pramukhraj.Services
                     };
                 }
 
+                var cacheKey = CacheKey.Categories.Images(validCategoryIds);
+                var cachedImages = await _cache.GetAsync<Dictionary<string, ProductCategoryImagesResponse>>(cacheKey, cancellationToken);
+                if (cachedImages is not null)
+                    return ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>.Ok(
+                        cachedImages,
+                        cachedImages.Count > 0 ? "Product category images retrieved successfully." : "No product category images were found.");
+
                 const int chunkSize = 500;
 
                 var result = new Dictionary<string, ProductCategoryImagesResponse>(
@@ -1872,6 +1930,8 @@ namespace pramukhraj.Services
                         result[row.CategoryId] = row;
                     }
                 }
+
+                await _cache.SetAsync(cacheKey, result, CacheExpiration, result.Count, cancellationToken);
 
                 return new ApiResponse<Dictionary<string, ProductCategoryImagesResponse>>
                 {
@@ -1944,39 +2004,50 @@ namespace pramukhraj.Services
 
                 var skip = (pageNumber - 1) * pageSize;
 
-                var products = await _db.Products
-                   .AsNoTracking()
-                   .OrderByDescending(product => product.CreatedOn)
-                   .Skip(skip)
-                   .Take(pageSize)
-                   .Select(product => new AdminProductList
-                   {
-                       Id = product.Id.ToString(),
-                       Name = product.Name,
-                       IsActive = product.IsActive,
-                       Slug = product.Slug,
-                       CreatedOn = product.CreatedOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd HH:mm:ss"),
-                       CategoryName = product.Category.Name,
-                       IsCategoryActive = product.Category.IsActive,
-                       ImageUrl = "",
-                       IsBestSeller = product.IsBestSeller,
-                       IsFeatured = product.IsFeatured,
-                       IsNewArrival = product.IsNewArrival,
-                       IsTrending = product.IsTrending,
-                       ShelfLife = product.ShelfLife,
-                       Stock = _db.ProductVariants
-                            .AsNoTracking()
-                           .Where(variant => variant.ProductId == product.Id)
-                           .Sum(variant => variant.StockQuantity),
-                      Price  =  _db.ProductVariants
-                                    .Where(variant => variant.ProductId == product.Id)
-                                    //.OrderBy(variant => variant.Weight)
-                                    .Select(variant =>
-                                        $"{variant.Price:0.##}~{variant.Weight:0.##}{variant.WeightUnit}")
-                                    .ToArray()
-                   })
-                   .ToListAsync(cancellationToken);
+                var timeZoneOffset = Common.Common.GetTimeZone(_httpContextAccessor);
+                var cacheKey = CacheKey.Products.List(pageNumber, timeZoneOffset);
 
+                var products = await _cache.GetOrCreateAsync(cacheKey,
+                    async token =>
+                    {
+                        return await _db.Products
+                       .AsNoTracking()
+                       .OrderByDescending(product => product.CreatedOn)
+                       .Skip(skip)
+                       .Take(pageSize)
+                       .Select(product => new AdminProductList
+                       {
+                           Id = product.Id.ToString(),
+                           Name = product.Name,
+                           IsActive = product.IsActive,
+                           Slug = product.Slug,
+                           CreatedOn = product.CreatedOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd HH:mm:ss"),
+                           CategoryName = product.Category.Name,
+                           IsCategoryActive = product.Category.IsActive,
+                           ImageUrl = "",
+                           IsBestSeller = product.IsBestSeller,
+                           IsFeatured = product.IsFeatured,
+                           IsNewArrival = product.IsNewArrival,
+                           IsTrending = product.IsTrending,
+                           ShelfLife = product.ShelfLife,
+                           Stock = _db.ProductVariants
+                                .AsNoTracking()
+                               .Where(variant => variant.ProductId == product.Id)
+                               .Sum(variant => variant.StockQuantity),
+                           Price = _db.ProductVariants
+                                        .Where(variant => variant.ProductId == product.Id)
+                                        //.OrderBy(variant => variant.Weight)
+                                        .Select(variant =>
+                                            $"{variant.Price:0.##}~{variant.Weight:0.##}{variant.WeightUnit}")
+                                        .ToArray()
+                       })
+                        .ToListAsync(token);
+                    },
+                    expiration: CacheExpiration,
+                    size: 60,
+                    cancellationToken);
+
+               
                 _logger.LogInformation(
                     "Retrieved {productCount} products for page {PageNumber}.",
                     products.Count,
@@ -2090,6 +2161,13 @@ namespace pramukhraj.Services
                     };
                 }
 
+                var cacheKey = CacheKey.Products.Images(validProductIds);
+                var cachedImages = await _cache.GetAsync<Dictionary<string, ProductImagesResponse>>(cacheKey, cancellationToken);
+                if (cachedImages is not null)
+                    return ApiResponse<Dictionary<string, ProductImagesResponse>>.Ok(
+                        cachedImages,
+                        cachedImages.Count > 0 ? "Product images retrieved successfully." : "No product images were found.");
+
                 var rows = await _db.ProductImages
                     .AsNoTracking()
                     .Where(image => validProductIds.Contains(image.ProductId))
@@ -2110,6 +2188,8 @@ namespace pramukhraj.Services
                 {
                     result.TryAdd(row.ProductId, row);
                 }
+
+                await _cache.SetAsync(cacheKey, result, CacheExpiration, result.Count, cancellationToken);
 
                 return new ApiResponse<Dictionary<string, ProductImagesResponse>>
                 {
@@ -2201,6 +2281,13 @@ namespace pramukhraj.Services
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                var cacheKey = CacheKey.Products.Inventory(pageNumber);
+                var cachedInventory = await _cache.GetAsync<List<ProductInventoryResponse>>(cacheKey, cancellationToken);
+                if (cachedInventory is not null)
+                    return ApiResponse<List<ProductInventoryResponse>>.Ok(
+                        cachedInventory,
+                        cachedInventory.Count > 0 ? "Product inventory retrieved successfully." : "No inventory records were found for the requested page.");
+
                 var inventory = await _db.ProductVariants
                     .AsNoTracking()
                     .OrderBy(variant => variant.Product.Name)
@@ -2228,6 +2315,8 @@ namespace pramukhraj.Services
                         IsProductActive = variant.Product.IsActive
                     })
                     .ToListAsync(cancellationToken);
+
+                await _cache.SetAsync(cacheKey, inventory, CacheExpiration, inventory.Count, cancellationToken);
 
                 return new ApiResponse<List<ProductInventoryResponse>>
                 {
@@ -2494,6 +2583,7 @@ namespace pramukhraj.Services
                 _db.AdminActions.Add(adminAction);
 
                 await _db.SaveChangesAsync(cancellationToken);
+                InvalidateProductAndCategoryCaches();
 
                 _logger.LogInformation(
                     "Product variant inventory updated successfully. ProductId: {ProductId}, VariantId: {VariantId}, OldStock: {OldStock}, NewStock: {NewStock}, OldActiveStatus: {OldActiveStatus}, NewActiveStatus: {NewActiveStatus}, AdminId: {AdminId}.",
@@ -2614,6 +2704,14 @@ namespace pramukhraj.Services
         {
             try
             {
+                var cachedCategories = await _cache.GetAsync<List<CustomerAllCategoriesResponse>>(
+                    CacheKey.Categories.CustomerList,
+                    cancellationToken);
+                if (cachedCategories is not null)
+                    return ApiResponse<List<CustomerAllCategoriesResponse>>.Ok(
+                        cachedCategories,
+                        cachedCategories.Count > 0 ? "Categories retrieved successfully." : "No active categories were found.");
+
                 var activeProductCounts = _db.Products
                     .AsNoTracking()
                     .Where(product => product.IsActive)
@@ -2646,6 +2744,13 @@ namespace pramukhraj.Services
                             : productCount.ProductCount
                     })
                     .ToListAsync(cancellationToken);
+
+                await _cache.SetAsync(
+                    CacheKey.Categories.CustomerList,
+                    categories,
+                    CacheExpiration,
+                    categories.Count,
+                    cancellationToken);
 
                 return new ApiResponse<List<CustomerAllCategoriesResponse>>
                 {
@@ -2708,6 +2813,14 @@ namespace pramukhraj.Services
 
             try
             {
+                var cachedGroups = await _cache.GetAsync<CustomerHomeProductGroupsResponse>(
+                    CacheKey.Products.CustomerHome,
+                    cancellationToken);
+                if (cachedGroups is not null)
+                    return ApiResponse<CustomerHomeProductGroupsResponse>.Ok(
+                        cachedGroups,
+                        HasAnyProducts(cachedGroups) ? "Homepage products retrieved successfully." : "No homepage products were found.");
+
                 var usedProductIds = new HashSet<Guid>();
 
                 async Task<List<CustomerProductCardResponse>> LoadGroupAsync(Expression<Func<Product, bool>> groupFilter,bool newestFirst = false)
@@ -2823,6 +2936,13 @@ namespace pramukhraj.Services
                     TrendingProducts = trendingProducts
                 };
 
+                await _cache.SetAsync(
+                    CacheKey.Products.CustomerHome,
+                    result,
+                    CacheExpiration,
+                    productsPerGroup * 4,
+                    cancellationToken);
+
                 return new ApiResponse<CustomerHomeProductGroupsResponse>
                 {
                     StatusCode = StatusCodes.Status200OK,
@@ -2882,6 +3002,14 @@ namespace pramukhraj.Services
                    response.BestSellerProducts.Count > 0 ||
                    response.NewArrivalProducts.Count > 0 ||
                    response.TrendingProducts.Count > 0;
+        }
+
+        private void InvalidateProductAndCategoryCaches()
+        {
+            _cache.RemoveByPrefix(CacheKey.Products.AllPrefix);
+            _cache.RemoveByPrefix(CacheKey.Categories.AllPrefix);
+            // Review projections include the product name.
+            _cache.RemoveByPrefix(CacheKey.Reviews.AllPrefix);
         }
 
         private static ApiResponse<T> ValidationFailure<T>(ValidationResult validation, string message) =>

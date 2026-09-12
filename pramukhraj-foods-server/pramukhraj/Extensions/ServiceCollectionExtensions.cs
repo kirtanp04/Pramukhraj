@@ -5,13 +5,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
+using pramukhraj.DTOs.Coupon;
+using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
+using pramukhraj.Services;
 using System.Text;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
-using pramukhraj.DTOs.Coupon;
+using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
 
 
 namespace pramukhraj.Extensions
@@ -112,6 +115,16 @@ namespace pramukhraj.Extensions
                 });
             });
 
+            // caching setup
+            services.AddMemoryCache(options =>
+            {
+                options.SizeLimit = 10_000;
+                options.CompactionPercentage = 0.20;
+                options.ExpirationScanFrequency = TimeSpan.FromMinutes(2);
+            });
+
+
+            services.AddSingleton<ICacheService, MemoryCacheService>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
 
@@ -124,17 +137,20 @@ namespace pramukhraj.Extensions
             services.AddAutoMapper(typeof(pramukhraj.Mapping.MappingProfile));
 
             // FluentValidation - register validators explicitly
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.RegisterRequest>, pramukhraj.Validators.RegisterRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.LoginRequest>, pramukhraj.Validators.LoginRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.CustomerRegisterRequest>, pramukhraj.Validators.CustomerRegisterValidator>();
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Auth.CustomerLoginRequest>, pramukhraj.Validators.CustomerLoginValidator>();
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductCategoryRequest>, pramukhraj.Validators.ProductCategoryRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<pramukhraj.DTOs.Product.AddProductRequest>, pramukhraj.Validators.ProductRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, pramukhraj.Validators.ProductCategoryImageRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, pramukhraj.Validators.GetProductImageRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, pramukhraj.Validators.UpdateProductVariantInventoryRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<CreateCouponRequest>, pramukhraj.Validators.Coupon.CreateCouponRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, pramukhraj.Validators.Coupon.UpdateCouponRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.RegisterRequest>, Validators.RegisterRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.LoginRequest>, Validators.LoginRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.CustomerRegisterRequest>, Validators.CustomerRegisterValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.CustomerLoginRequest>, Validators.CustomerLoginValidator>();
+            services.AddTransient<FluentValidation.IValidator<AddProductCategoryRequest>, Validators.ProductCategoryRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<AddProductRequest>, Validators.ProductRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, Validators.ProductCategoryImageRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, Validators.GetProductImageRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, Validators.UpdateProductVariantInventoryRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CreateCouponRequest>, Validators.Coupon.CreateCouponRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, Validators.Coupon.UpdateCouponRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CreateAdminReviewRequest>, Validators.Review.AdminReviewRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateAdminReviewRequest>, Validators.Review.UpdateAdminReviewRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<FaqWriteRequest>, Validators.FAQ.FaqWriteRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

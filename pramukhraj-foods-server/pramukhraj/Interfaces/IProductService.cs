@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using pramukhraj.Common;
+﻿using pramukhraj.Common;
 using pramukhraj.DTOs.Common;
 using pramukhraj.DTOs.Product;
 using static pramukhraj.DTOs.Product.CustomerHomePageProductRequestResponse;

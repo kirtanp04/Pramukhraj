@@ -20,17 +20,21 @@ public sealed class CouponService : ICouponService
     private readonly ILogger<CouponService> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IValidatorManager _validatorManager;
+    private readonly ICacheService _cache;
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
 
     public CouponService(
         AppDbContext db,
         ILogger<CouponService> logger,
         IHttpContextAccessor httpContextAccessor,
-        IValidatorManager validatorManager)
+        IValidatorManager validatorManager,
+        ICacheService cache)
     {
         _db = db;
         _logger = logger;
         _httpContextAccessor = httpContextAccessor;
         _validatorManager = validatorManager;
+        _cache = cache;
     }
 
     public async Task<ApiResponse<Guid>> CreateCouponAsync(
@@ -94,6 +98,7 @@ public sealed class CouponService : ICouponService
             await _db.Coupons.AddAsync(coupon, cancellationToken);
             await _db.AdminActions.AddAsync(audit, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
 
             return new ApiResponse<Guid>
             {
@@ -232,6 +237,7 @@ public sealed class CouponService : ICouponService
                 BuildAudit(admin, coupon, actionType, $"Updated coupon '{coupon.Code}'.", coupon.UpdatedOn),
                 cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
 
             return new ApiResponse<Guid>
             {
@@ -281,7 +287,9 @@ public sealed class CouponService : ICouponService
 
         try
         {
-            var coupon = await _db.Coupons.AsNoTracking()
+            var coupon = await _cache.GetOrCreateAsync(
+                CacheKey.Coupons.Details(couponId),
+                token => _db.Coupons.AsNoTracking()
                 .Where(item => item.Id == couponId && !item.IsDeleted)
                 .Select(item => new CouponDetailsResponse
                 {
@@ -308,7 +316,10 @@ public sealed class CouponService : ICouponService
                     RedeemedUsageCount = item.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed),
                     ReservedUsageCount = item.Usages.Count(usage => usage.Status == CouponUsageStatus.Reserved)
                 })
-                .SingleOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(token),
+                CacheExpiration,
+                size: 3,
+                cancellationToken);
 
             return coupon is null
                 ? ApiResponse<CouponDetailsResponse>.Fail("The requested coupon was not found.", StatusCodes.Status404NotFound)
@@ -338,6 +349,12 @@ public sealed class CouponService : ICouponService
 
         try
         {
+            var timeZoneOffset = Common.Common.GetTimeZone(_httpContextAccessor);
+            var cacheKey = CacheKey.Coupons.List(pageNumber, timeZoneOffset);
+            var cachedPage = await _cache.GetAsync<CouponListPageResponse>(cacheKey, cancellationToken);
+            if (cachedPage is not null)
+                return ApiResponse<CouponListPageResponse>.Ok(cachedPage, "Coupon list retrieved successfully.");
+
             var now = DateTime.UtcNow;
             IQueryable<Coupon> query = _db.Coupons.AsNoTracking();
 
@@ -360,8 +377,8 @@ public sealed class CouponService : ICouponService
                     TotalUsageLimit = coupon.TotalUsageLimit,
                     PerCustomerUsageLimit = coupon.PerCustomerUsageLimit,
                     RedeemedUsageCount = coupon.Usages.Count(usage => usage.Status == CouponUsageStatus.Redeemed),
-                    StartOn = coupon.StartOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd"),
-                    EndOn = coupon.EndOn.AddMinutes(-Common.Common.GetTimeZone(_httpContextAccessor)).ToString("yyyy-MM-dd"),
+                    StartOn = coupon.StartOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd"),
+                    EndOn = coupon.EndOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd"),
                     IsActive = coupon.IsActive,
                     IsDeleted = coupon.IsDeleted,
                     ScopeItemCount = coupon.Scopes.Count,
@@ -394,6 +411,7 @@ public sealed class CouponService : ICouponService
                 TotalCount = totalCount,
                 TotalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)CouponPageSize)
             };
+            await _cache.SetAsync(cacheKey, page, CacheExpiration, CouponPageSize, cancellationToken);
             return ApiResponse<CouponListPageResponse>.Ok(page, "Coupon list retrieved successfully.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -434,6 +452,7 @@ public sealed class CouponService : ICouponService
                 BuildAudit(admin, coupon, AdminActionTypes.Delete, $"Archived coupon '{coupon.Code}'.", now),
                 cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
 
             return ApiResponse<string>.Ok(couponId.ToString(), "Coupon archived successfully.");
         }

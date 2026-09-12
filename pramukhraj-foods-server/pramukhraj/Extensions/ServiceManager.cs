@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
@@ -20,8 +21,11 @@ namespace pramukhraj.Extensions
 
         private readonly Lazy<SignInManager<ApplicationUser>> _SignInManager;
 
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly Lazy<IReviewService> _ReviewService;
 
+        private readonly Lazy<IFaqService> _FaqService;
+
+      
         public ServiceManager(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
@@ -29,22 +33,25 @@ namespace pramukhraj.Extensions
             AppDbContext _db,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
-            IValidatorManager validatorManager
+            IValidatorManager validatorManager,
+            ICacheService cache
             )
         {
-            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager));
+          
 
-            _CouponService = new Lazy<ICouponService>(() => new CouponService(
-                _db,
-                loggerFactory.CreateLogger<CouponService>(),
-                httpContextAccessor,
-                validatorManager));
+            _ProductService = new Lazy<IProductService>(() => new ProductService(_db, loggerFactory.CreateLogger<ProductService>(), httpContextAccessor, validatorManager, cache));
+
+            _CouponService = new Lazy<ICouponService>(() => new CouponService(_db,loggerFactory.CreateLogger<CouponService>(),httpContextAccessor,validatorManager, cache));
 
             _TokenService = new Lazy<ITokenService>(() => new TokenService(jwtOptions, userManager, _db));
 
             _UserManager = new Lazy<UserManager<ApplicationUser>>(() => userManager);
 
             _SignInManager = new Lazy<SignInManager<ApplicationUser>>(() => signInManager);
+
+            _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager, cache));
+
+            _FaqService = new Lazy<IFaqService>(() => new FaqService(_db, loggerFactory.CreateLogger<FaqService>(), httpContextAccessor, validatorManager, cache));
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -52,5 +59,8 @@ namespace pramukhraj.Extensions
         public ITokenService TokenService => _TokenService.Value;
         public UserManager<ApplicationUser> UserManager => _UserManager.Value;
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;
+        public IReviewService ReviewService => _ReviewService.Value;
+        public IFaqService FaqService => _FaqService.Value;
+      
     }
 }

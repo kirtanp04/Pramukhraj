@@ -7,6 +7,7 @@ import type {
   ProductDetailsResponse,
   ProductImagesDictionary,
 } from "@/types/productSchema";
+import type { ComboData } from "@/types/common";
 
 export const productApi = {
   add(payload: ProductFormValues) {
@@ -17,6 +18,9 @@ export const productApi = {
   },
   update(id: string, payload: ProductFormValues, signal?: AbortSignal) {
     return apiPutResponse<string>(ApiPath.admin.product.update(id), payload, { signal });
+  },
+  getComboList(signal?: AbortSignal) {
+    return apiGet<ComboData[]>(ApiPath.admin.product.getComboList, { signal });
   },
 
   getAdminProductList(pageNumber: number, signal?: AbortSignal) {
