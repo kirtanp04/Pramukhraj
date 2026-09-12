@@ -26,6 +26,7 @@ interface DataTableProps<T> {
   emptyMessage?: string
   serverPagination?: ServerPaginationOptions
   hideFooter?: boolean
+  initialSorting?: SortingState
 }
 
 export function DataTable<T>({
@@ -39,8 +40,9 @@ export function DataTable<T>({
   emptyMessage = 'No results found.',
   serverPagination,
   hideFooter = false,
+  initialSorting = [],
 }: DataTableProps<T>) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>(initialSorting)
   const [globalFilter, setGlobalFilter] = useState('')
 
   const table = useReactTable({
@@ -55,10 +57,15 @@ export function DataTable<T>({
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize } },
   })
+  const filteredRowCount = table.getFilteredRowModel().rows.length
+  const pageIndex = table.getState().pagination.pageIndex
+  const currentPageSize = table.getState().pagination.pageSize
+  const firstVisibleRow = filteredRowCount === 0 ? 0 : pageIndex * currentPageSize + 1
+  const lastVisibleRow = Math.min((pageIndex + 1) * currentPageSize, filteredRowCount)
 
   return (
     <div
-      className="rounded-card border border-ink/10 bg-ivory"
+      className="min-w-0 max-w-full overflow-hidden rounded-card border border-ink/10 bg-ivory"
       aria-busy={isLoading || serverPagination?.isFetching}
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-ink/10 p-4">
@@ -74,7 +81,7 @@ export function DataTable<T>({
         {toolbar}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain">
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
@@ -124,11 +131,11 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {!hideFooter && <div className="flex items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs text-ink-soft">
+      {!hideFooter && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs text-ink-soft">
         <span className="flex items-center gap-2">
           {serverPagination
             ? `Page ${serverPagination.page} · ${table.getFilteredRowModel().rows.length} results on this page`
-            : `Page ${table.getState().pagination.pageIndex + 1} of ${Math.max(1, table.getPageCount())} · ${table.getFilteredRowModel().rows.length} results`}
+            : `${firstVisibleRow}–${lastVisibleRow} of ${filteredRowCount} entries · Page ${pageIndex + 1} of ${Math.max(1, table.getPageCount())}`}
           {serverPagination?.isFetching && (
             <LoaderCircle size={13} className="animate-spin" aria-label="Loading page" />
           )}

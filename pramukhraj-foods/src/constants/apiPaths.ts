@@ -76,6 +76,12 @@ const AdminApiPaths = {
     get: "admin/homepage-cms",
     replace: "admin/homepage-cms",
   },
+  cacheMetrics: {
+    get: "admin/cache-metrics",
+    clearAll: "admin/cache-metrics",
+    clearKey: "admin/cache-metrics/key",
+    clearModule: "admin/cache-metrics/module",
+  },
 };
 
 export const ApiPath = {

@@ -318,11 +318,12 @@ public sealed class HomepageCmsService : IHomepageCmsService
 
     private void InvalidateCustomerHomepageCaches()
     {
-        _cache.Remove(CacheKey.HomepageCms.CustomerHero);
-        _cache.Remove(CacheKey.Products.CustomerHome);
-        _cache.Remove(CacheKey.Categories.CustomerList);
-        _cache.Remove(CacheKey.Reviews.TopTestimonials);
-        _cache.Remove(CacheKey.Faqs.CustomerHome);
+        const string invalidationReason = "Homepage CMS published";
+        _cache.Remove(CacheKey.HomepageCms.CustomerHero, invalidationReason);
+        _cache.Remove(CacheKey.Products.CustomerHome, invalidationReason);
+        _cache.Remove(CacheKey.Categories.CustomerList, invalidationReason);
+        _cache.Remove(CacheKey.Reviews.TopTestimonials, invalidationReason);
+        _cache.Remove(CacheKey.Faqs.CustomerHome, invalidationReason);
     }
 
     private static ApiResponse<T> ValidationFailure<T>(ValidationResult validation) =>
