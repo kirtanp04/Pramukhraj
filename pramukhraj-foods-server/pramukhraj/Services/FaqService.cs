@@ -285,6 +285,7 @@ public sealed class FaqService : IFaqService
 
         try
         {
+            
             var query = _db.Faqs.AsNoTracking();
             var totalCount = await query.CountAsync(cancellationToken);
 
@@ -340,6 +341,14 @@ public sealed class FaqService : IFaqService
     {
         try
         {
+            var HomePageCMS = await _db.HomepageCms.AsNoTracking().FirstOrDefaultAsync(h => h.Id == 1);
+            if (HomePageCMS != null)
+            {
+                if (!HomePageCMS.ShowFaqSection)
+                {
+                    return ApiResponse<List<CustomerFaqResponse>>.Ok(new List<CustomerFaqResponse>(), "FAQ list retrieved successfully.");
+                }
+            }
             var faqs = await _cache.GetOrCreateAsync(
                 CacheKey.Faqs.CustomerHome,
                 token => _db.Faqs

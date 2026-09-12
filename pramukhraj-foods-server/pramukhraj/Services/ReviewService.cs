@@ -574,6 +574,7 @@ namespace pramukhraj.Services
             const int pageSize = 10;
             try
             {
+                
                 pageNumber = Math.Max(pageNumber, 1);
 
                 var skip = (pageNumber - 1) * pageSize;
@@ -682,6 +683,20 @@ namespace pramukhraj.Services
         {
             try
             {
+                var HomePageCMS = await _db.HomepageCms.AsNoTracking().FirstOrDefaultAsync(h => h.Id == 1);
+                if (HomePageCMS != null)
+                {
+                    if (!HomePageCMS.ShowCustomerTestimonials)
+                    {
+                        return new ApiResponse<List<CustomerTestimonialResponse>>
+                        {
+                            StatusCode = StatusCodes.Status403Forbidden,
+                            Success = true,
+                            Message = "Access to the review list is forbidden.",
+                            Data = new List<CustomerTestimonialResponse>()
+                        };
+                    }
+                }
                 var testimonials = await _cache.GetOrCreateAsync(
                     CacheKey.Reviews.TopTestimonials,
                     token => _db.Reviews

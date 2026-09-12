@@ -10,6 +10,7 @@
             public const string Coupon = "Coupon";
             public const string Review = "Review";
             public const string Faq = "FAQ";
+            public const string HomepageCms = "Homepage CMS";
         }
 
         public static class AdminActionTypes

@@ -24,6 +24,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IReviewService> _ReviewService;
 
         private readonly Lazy<IFaqService> _FaqService;
+        private readonly Lazy<IHomepageCmsService> _HomepageCmsService;
 
       
         public ServiceManager(
@@ -52,6 +53,8 @@ namespace pramukhraj.Extensions
             _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager, cache));
 
             _FaqService = new Lazy<IFaqService>(() => new FaqService(_db, loggerFactory.CreateLogger<FaqService>(), httpContextAccessor, validatorManager, cache));
+
+            _HomepageCmsService = new Lazy<IHomepageCmsService>(() => new HomepageCmsService(_db, loggerFactory.CreateLogger<HomepageCmsService>(), httpContextAccessor, validatorManager, cache));
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -61,6 +64,7 @@ namespace pramukhraj.Extensions
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;
         public IReviewService ReviewService => _ReviewService.Value;
         public IFaqService FaqService => _FaqService.Value;
+        public IHomepageCmsService HomepageCmsService => _HomepageCmsService.Value;
       
     }
 }
