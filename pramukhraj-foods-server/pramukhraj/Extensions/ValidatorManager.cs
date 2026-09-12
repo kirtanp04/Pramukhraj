@@ -1,6 +1,7 @@
 using FluentValidation;
 using pramukhraj.DTOs.Auth;
 using pramukhraj.DTOs.Coupon;
+using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
@@ -24,7 +25,8 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<CreateCouponRequest> createCouponRequest,
         IValidator<UpdateCouponRequest> updateCouponRequest,
         IValidator<CreateAdminReviewRequest> createAdminReviewRequest,
-        IValidator<UpdateAdminReviewRequest> updateAdminReviewRequest)
+        IValidator<UpdateAdminReviewRequest> updateAdminReviewRequest,
+        IValidator<FaqWriteRequest> faqWriteRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -39,6 +41,7 @@ public sealed class ValidatorManager : IValidatorManager
         UpdateCouponRequest = updateCouponRequest;
         CreateAdminReviewRequest = createAdminReviewRequest;
         UpdateAdminReviewRequest = updateAdminReviewRequest;
+        FaqWriteRequest = faqWriteRequest;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
@@ -54,4 +57,5 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<UpdateCouponRequest> UpdateCouponRequest { get; }
     public IValidator<CreateAdminReviewRequest> CreateAdminReviewRequest { get; }
     public IValidator<UpdateAdminReviewRequest> UpdateAdminReviewRequest { get; }
+    public IValidator<FaqWriteRequest> FaqWriteRequest { get; }
 }

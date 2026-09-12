@@ -23,6 +23,8 @@ namespace pramukhraj.Extensions
 
         private readonly Lazy<IReviewService> _ReviewService;
 
+        private readonly Lazy<IFaqService> _FaqService;
+
       
         public ServiceManager(
             UserManager<ApplicationUser> userManager,
@@ -48,6 +50,8 @@ namespace pramukhraj.Extensions
             _SignInManager = new Lazy<SignInManager<ApplicationUser>>(() => signInManager);
 
             _ReviewService = new Lazy<IReviewService>(() => new ReviewService(_db, loggerFactory.CreateLogger<ReviewService>(), httpContextAccessor, validatorManager, cache));
+
+            _FaqService = new Lazy<IFaqService>(() => new FaqService(_db, loggerFactory.CreateLogger<FaqService>(), httpContextAccessor, validatorManager, cache));
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -56,6 +60,7 @@ namespace pramukhraj.Extensions
         public UserManager<ApplicationUser> UserManager => _UserManager.Value;
         public SignInManager<ApplicationUser> SignInManager => _SignInManager.Value;
         public IReviewService ReviewService => _ReviewService.Value;
+        public IFaqService FaqService => _FaqService.Value;
       
     }
 }

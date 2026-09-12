@@ -8,14 +8,17 @@ namespace pramukhraj.Entities.FAQs
     [Table("Faqs")]
     [Index(
     nameof(Category),
-    nameof(IsDeleted),
     nameof(IsActive),
     nameof(DisplayOrder))]
     [Index(
-    nameof(IsDeleted),
     nameof(IsActive),
     nameof(IsFeatured),
+    nameof(Category),
     nameof(DisplayOrder))]
+    [Index(
+    nameof(UpdatedOn),
+    nameof(Id),
+    AllDescending = true)]
     [Index(
     nameof(Category),
     nameof(NormalizedQuestion),
@@ -59,7 +62,6 @@ namespace pramukhraj.Entities.FAQs
         /// </summary>
         public bool IsActive { get; set; } = true;
 
-        
         public DateTime CreatedOn { get; set; } =
             DateTime.UtcNow;
 

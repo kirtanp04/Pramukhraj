@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Coupon;
+using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.Product;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
@@ -149,6 +150,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, Validators.Coupon.UpdateCouponRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<CreateAdminReviewRequest>, Validators.Review.AdminReviewRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateAdminReviewRequest>, Validators.Review.UpdateAdminReviewRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<FaqWriteRequest>, Validators.FAQ.FaqWriteRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

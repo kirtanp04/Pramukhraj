@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using pramukhraj.Database;
@@ -11,9 +12,11 @@ using pramukhraj.Database;
 namespace pramukhraj.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911163021_OptimizeFaqQueries")]
+    partial class OptimizeFaqQueries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -652,6 +655,9 @@ namespace pramukhraj.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsFeatured")
                         .HasColumnType("boolean");
 
@@ -673,12 +679,12 @@ namespace pramukhraj.Migrations
                     b.HasIndex("Category", "NormalizedQuestion")
                         .IsUnique();
 
-                    b.HasIndex("UpdatedOn", "Id")
+                    b.HasIndex("IsDeleted", "UpdatedOn", "Id")
                         .IsDescending();
 
-                    b.HasIndex("Category", "IsActive", "DisplayOrder");
+                    b.HasIndex("Category", "IsDeleted", "IsActive", "DisplayOrder");
 
-                    b.HasIndex("IsActive", "IsFeatured", "Category", "DisplayOrder");
+                    b.HasIndex("IsDeleted", "IsActive", "IsFeatured", "Category", "DisplayOrder");
 
                     b.ToTable("Faqs", null, t =>
                         {

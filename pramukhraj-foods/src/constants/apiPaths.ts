@@ -10,6 +10,9 @@ const CustomerApiPaths = {
   review: {
     getTopTestimonials: "review/customer/top-testimonials",
   },
+  faq: {
+    getHome: "faqs/customer/home",
+  },
 };
 
 const AdminApiPaths = {
@@ -59,6 +62,12 @@ const AdminApiPaths = {
     update: (id: string) => `review/admin/${encodeURIComponent(id)}`,
     getList: (pageNumber: number) =>
       `review/admin/get-list/${pageNumber}`,
+  },
+  faq: {
+    create: "admin/faqs",
+    getList: (pageNumber: number) => `admin/faqs?pageNumber=${pageNumber}`,
+    getById: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
+    update: (id: string) => `admin/faqs/${encodeURIComponent(id)}`,
   },
 };
 

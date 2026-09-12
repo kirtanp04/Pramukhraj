@@ -1,6 +1,7 @@
 using FluentValidation;
 using pramukhraj.DTOs.Auth;
 using pramukhraj.DTOs.Coupon;
+using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.Product;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -23,4 +24,5 @@ public interface IValidatorManager
     IValidator<UpdateCouponRequest> UpdateCouponRequest { get; }
     IValidator<CreateAdminReviewRequest> CreateAdminReviewRequest { get; }
     IValidator<UpdateAdminReviewRequest> UpdateAdminReviewRequest { get; }
+    IValidator<FaqWriteRequest> FaqWriteRequest { get; }
 }

@@ -11,5 +11,6 @@ namespace pramukhraj.Interfaces
         UserManager<ApplicationUser> UserManager { get; }
         SignInManager<ApplicationUser> SignInManager { get; }
         IReviewService ReviewService { get; }
+        IFaqService FaqService { get; }
     }
 }

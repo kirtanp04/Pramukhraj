@@ -9,6 +9,7 @@
             public const string Inventory = "Inventory";
             public const string Coupon = "Coupon";
             public const string Review = "Review";
+            public const string Faq = "FAQ";
         }
 
         public static class AdminActionTypes

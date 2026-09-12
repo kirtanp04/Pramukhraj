@@ -143,6 +143,14 @@ const AdminReviewForm = lazyNamed(
   () => import("@/pages/admin/review/AdminReviewFormPage"),
   "AdminReviewFormPage"
 );
+const FaqList = lazyNamed(
+  () => import("@/pages/admin/faq/FaqList"),
+  "FaqList"
+);
+const FaqFormPage = lazyNamed(
+  () => import("@/pages/admin/faq/FaqFormPage"),
+  "FaqFormPage"
+);
 const CouponList = lazyNamed(
   () => import("@/pages/admin/coupon/CouponList"),
   "CouponList"
@@ -328,6 +336,15 @@ export function AppRoutes() {
                 { index: true, element: lazyElement(CouponList) },
                 { path: "new", element: lazyElement(CouponFormPage) },
                 { path: ":id/edit", element: lazyElement(CouponFormPage) },
+              ],
+            },
+            {
+              path: "faqs",
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(FaqList) },
+                { path: "new", element: lazyElement(FaqFormPage) },
+                { path: ":id/edit", element: lazyElement(FaqFormPage) },
               ],
             },
             { path: "inventory", element: lazyElement(AdminInventory) },

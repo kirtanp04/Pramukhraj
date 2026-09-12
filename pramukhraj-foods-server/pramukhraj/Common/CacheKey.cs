@@ -87,6 +87,13 @@
                 => $"{Base}:list:page:{pageNumber}:tz:{timeZoneOffset}";
         }
 
+        public static class Faqs
+        {
+            private const string Base = $"{Prefix}:faqs";
+
+            public static string CustomerHome => $"{Base}:customer-home";
+        }
+
         public static class Store
         {
             public static string Settings
