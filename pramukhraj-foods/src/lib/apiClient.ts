@@ -14,6 +14,12 @@ export interface ApiResponse<T> {
   errors?: unknown;
 }
 
+let customerAccessToken: string | null = null;
+
+export function setCustomerAccessToken(token: string | null) {
+  customerAccessToken = token;
+}
+
 // Get token
 
 function getAccessToken(): string {
@@ -48,15 +54,25 @@ function getAccessToken(): string {
 
 export const apiClient: AxiosInstance = axios.create({
   // baseURL: "https://toddler-comic-sometimes-drinking.trycloudflare.com/api/",
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5204",
   timeout: 60_000, // 1min
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 // ─── Request interceptor — inject Bearer token ─────────────────────────────
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const customerAuthRequest = config.url?.includes("auth/customer/") ?? false;
+    const customerPublicRequest = customerAuthRequest && ["send-otp", "verify-otp", "refresh-token", "logout"]
+      .some(path => config.url?.includes(path));
+    if (customerAuthRequest && !customerPublicRequest) {
+      const token = customerAccessToken;
+      if (token) config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers["Time-zone"] = new Date().getTimezoneOffset();
+      return config;
+    }
     const isPublicRequest = config.url !== undefined && (
       config.url.includes("auth/admin") ||
       config.url.includes("/customer/")
@@ -77,10 +93,42 @@ apiClient.interceptors.request.use(
 
 // ─── Response interceptor — refresh on 401, surface errors ─────────────────
 
+let customerRefreshPromise: Promise<string> | null = null;
+
+async function refreshCustomerToken(): Promise<string> {
+  const baseUrl = String(apiClient.defaults.baseURL ?? "").replace(/\/+$/, "");
+  const response = await axios.post<unknown>(
+    `${baseUrl}/auth/customer/refresh-token`,
+    CryptoService.encrypt("null"),
+    { withCredentials: true, headers: { "Content-Type": "application/json" } },
+  );
+  const payload = decodeApiResponse<{ accessToken: string }>(response.data);
+  if (!payload.success || !payload.data?.accessToken) throw new Error("Unable to refresh session.");
+  setCustomerAccessToken(payload.data.accessToken);
+  return payload.data.accessToken;
+}
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: any) => {
-    return Promise.reject(error);
+  async (error: unknown) => {
+    if (!axios.isAxiosError(error)) return Promise.reject(error);
+    const config = error.config as (InternalAxiosRequestConfig & { _customerRetry?: boolean }) | undefined;
+    const customerToken = customerAccessToken;
+    const usedCustomerToken = Boolean(customerToken && config?.headers?.Authorization === `Bearer ${customerToken}`);
+    if (error.response?.status !== 401 || !config || config._customerRetry || !usedCustomerToken)
+      return Promise.reject(error);
+
+    config._customerRetry = true;
+    try {
+      customerRefreshPromise ??= refreshCustomerToken().finally(() => { customerRefreshPromise = null; });
+      const token = await customerRefreshPromise;
+      config.headers.Authorization = `Bearer ${token}`;
+      return apiClient(config);
+    } catch {
+      setCustomerAccessToken(null);
+      window.dispatchEvent(new Event("customer-auth-expired"));
+      return Promise.reject(error);
+    }
   }
 );
 
@@ -272,7 +320,7 @@ export async function apiPostResponse<T>(
     const encryptedData =
       body !== undefined && body !== null
         ? CryptoService.encrypt(JSON.stringify(body))
-        : "null";
+        : CryptoService.encrypt("null");
     const response = await apiClient.post<unknown>(url, encryptedData, config);
 
     const responsePayload = decodeApiResponse<T>(response.data);

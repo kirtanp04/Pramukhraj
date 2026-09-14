@@ -583,50 +583,285 @@ namespace pramukhraj.Migrations
                         });
                 });
 
-            modelBuilder.Entity("pramukhraj.Entities.Customer", b =>
+            modelBuilder.Entity("pramukhraj.Entities.Customer.Customer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
+                    b.Property<string>("BlockReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("BlockedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedOn")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("FirstName")
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("LastName")
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsMobileVerified")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsProfileCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastLoginOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("MarketingConsent")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("MarketingConsentOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MobileNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
-                    b.Property<string>("PasswordHash")
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("TokenVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedOn");
+
+                    b.HasIndex("MobileNumber")
+                        .IsUnique();
+
+                    b.HasIndex("NormalizedEmail")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "IsDeleted");
+
+                    b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerAddresses", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AddressLine1")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea");
+                    b.Property<string>("AddressLine2")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
 
-                    b.Property<DateTimeOffset?>("UpdatedAt")
+                    b.Property<int>("AddressType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefaultBilling")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefaultShipping")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Landmark")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("MobileNumber")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("CustomerId", "IsDefaultShipping");
+
+                    b.ToTable("CustomerAddresses");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerOtpChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConsumedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiresOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MobileNumber")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("OtpHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RequestIpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("VerifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("ExpiresOn");
+
+                    b.HasIndex("MobileNumber", "Purpose");
+
+                    b.ToTable("CustomerOtpChallenges");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerRefreshTokens", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeviceName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("ExpiresOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IpAddressHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("RevokedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.ToTable("Customers");
+                    b.HasIndex("CustomerId", "ExpiresOn");
+
+                    b.ToTable("CustomerRefreshTokens");
                 });
 
             modelBuilder.Entity("pramukhraj.Entities.FAQs.FAQs", b =>
@@ -1070,6 +1305,46 @@ namespace pramukhraj.Migrations
                     b.ToTable("ProductVariants");
                 });
 
+            modelBuilder.Entity("pramukhraj.Entities.ProviderCredentials.ProviderCredentials", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EncryptedData")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EncryptionKeyVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("ProviderKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ProviderCredentials_ProviderKey");
+
+                    b.ToTable("ProviderCredentials", (string)null);
+                });
+
             modelBuilder.Entity("pramukhraj.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1346,6 +1621,38 @@ namespace pramukhraj.Migrations
                     b.Navigation("Coupon");
                 });
 
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerAddresses", b =>
+                {
+                    b.HasOne("pramukhraj.Entities.Customer.Customer", "Customer")
+                        .WithMany("Addresses")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerOtpChallenge", b =>
+                {
+                    b.HasOne("pramukhraj.Entities.Customer.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.CustomerRefreshTokens", b =>
+                {
+                    b.HasOne("pramukhraj.Entities.Customer.Customer", "Customer")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("pramukhraj.Entities.Product.Product", b =>
                 {
                     b.HasOne("pramukhraj.Entities.Product.ProductCategory", "Category")
@@ -1410,7 +1717,7 @@ namespace pramukhraj.Migrations
 
             modelBuilder.Entity("pramukhraj.Entities.Review.Review", b =>
                 {
-                    b.HasOne("pramukhraj.Entities.Customer", "Customer")
+                    b.HasOne("pramukhraj.Entities.Customer.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1435,6 +1742,13 @@ namespace pramukhraj.Migrations
                     b.Navigation("Scopes");
 
                     b.Navigation("Usages");
+                });
+
+            modelBuilder.Entity("pramukhraj.Entities.Customer.Customer", b =>
+                {
+                    b.Navigation("Addresses");
+
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("pramukhraj.Entities.Product.Product", b =>

@@ -11,6 +11,7 @@
             public const string Review = "Review";
             public const string Faq = "FAQ";
             public const string HomepageCms = "Homepage CMS";
+            public const string ProviderCredentials = "Provider Credentials";
         }
 
         public static class AdminActionTypes

@@ -13,5 +13,7 @@ namespace pramukhraj.Interfaces
         IReviewService ReviewService { get; }
         IFaqService FaqService { get; }
         IHomepageCmsService HomepageCmsService { get; }
+        ICustomerOtpSender CustomerOtpService { get; }
+        IProviderCredentialService ProviderCredentialService { get; }
     }
 }

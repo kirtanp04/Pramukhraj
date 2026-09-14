@@ -6,13 +6,10 @@ using pramukhraj.Configurations;
 using pramukhraj.Database;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
-using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace pramukhraj.Services
 {
@@ -32,45 +29,6 @@ namespace pramukhraj.Services
             _db = db;
         }
 
-        public async Task<(string AccessToken, string RefreshToken)> CreateTokensForCustomerAsync(Customer customer, string ipAddress)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, customer.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, customer.Email ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
-                signingCredentials: creds);
-
-            var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
-
-            var refreshToken = GenerateRefreshToken();
-
-            var refresh = new RefreshToken
-            {
-                UserId = customer.Id.ToString(),
-                Token = refreshToken,
-                ExpiresAt = DateTimeOffset.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
-                CreatedAt = DateTimeOffset.UtcNow,
-                CreatedByIp = ipAddress
-            };
-
-            _db.RefreshTokens.Add(refresh);
-            await _db.SaveChangesAsync();
-
-            return (accessToken, refreshToken);
-        }
-
         public async Task<(string AccessToken, string RefreshToken)> CreateTokensAsync(ApplicationUser user, string ipAddress,bool IsAdmin)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
@@ -81,8 +39,7 @@ namespace pramukhraj.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Name, user.UserName ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                // Include admin claim when applicable
-                new Claim("is_admin", IsAdmin ? "true" : "false")
+                new Claim(ClaimTypes.Role,"Admin"),
             };
 
             var token = new JwtSecurityToken(

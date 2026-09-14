@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, Menu, X, ChevronDown } from "lucide-react";
+import { Heart, ShoppingBag, Menu, X, ChevronDown, UserRound } from "lucide-react";
 import { Logo } from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -13,6 +13,7 @@ import {
   productsByStatusUrl,
   productStatuses,
 } from "@/constants/searchQueryParams";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/customerAuthStore";
 
 export function Header() {
   const [megaOpen, setMegaOpen] = useState(false);
@@ -20,6 +21,9 @@ export function Header() {
   const lines = useCartStore(s => s.lines);
   const wishlist = useCartStore(s => s.wishlist);
   const openCart = useCartStore(s => s.openCart);
+  const customer = useCustomerAuthStore(s => s.customer);
+  const isCustomerAuthenticated = useCustomerAuthStore(s => s.isAuthenticated);
+  const openCustomerAuth = useCustomerAuthStore(s => s.openAuth);
   const {
     categories,
     isLoading: categoriesLoading,
@@ -123,12 +127,15 @@ export function Header() {
               </span>
             )}
           </button>
-          <Link
-            to="/account"
-            className="hidden h-9 items-center gap-1.5 rounded-full border border-ink/15 px-3 text-sm hover:bg-ink/5 sm:flex"
-          >
-            Account
-          </Link>
+          {isCustomerAuthenticated ? (
+            <Link to="/account" className="hidden h-9 items-center gap-1.5 rounded-full border border-ink/15 px-3 text-sm hover:bg-ink/5 sm:flex">
+              <UserRound size={15} /> {customer?.fullName?.split(" ")[0] || "Account"}
+            </Link>
+          ) : (
+            <button onClick={openCustomerAuth} className="hidden h-9 items-center gap-1.5 rounded-full border border-ink/15 px-3 text-sm hover:bg-ink/5 sm:flex">
+              <UserRound size={15} /> Sign in
+            </button>
+          )}
         </div>
       </div>
 
@@ -318,6 +325,11 @@ export function Header() {
                   </li>
                 )}
               </ul>
+              {isCustomerAuthenticated ? (
+                <Link to="/account" onClick={() => setMobileOpen(false)} className="mt-6 flex h-11 items-center justify-center gap-2 rounded-full border border-ink/15 text-sm font-medium"><UserRound size={16} /> My account</Link>
+              ) : (
+                <button onClick={() => { setMobileOpen(false); openCustomerAuth(); }} className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-oxblood text-sm font-medium text-ivory"><UserRound size={16} /> Sign in with mobile</button>
+              )}
             </motion.div>
           </>
         )}

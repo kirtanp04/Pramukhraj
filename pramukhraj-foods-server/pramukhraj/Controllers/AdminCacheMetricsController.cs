@@ -9,7 +9,7 @@ namespace pramukhraj.Controllers;
 
 [ApiController]
 [Route("api/admin/cache-metrics")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 [EnableRateLimiting("rate-limit")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AdminCacheMetricsController : ControllerBase

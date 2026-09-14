@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard, BarChart3, ShoppingCart, Package, Tags, Users, Star, Ticket, Warehouse,
   Truck, RotateCcw, CreditCard, Bell, Image, UserCog, Settings,
-  Receipt, ScrollText, Activity, Database, DatabaseBackup, KeyRound, Plug, Mail, ToggleLeft, BookOpen, CircleHelp,
+  Receipt, ScrollText, Activity, Database, DatabaseBackup, KeyRound, Plug, Mail, ToggleLeft, BookOpen, CircleHelp, MessageSquareText,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -24,6 +24,12 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },
       { label: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
       { label: 'Cache Metrics', to: '/admin/cache-metrics', icon: Database },
+    ],
+  },
+  {
+    title: 'Provider Credentials',
+    items: [
+      { label: 'Twilio (SMS)', to: '/admin/provider-credentials/twilio', icon: MessageSquareText },
     ],
   },
   {

@@ -8,7 +8,7 @@ namespace pramukhraj.Controllers;
 
 [ApiController]
 [Route("api/admin/homepage-cms")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 [EnableRateLimiting("rate-limit")]
 public sealed class AdminHomepageCmsController : ControllerBase
 {

@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using static pramukhraj.Entities.Review.ReviewEnum;
+using CustomerEntity = pramukhraj.Entities.Customer.Customer;
 
 namespace pramukhraj.Entities.Review
 {
@@ -44,7 +45,7 @@ namespace pramukhraj.Entities.Review
         /// </summary>
         public Guid? CustomerId { get; set; }
 
-        public Customer? Customer { get; set; }
+        public CustomerEntity? Customer { get; set; }
 
         /// <summary>
         /// Snapshot of the customer name so the review remains

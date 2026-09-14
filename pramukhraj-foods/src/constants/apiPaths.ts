@@ -1,4 +1,12 @@
 const CustomerApiPaths = {
+  auth: {
+    sendOtp: "auth/customer/send-otp",
+    verifyOtp: "auth/customer/verify-otp",
+    refreshToken: "auth/customer/refresh-token",
+    completeProfile: "auth/customer/complete-profile",
+    me: "auth/customer/me",
+    logout: "auth/customer/logout",
+  },
   product: {
     getHomeGroups: "products/customer/home-product-groups",
     getImagesByIds: "products/customer/get-product-images",
@@ -75,6 +83,11 @@ const AdminApiPaths = {
   homepageCms: {
     get: "admin/homepage-cms",
     replace: "admin/homepage-cms",
+  },
+  providerCredentials: {
+    create: "admin/provider-credentials",
+    getByKey: (providerKey: string) => `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
+    update: (providerKey: string) => `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
   },
   cacheMetrics: {
     get: "admin/cache-metrics",

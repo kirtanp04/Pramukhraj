@@ -99,3 +99,4 @@ docker/pg-dev-data
 docker/pg-prod-data
 
 .vs
+.codex-build

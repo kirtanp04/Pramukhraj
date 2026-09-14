@@ -9,10 +9,12 @@ using pramukhraj.DTOs.Coupon;
 using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
+using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
 using System.Text;
+using System.Threading.RateLimiting;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
@@ -30,6 +32,13 @@ namespace pramukhraj.Extensions
             // Configure JwtSettings
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
+            services.AddOptions<CustomerOtpSettings>()
+                .Bind(configuration.GetSection(CustomerOtpSettings.SectionName))
+                .Validate(x => x.CodeLength == 6, "Customer OTP codes must contain exactly 6 digits.")
+                .Validate(x => x.AccessTokenExpirationMinutes == 1440, "Customer access tokens must expire after one day.")
+                .Validate(x => !string.IsNullOrWhiteSpace(x.HashPepper) && x.HashPepper.Length >= 32,
+                    "CustomerOtp:HashPepper must contain at least 32 characters.")
+                .ValidateOnStart();
 
             // Configure EncryptionSettings
             services.Configure<pramukhraj.Configurations.EncryptionSettings>(configuration.GetSection("Encryption"));
@@ -114,6 +123,27 @@ namespace pramukhraj.Extensions
                     opt.Window = TimeSpan.FromMinutes(1);
                     opt.QueueLimit = 0;
                 });
+                options.AddPolicy("customer-otp-send", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10, Window = TimeSpan.FromMinutes(10), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("customer-otp-verify", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30, Window = TimeSpan.FromMinutes(10), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("customer-token", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
             });
 
             // caching setup
@@ -126,6 +156,9 @@ namespace pramukhraj.Extensions
 
 
             services.AddSingleton<ICacheService, MemoryCacheService>();
+            services.AddScoped<ICustomerTokenService, CustomerTokenService>();
+            services.AddScoped<IProviderCredentialService, ProviderCredentialsService>();
+            services.AddScoped<ICustomerOtpSender, TwilioCustomerOtpSender>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
 
@@ -140,8 +173,9 @@ namespace pramukhraj.Extensions
             // FluentValidation - register validators explicitly
             services.AddTransient<FluentValidation.IValidator<DTOs.Auth.RegisterRequest>, Validators.RegisterRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<DTOs.Auth.LoginRequest>, Validators.LoginRequestValidator>();
-            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.CustomerRegisterRequest>, Validators.CustomerRegisterValidator>();
-            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.CustomerLoginRequest>, Validators.CustomerLoginValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.SendCustomerOtpRequest>, Validators.SendCustomerOtpRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.VerifyCustomerOtpRequest>, Validators.VerifyCustomerOtpRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Auth.CompleteCustomerProfileRequest>, Validators.CompleteCustomerProfileRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<AddProductCategoryRequest>, Validators.ProductCategoryRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<AddProductRequest>, Validators.ProductRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, Validators.ProductCategoryImageRequestValidator>();
@@ -153,6 +187,8 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<UpdateAdminReviewRequest>, Validators.Review.UpdateAdminReviewRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<FaqWriteRequest>, Validators.FAQ.FaqWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<HomepageCmsWriteRequest>, Validators.HomepageCms.HomepageCmsWriteRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CreateProviderCredentialRequest>, Validators.ProviderCredentials.CreateProviderCredentialRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateProviderCredentialRequest>, Validators.ProviderCredentials.UpdateProviderCredentialRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

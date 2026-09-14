@@ -2,6 +2,8 @@ import { Outlet, useRoutes } from "react-router-dom";
 import { LazyRoute } from "@/routes/RouteLoader";
 import { lazyNamed } from "@/routes/lazyNamed";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
+import { AuthEntryRedirect } from "@/features/customer-auth/components/AuthEntryRedirect";
+import { RequireCustomerAuth } from "@/features/customer-auth/components/RequireCustomerAuth";
 
 const StorefrontLayout = lazyNamed(
   () => import("@/components/layout/StorefrontLayout"),
@@ -39,21 +41,6 @@ const Help = lazyNamed(() => import("@/pages/Help"), "Help");
 const About = lazyNamed(() => import("@/pages/About"), "About");
 const BlogPost = lazyNamed(() => import("@/pages/BlogPost"), "BlogPost");
 const NotFound = lazyNamed(() => import("@/pages/NotFound"), "NotFound");
-const Login = lazyNamed(() => import("@/pages/auth/Login"), "Login");
-const Register = lazyNamed(() => import("@/pages/auth/Register"), "Register");
-const OtpLogin = lazyNamed(() => import("@/pages/auth/OtpLogin"), "OtpLogin");
-const ForgotPassword = lazyNamed(
-  () => import("@/pages/auth/ForgotPassword"),
-  "ForgotPassword"
-);
-const ResetPassword = lazyNamed(
-  () => import("@/pages/auth/ResetPassword"),
-  "ResetPassword"
-);
-const VerifyEmail = lazyNamed(
-  () => import("@/pages/auth/VerifyEmail"),
-  "VerifyEmail"
-);
 const AccountDashboard = lazyNamed(
   () => import("@/pages/account/AccountDashboard"),
   "AccountDashboard"
@@ -188,6 +175,10 @@ const AdminNotifications = lazyNamed(
   "AdminNotifications"
 );
 const AdminCMS = lazyNamed(() => import("@/pages/admin/AdminCMS"), "AdminCMS");
+const TwilioCredentialsPage = lazyNamed(
+  () => import("@/pages/admin/provider-credentials/TwilioCredentialsPage"),
+  "TwilioCredentialsPage"
+);
 const AdminBlog = lazyNamed(
   () => import("@/pages/admin/AdminBlog"),
   "AdminBlog"
@@ -255,15 +246,15 @@ export function AppRoutes() {
         { path: "/help", element: lazyElement(Help) },
         { path: "/about", element: lazyElement(About) },
         { path: "/blog/:slug", element: lazyElement(BlogPost) },
-        { path: "/login", element: lazyElement(Login) },
-        { path: "/register", element: lazyElement(Register) },
-        { path: "/otp-login", element: lazyElement(OtpLogin) },
-        { path: "/forgot-password", element: lazyElement(ForgotPassword) },
-        { path: "/reset-password", element: lazyElement(ResetPassword) },
-        { path: "/verify-email", element: lazyElement(VerifyEmail) },
+        { path: "/login", element: <AuthEntryRedirect /> },
+        { path: "/register", element: <AuthEntryRedirect /> },
+        { path: "/otp-login", element: <AuthEntryRedirect /> },
+        { path: "/forgot-password", element: <AuthEntryRedirect /> },
+        { path: "/reset-password", element: <AuthEntryRedirect /> },
+        { path: "/verify-email", element: <AuthEntryRedirect /> },
         {
           path: "/account",
-          element: lazyElement(AccountLayout),
+          element: <RequireCustomerAuth>{lazyElement(AccountLayout)}</RequireCustomerAuth>,
           children: [
             { index: true, element: lazyElement(AccountDashboard) },
             { path: "orders", element: lazyElement(AccountOrders) },
@@ -359,6 +350,7 @@ export function AppRoutes() {
             { path: "shipping", element: lazyElement(AdminShipping) },
             { path: "notifications", element: lazyElement(AdminNotifications) },
             { path: "cms", element: lazyElement(AdminCMS) },
+            { path: "provider-credentials/twilio", element: lazyElement(TwilioCredentialsPage) },
             { path: "blog", element: lazyElement(AdminBlog) },
             { path: "media", element: lazyElement(AdminMedia) },
             {
