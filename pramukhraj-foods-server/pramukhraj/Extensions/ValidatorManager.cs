@@ -8,6 +8,7 @@ using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
+using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
 using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
 
 namespace pramukhraj.Extensions;
@@ -25,6 +26,7 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<GetProductCategoriesImagesRequest> productCategoryImagesRequest,
         IValidator<GetProductImagesRequest> productImagesRequest,
         IValidator<UpdateProductVariantInventoryRequest> productInventoryRequest,
+        IValidator<CustomerProductListRequest> customerProductListRequest,
         IValidator<CreateCouponRequest> createCouponRequest,
         IValidator<UpdateCouponRequest> updateCouponRequest,
         IValidator<CreateAdminReviewRequest> createAdminReviewRequest,
@@ -44,6 +46,7 @@ public sealed class ValidatorManager : IValidatorManager
         ProductCategoryImagesRequest = productCategoryImagesRequest;
         ProductImagesRequest = productImagesRequest;
         ProductInventoryRequest = productInventoryRequest;
+        CustomerProductListRequest = customerProductListRequest;
         CreateCouponRequest = createCouponRequest;
         UpdateCouponRequest = updateCouponRequest;
         CreateAdminReviewRequest = createAdminReviewRequest;
@@ -64,6 +67,7 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<GetProductCategoriesImagesRequest> ProductCategoryImagesRequest { get; }
     public IValidator<GetProductImagesRequest> ProductImagesRequest { get; }
     public IValidator<UpdateProductVariantInventoryRequest> ProductInventoryRequest { get; }
+    public IValidator<CustomerProductListRequest> CustomerProductListRequest { get; }
     public IValidator<CreateCouponRequest> CreateCouponRequest { get; }
     public IValidator<UpdateCouponRequest> UpdateCouponRequest { get; }
     public IValidator<CreateAdminReviewRequest> CreateAdminReviewRequest { get; }

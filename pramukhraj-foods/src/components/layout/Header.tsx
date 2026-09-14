@@ -149,16 +149,18 @@ export function Header() {
         onMouseLeave={() => setMegaOpen(false)}
       >
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-2.5 text-sm">
-          <button
-            onMouseEnter={() => setMegaOpen(true)}
-            className="flex items-center gap-1 font-medium text-oxblood"
-          >
-            All Categories{" "}
-            <ChevronDown
-              size={14}
-              className={cn("transition-transform", megaOpen && "rotate-180")}
-            />
-          </button>
+          {!categoriesError && (
+            <button
+              onMouseEnter={() => setMegaOpen(true)}
+              className="flex items-center gap-1 font-medium text-oxblood"
+            >
+              All Categories{" "}
+              <ChevronDown
+                size={14}
+                className={cn("transition-transform", megaOpen && "rotate-180")}
+              />
+            </button>
+          )}
           <Link
             to={productsByStatusUrl(productStatuses.newArrivals)}
             className="text-ink-soft hover:text-ink"
@@ -180,7 +182,7 @@ export function Header() {
         </div>
 
         <AnimatePresence>
-          {megaOpen && (
+          {megaOpen && !categoriesError && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -236,13 +238,11 @@ export function Header() {
                       </div>
                     </Link>
                   ))
-                ) : (
+                ) : categories.length === 0 ? (
                   <p className="col-span-full py-4 text-center text-sm text-ink-soft">
-                    {categoriesError
-                      ? "Categories are temporarily unavailable."
-                      : "No categories are available yet."}
+                    No categories are available yet.
                   </p>
-                )}
+                ) : null}
               </div>
             </motion.div>
           )}
@@ -276,10 +276,11 @@ export function Header() {
                   <X size={20} />
                 </button>
               </div>
-              <p className="mb-2 text-xs uppercase tracking-wide text-ink-soft">
-                Categories
-              </p>
-              <ul className="space-y-1">
+              {!categoriesError && <>
+                <p className="mb-2 text-xs uppercase tracking-wide text-ink-soft">
+                  Categories
+                </p>
+                <ul className="space-y-1">
                 {categoriesLoading ? (
                   Array.from({ length: 5 }, (_, index) => (
                     <li
@@ -317,14 +318,13 @@ export function Header() {
                       </Link>
                     </li>
                   ))
-                ) : (
+                ) : categories.length === 0 ? (
                   <li className="px-2 py-3 text-sm text-ink-soft">
-                    {categoriesError
-                      ? "Categories are temporarily unavailable."
-                      : "No categories are available yet."}
+                    No categories are available yet.
                   </li>
-                )}
-              </ul>
+                ) : null}
+                </ul>
+              </>}
               {isCustomerAuthenticated ? (
                 <Link to="/account" onClick={() => setMobileOpen(false)} className="mt-6 flex h-11 items-center justify-center gap-2 rounded-full border border-ink/15 text-sm font-medium"><UserRound size={16} /> My account</Link>
               ) : (

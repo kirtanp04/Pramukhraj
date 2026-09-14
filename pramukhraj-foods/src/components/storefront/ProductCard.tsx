@@ -5,22 +5,25 @@ import type { Product } from '@/types/catalog'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn, formatINR } from '@/lib/utils'
+import { getProductStatusBadge } from '@/lib/productStatusBadge'
 import { useCartStore } from '@/store/cartStore'
+import type { ProductStatus } from '@/constants/searchQueryParams'
 import { LazyProductImage } from './LazyProductImage'
+import { LowStockNotice } from './LowStockNotice'
 
-export function ProductCard({ product, className }: { product: Product; className?: string }) {
+interface ProductCardProps {
+  product: Product
+  className?: string
+  selectedStatus?: ProductStatus | null
+}
+
+export function ProductCard({ product, className, selectedStatus }: ProductCardProps) {
   const addToCart = useCartStore((s) => s.addToCart)
   const toggleWishlist = useCartStore((s) => s.toggleWishlist)
   const wishlist = useCartStore((s) => s.wishlist)
   const isWishlisted = wishlist.includes(product.id)
 
-  const badge = product.bestSeller
-    ? { label: 'Best Seller', variant: 'oxblood' as const }
-    : product.newArrival
-      ? { label: 'New', variant: 'teal' as const }
-      : product.trending
-        ? { label: 'Trending', variant: 'turmeric' as const }
-        : null
+  const badge = getProductStatusBadge(product, selectedStatus)
 
   return (
     <motion.div
@@ -77,6 +80,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
           )}
           <span className="text-xs text-ink-soft">/ {product.weight}</span>
         </div>
+        <LowStockNotice stock={product.stock} />
         <Button
           size="sm"
           variant="outline"

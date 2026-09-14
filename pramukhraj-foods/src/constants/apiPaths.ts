@@ -8,6 +8,7 @@ const CustomerApiPaths = {
     logout: "auth/customer/logout",
   },
   product: {
+    getList: "products/customer/get-list",
     getHomeGroups: "products/customer/home-product-groups",
     getImagesByIds: "products/customer/get-product-images",
   },

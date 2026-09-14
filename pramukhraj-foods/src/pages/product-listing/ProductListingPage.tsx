@@ -18,7 +18,11 @@ export function ProductListingPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[240px_1fr]">
         <aside aria-label="Product filters" className="hidden lg:block">
-          <ProductFilterSidebar filters={listing.filters} onChange={listing.updateFilters} />
+          <ProductFilterSidebar
+            filters={listing.filters}
+            onChange={listing.updateFilters}
+            onClear={listing.clearFilters}
+          />
         </aside>
 
         <section aria-label="Products" className="min-w-0">
@@ -31,11 +35,14 @@ export function ProductListingPage() {
             onViewChange={listing.setView}
           />
           <ProductResults
+            error={listing.error}
             isLoading={listing.isLoading}
+            onRetry={listing.retry}
             products={listing.pageProducts}
+            selectedStatus={listing.status}
             view={listing.view}
           />
-          {!listing.isLoading && (
+          {!listing.isLoading && !listing.error && (
             <ProductPagination
               currentPage={listing.page}
               totalPages={listing.totalPages}
@@ -50,6 +57,7 @@ export function ProductListingPage() {
         isOpen={listing.mobileFiltersOpen}
         productCount={listing.filteredProductCount}
         onChange={listing.updateFilters}
+        onClear={listing.clearFilters}
         onClose={() => listing.setMobileFiltersOpen(false)}
       />
     </div>

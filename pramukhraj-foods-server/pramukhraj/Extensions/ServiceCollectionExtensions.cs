@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
+using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
 using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
 
 
@@ -181,6 +182,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<GetProductCategoriesImagesRequest>, Validators.ProductCategoryImageRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<GetProductImagesRequest>, Validators.GetProductImageRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateProductVariantInventoryRequest>, Validators.UpdateProductVariantInventoryRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CustomerProductListRequest>, Validators.CustomerProductListRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<CreateCouponRequest>, Validators.Coupon.CreateCouponRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateCouponRequest>, Validators.Coupon.UpdateCouponRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<CreateAdminReviewRequest>, Validators.Review.AdminReviewRequestValidator>();

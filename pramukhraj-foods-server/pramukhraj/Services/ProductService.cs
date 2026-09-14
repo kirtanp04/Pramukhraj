@@ -13,6 +13,7 @@ using System.Data.Common;
 using System.Linq.Expressions;
 using static pramukhraj.Common.AdminActions;
 using static pramukhraj.DTOs.Product.CustomerHomePageProductRequestResponse;
+using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -2699,6 +2700,156 @@ namespace pramukhraj.Services
             }
         }
 
+        public async Task<ApiResponse<CustomerProductListResponse>> GetCustomerProductListAsync(
+            CustomerProductListRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (request is null)
+            {
+                return ApiResponse<CustomerProductListResponse>.Fail(
+                    "Product filters are required.",
+                    StatusCodes.Status400BadRequest);
+            }
+
+            var validation = await _validatorManager.CustomerProductListRequest
+                .ValidateAsync(request, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return ValidationFailure<CustomerProductListResponse>(
+                    validation,
+                    "Product filter validation failed.");
+            }
+
+            var categoryId = string.IsNullOrWhiteSpace(request.CategoryId)
+                ? (Guid?)null
+                : Guid.Parse(request.CategoryId);
+            var search = request.Search?.Trim();
+
+            try
+            {
+                var productQuery = _db.Products
+                    .AsNoTracking()
+                    .Where(product =>
+                        product.IsActive &&
+                        product.Category.IsActive &&
+                        product.Variants.Any(variant =>
+                            variant.IsActive));
+
+                if (categoryId.HasValue)
+                {
+                    productQuery = productQuery.Where(product => product.CategoryId == categoryId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var searchPattern = $"%{EscapeLikePattern(search)}%";
+                    productQuery = productQuery.Where(product =>
+                        EF.Functions.ILike(product.Name, searchPattern, "\\") ||
+                        EF.Functions.ILike(product.Brand, searchPattern, "\\") ||
+                        EF.Functions.ILike(product.Category.Name, searchPattern, "\\") ||
+                        product.Tags.Any(tag => EF.Functions.ILike(tag.Name, searchPattern, "\\")));
+                }
+
+                productQuery = request.ProductStatus switch
+                {
+                    FilterProductStatus.NewArrivals => productQuery.Where(product => product.IsNewArrival),
+                    FilterProductStatus.BestSellers => productQuery.Where(product => product.IsBestSeller),
+                    FilterProductStatus.Trending => productQuery.Where(product => product.IsTrending),
+                    FilterProductStatus.Featured => productQuery.Where(product => product.IsFeatured),
+                    _ => productQuery
+                };
+
+                var productVariants = productQuery.SelectMany(
+                    product => product.Variants
+                        .Where(variant => variant.IsActive)
+                        .OrderByDescending(variant => variant.StockQuantity > 0)
+                        .ThenBy(variant => variant.Price)
+                        .ThenByDescending(variant => variant.IsDefault)
+                        .Take(1),
+                    (product, variant) => new { Product = product, Variant = variant });
+
+                var products = productVariants.Select(item => new CustomerProductDto
+                {
+                    ProductId = item.Product.Id.ToString(),
+                    ProductName = item.Product.Name,
+                    ProductSlug = item.Product.Slug,
+                    CategoryId = item.Product.CategoryId.ToString(),
+                    CategoryName = item.Product.Category.Name,
+                    CategorySlug = item.Product.Category.Slug,
+                    Brand = item.Product.Brand,
+                    ShortDescription = item.Product.ShortDescription,
+                    Price = item.Variant.Price,
+                    Mrp = item.Variant.MRP,
+                    Sku = item.Variant.SKU,
+                    Weight = item.Variant.Weight,
+                    WeightUnit = item.Variant.WeightUnit,
+                    ProductVariantId = item.Variant.Id.ToString(),
+                    ProductVariantSku = item.Variant.SKU,
+                    StockQuantity = item.Variant.StockQuantity,
+                    IsLowStock = item.Variant.StockQuantity < 5,
+                    IsFeatured = item.Product.IsFeatured,
+                    IsBestSeller = item.Product.IsBestSeller,
+                    IsNewArrival = item.Product.IsNewArrival,
+                    IsTrending = item.Product.IsTrending,
+                    ImageUrl = string.Empty
+                });
+
+                products = products.Where(product => product.Price <= request.MaxPrice);
+
+                if (request.ProductStatus == FilterProductStatus.Deals)
+                {
+                    products = products.Where(product => product.Mrp > product.Price);
+                }
+
+                var totalCount = await products.CountAsync(cancellationToken);
+                var orderedProducts = request.SortBy == FilterSortBy.PriceDesc
+                    ? products.OrderByDescending(product => product.Price)
+                        .ThenBy(product => product.ProductName)
+                        .ThenBy(product => product.ProductId)
+                    : products.OrderBy(product => product.Price)
+                        .ThenBy(product => product.ProductName)
+                        .ThenBy(product => product.ProductId);
+
+                var pageProducts = await orderedProducts
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync(cancellationToken);
+
+                return ApiResponse<CustomerProductListResponse>.Ok(
+                    new CustomerProductListResponse
+                    {
+                        Products = pageProducts,
+                        TotalCount = totalCount,
+                        Page = request.Page,
+                        PageSize = request.PageSize
+                    },
+                    totalCount > 0
+                        ? "Products retrieved successfully."
+                        : "No products matched the selected filters.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("The customer product list request was cancelled.");
+                throw;
+            }
+            catch (DbException exception)
+            {
+                _logger.LogError(exception, "Database error occurred while retrieving the customer product list.");
+                return ApiResponse<CustomerProductListResponse>.Fail(
+                    "Unable to retrieve products.",
+                    StatusCodes.Status500InternalServerError,
+                    "A database error occurred while retrieving products. Please try again.");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Unexpected error occurred while retrieving the customer product list.");
+                return ApiResponse<CustomerProductListResponse>.Fail(
+                    "Unable to retrieve products.",
+                    StatusCodes.Status500InternalServerError,
+                    "An unexpected error occurred while retrieving products. Please try again later.");
+            }
+        }
+
         public async Task<ApiResponse<List<CustomerAllCategoriesResponse>>> GetCustomerAllCategoriesPatchInfo(
             CancellationToken cancellationToken = default)
         {
@@ -2714,7 +2865,11 @@ namespace pramukhraj.Services
 
                 var activeProductCounts = _db.Products
                     .AsNoTracking()
-                    .Where(product => product.IsActive)
+                    .Where(product =>
+                        product.IsActive &&
+                        product.Variants.Any(variant =>
+                            variant.IsActive))
+                            //variant.IsActive && variant.StockQuantity > 0))
                     .GroupBy(product => product.CategoryId)
                     .Select(group => new
                     {
@@ -3030,6 +3185,11 @@ namespace pramukhraj.Services
                    response.NewArrivalProducts.Count > 0 ||
                    response.TrendingProducts.Count > 0;
         }
+
+        private static string EscapeLikePattern(string value) => value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
         private void InvalidateProductAndCategoryCaches()
         {

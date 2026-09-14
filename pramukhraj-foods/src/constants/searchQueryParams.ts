@@ -1,6 +1,7 @@
 export const searchQueryParams = {
   page: 'page',
   category: 'category',
+  maxPrice: 'maxPrice',
   search: 'search',
   sort: 'sort',
   status: 'status',
