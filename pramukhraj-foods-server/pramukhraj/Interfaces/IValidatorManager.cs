@@ -7,6 +7,7 @@ using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
+using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
 using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
 
 namespace pramukhraj.Interfaces;
@@ -23,6 +24,7 @@ public interface IValidatorManager
     IValidator<GetProductCategoriesImagesRequest> ProductCategoryImagesRequest { get; }
     IValidator<GetProductImagesRequest> ProductImagesRequest { get; }
     IValidator<UpdateProductVariantInventoryRequest> ProductInventoryRequest { get; }
+    IValidator<CustomerProductListRequest> CustomerProductListRequest { get; }
     IValidator<CreateCouponRequest> CreateCouponRequest { get; }
     IValidator<UpdateCouponRequest> UpdateCouponRequest { get; }
     IValidator<CreateAdminReviewRequest> CreateAdminReviewRequest { get; }

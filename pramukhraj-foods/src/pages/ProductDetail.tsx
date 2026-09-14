@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { ProductRail } from '@/components/storefront/ProductRail'
+import { LowStockNotice } from '@/components/storefront/LowStockNotice'
 import { productsByCategoryUrl } from '@/constants/searchQueryParams'
 import { useCartStore } from '@/store/cartStore'
 
@@ -96,7 +97,9 @@ export function ProductDetail() {
 
           <div className="mt-5 flex items-center gap-2 text-sm">
             <span className="font-medium">Stock:</span>
-            {product.stock > 0 ? (
+            {product.stock > 0 && product.stock < 5 ? (
+              <LowStockNotice stock={product.stock} className="text-sm" />
+            ) : product.stock > 0 ? (
               <span className="flex items-center gap-1 text-green-700"><Check size={14} /> In stock ({product.stock} left)</span>
             ) : (
               <span className="flex items-center gap-1 text-oxblood"><Minus size={14} /> Out of stock</span>

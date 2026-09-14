@@ -26,7 +26,6 @@ export function Home() {
     categories,
     isLoading: categoriesLoading,
     error: categoriesError,
-    retry: retryCategories,
     loadImages: loadCategoryImages,
   } = useCustomerCategories();
 
@@ -53,7 +52,7 @@ export function Home() {
         {heroError && <span className="sr-only" role="status">Homepage content could not be refreshed. Default content is shown.</span>}
       </div>
 
-      <section className="mx-auto max-w-7xl px-4 py-12 md:px-6">
+      {!categoriesError && <section className="mx-auto max-w-7xl px-4 py-12 md:px-6">
         <div className="mb-6 flex items-end justify-between">
           <h2 className="font-display text-2xl sm:text-3xl">
             Shop by Category
@@ -84,28 +83,13 @@ export function Home() {
               <CategoryCard key={category.id} category={category} />
             ))}
           </div>
-        ) : (
+        ) : categories.length === 0 ? (
           <div className="rounded-2xl border border-ink/10 bg-tan/30 px-6 py-10 text-center">
-            <p className="font-medium">
-              {categoriesError
-                ? "Categories could not be loaded."
-                : "No categories are available yet."}
-            </p>
-            <p className="mt-1 text-sm text-ink-soft">
-              {categoriesError ?? "Please check back soon."}
-            </p>
-            {categoriesError && (
-              <button
-                type="button"
-                onClick={() => void retryCategories()}
-                className="mt-4 rounded-full bg-oxblood px-4 py-2 text-sm font-medium text-ivory hover:bg-oxblood/90"
-              >
-                Try again
-              </button>
-            )}
+            <p className="font-medium">No categories are available yet.</p>
+            <p className="mt-1 text-sm text-ink-soft">Please check back soon.</p>
           </div>
-        )}
-      </section>
+        ) : null}
+      </section>}
 
       {productsError && !productsLoading ? (
         <section className="mx-auto max-w-7xl px-4 py-10 text-center md:px-6">

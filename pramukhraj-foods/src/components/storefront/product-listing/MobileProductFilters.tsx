@@ -9,6 +9,7 @@ interface MobileProductFiltersProps {
   isOpen: boolean
   productCount: number
   onChange: (filters: ProductListingFilters) => void
+  onClear: () => void
   onClose: () => void
 }
 
@@ -17,6 +18,7 @@ export function MobileProductFilters({
   isOpen,
   productCount,
   onChange,
+  onClear,
   onClose,
 }: MobileProductFiltersProps) {
   return (
@@ -44,7 +46,7 @@ export function MobileProductFilters({
               <h2 className="font-display text-lg">Filters</h2>
               <button type="button" onClick={onClose} aria-label="Close filters"><X size={20} /></button>
             </div>
-            <ProductFilterSidebar filters={filters} onChange={onChange} />
+            <ProductFilterSidebar filters={filters} onChange={onChange} onClear={onClear} />
             <Button className="mt-4 w-full" onClick={onClose}>Show {productCount} results</Button>
           </motion.aside>
         </>

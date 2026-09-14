@@ -1,75 +1,56 @@
+import { PRODUCT_PRICE_CEILING } from '@/constants/productListing'
 import { productStatuses, type ProductStatus } from '@/constants/searchQueryParams'
-import type { Product } from '@/types/catalog'
-import type { ProductListingFilters, ProductListingQuery, ProductSortValue } from '@/types/productListing'
+import type { CustomerProductSort, CustomerProductStatus } from '@/types/customerProduct'
+import type { ProductSortValue } from '@/types/productListing'
 
 const validStatuses = new Set<string>(Object.values(productStatuses))
-const validSortValues = new Set<ProductSortValue>([
-  'popularity',
-  'price-asc',
-  'price-desc',
-  'rating',
-  'newest',
-])
+const validCategorySlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const maximumSearchLength = 100
+
+const apiProductStatuses: Record<ProductStatus, CustomerProductStatus> = {
+  [productStatuses.newArrivals]: 0,
+  [productStatuses.bestSellers]: 1,
+  [productStatuses.trending]: 2,
+  [productStatuses.featured]: 3,
+  [productStatuses.deals]: 4,
+}
 
 export function parseProductStatus(value: string | null): ProductStatus | undefined {
   return value && validStatuses.has(value) ? value as ProductStatus : undefined
 }
 
 export function parseProductSort(value: string | null): ProductSortValue {
-  return value && validSortValues.has(value as ProductSortValue)
-    ? value as ProductSortValue
-    : 'popularity'
+  return value === 'price-desc' ? 'price-desc' : 'price-asc'
 }
 
-export function filterAndSortProducts(
-  products: Product[],
-  filters: ProductListingFilters,
-  query: ProductListingQuery,
-) {
-  let result = products.filter((product) => product.price <= filters.maxPrice)
+export function parseProductPage(value: string | null): number {
+  const page = Number(value)
+  return Number.isSafeInteger(page) && page > 0 ? page : 1
+}
 
-  if (filters.categorySlug) {
-    result = result.filter((product) => product.category.slug === filters.categorySlug)
-  }
-  if (filters.brandSlugs.length > 0) {
-    result = result.filter((product) => filters.brandSlugs.includes(product.brand.slug))
-  }
-  if (filters.minRating !== undefined) {
-    result = result.filter((product) => product.rating >= filters.minRating!)
-  }
-  if (query.search) {
-    const normalizedSearch = query.search.trim().toLowerCase()
-    result = result.filter((product) =>
-      product.name.toLowerCase().includes(normalizedSearch) ||
-      product.tags.some((tag) => tag.toLowerCase().includes(normalizedSearch)),
-    )
-  }
+export function parseProductMaxPrice(value: string | null): number {
+  if (value === null || value.trim() === '') return PRODUCT_PRICE_CEILING
+  const price = Number(value)
+  return Number.isFinite(price) && price >= 0 && price <= PRODUCT_PRICE_CEILING
+    ? Math.round(price)
+    : PRODUCT_PRICE_CEILING
+}
 
-  switch (query.status) {
-    case productStatuses.deals:
-      result = result.filter((product) => product.discountPercent > 0)
-      break
-    case productStatuses.featured:
-      result = result.filter((product) => product.featured)
-      break
-    case productStatuses.trending:
-      result = result.filter((product) => product.trending)
-      break
-    case productStatuses.bestSellers:
-      result = result.filter((product) => product.bestSeller)
-      break
-    case productStatuses.newArrivals:
-      result = result.filter((product) => product.newArrival)
-      break
-  }
+export function parseProductCategorySlug(value: string | null): string | undefined {
+  const slug = value?.trim().toLowerCase()
+  return slug && validCategorySlug.test(slug) ? slug : undefined
+}
 
-  return result.toSorted((left, right) => {
-    switch (query.sort) {
-      case 'price-asc': return left.price - right.price
-      case 'price-desc': return right.price - left.price
-      case 'rating': return right.rating - left.rating
-      case 'newest': return Number(right.newArrival) - Number(left.newArrival)
-      default: return right.ordersCount - left.ordersCount
-    }
-  })
+export function parseProductSearch(value: string | null): string {
+  return (value ?? '').trim().slice(0, maximumSearchLength)
+}
+
+export function toCustomerProductSort(sort: ProductSortValue): CustomerProductSort {
+  return sort === 'price-desc' ? 1 : 0
+}
+
+export function toCustomerProductStatus(
+  status: ProductStatus | undefined,
+): CustomerProductStatus | undefined {
+  return status === undefined ? undefined : apiProductStatuses[status]
 }

@@ -65,6 +65,7 @@ public sealed class TwilioCustomerOtpSender : ICustomerOtpSender
             return;
         }
 
+
         await MessageResource.CreateAsync(
             to: new PhoneNumber(mobileNumber),
             from: new PhoneNumber(credentials.FromNumber.Trim()),

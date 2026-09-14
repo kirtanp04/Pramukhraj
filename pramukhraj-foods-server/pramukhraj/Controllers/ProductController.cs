@@ -5,6 +5,7 @@ using pramukhraj.DTOs.Product;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
+using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
 
 namespace pramukhraj.Controllers
 {
@@ -241,6 +242,18 @@ namespace pramukhraj.Controllers
         {
             var response = await _serviceManager.ProductService
                 .GetCustomerHomeProductGroupsAsync(cancellationToken);
+
+            return StatusCode(response.StatusCode, response);
+        }
+
+        [HttpPost("customer/get-list")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCustomerProductList(
+            [FromBody] CustomerProductListRequest request,
+            CancellationToken cancellationToken)
+        {
+            var response = await _serviceManager.ProductService
+                .GetCustomerProductListAsync(request, cancellationToken);
 
             return StatusCode(response.StatusCode, response);
         }
