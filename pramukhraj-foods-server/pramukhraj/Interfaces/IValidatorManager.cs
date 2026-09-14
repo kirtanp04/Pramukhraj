@@ -4,6 +4,7 @@ using pramukhraj.DTOs.Coupon;
 using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
+using pramukhraj.DTOs.ProviderCredentials;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static pramukhraj.DTOs.Review.AdminReviewRequestResponse;
@@ -14,8 +15,9 @@ public interface IValidatorManager
 {
     IValidator<RegisterRequest> RegisterRequest { get; }
     IValidator<LoginRequest> LoginRequest { get; }
-    IValidator<CustomerRegisterRequest> CustomerRegisterRequest { get; }
-    IValidator<CustomerLoginRequest> CustomerLoginRequest { get; }
+    IValidator<SendCustomerOtpRequest> SendCustomerOtpRequest { get; }
+    IValidator<VerifyCustomerOtpRequest> VerifyCustomerOtpRequest { get; }
+    IValidator<CompleteCustomerProfileRequest> CompleteCustomerProfileRequest { get; }
     IValidator<AddProductRequest> ProductRequest { get; }
     IValidator<AddProductCategoryRequest> ProductCategoryRequest { get; }
     IValidator<GetProductCategoriesImagesRequest> ProductCategoryImagesRequest { get; }
@@ -27,4 +29,6 @@ public interface IValidatorManager
     IValidator<UpdateAdminReviewRequest> UpdateAdminReviewRequest { get; }
     IValidator<FaqWriteRequest> FaqWriteRequest { get; }
     IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
+    IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
+    IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
 }

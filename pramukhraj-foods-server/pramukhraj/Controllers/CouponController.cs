@@ -8,7 +8,7 @@ namespace pramukhraj.Controllers;
 
 [ApiController]
 [Route("api/admin/coupons")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 [EnableRateLimiting("rate-limit")]
 public sealed class CouponController : ControllerBase
 {

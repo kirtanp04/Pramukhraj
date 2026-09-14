@@ -19,7 +19,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpPost("admin/add")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateReview([FromBody] CreateAdminReviewRequest request,CancellationToken cancellationToken)
         {
             var response = await _serviceManager.ReviewService
@@ -31,7 +31,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpPut("admin/{reviewId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateReview(string reviewId,[FromBody] UpdateAdminReviewRequest request,CancellationToken cancellationToken)
         {
             var response = await _serviceManager.ReviewService
@@ -44,7 +44,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpGet("admin/{reviewId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetReviewById(
             string reviewId,
             CancellationToken cancellationToken)
@@ -56,7 +56,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpGet("admin/get-list/{pageNumber:int?}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetReviewListList([FromRoute] int? pageNumber, CancellationToken cancellationToken)
         {
             var productPage = pageNumber.GetValueOrDefault(0);

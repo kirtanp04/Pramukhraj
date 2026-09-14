@@ -8,7 +8,7 @@
       "applicationUrl": "http://localhost:5204",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
     },
     "https": {
       "commandName": "Project",
@@ -18,7 +18,9 @@
       "applicationUrl": "https://localhost:7136;http://localhost:5037",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      // need to open only on edge browser
+      "browserProfile": "Microsoft Edge"
     }
   }
 }

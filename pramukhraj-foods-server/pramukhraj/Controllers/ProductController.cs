@@ -21,7 +21,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpPost("admin/add")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddNewProduct(
             [FromBody] AddProductRequest request,
             CancellationToken cancellationToken)
@@ -34,7 +34,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpGet("admin/{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetProductById(
             string id,
             CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpGet("admin/get-inventory-list/{pageNumber:int?}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetInventoryProductList([FromRoute] int? pageNumber, CancellationToken cancellationToken)
         {
             var productPage = pageNumber.GetValueOrDefault(0);
@@ -64,7 +64,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpPatch("admin/inventory/variant")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProductVariantInventory(
             [FromBody] UpdateProductVariantInventoryRequest request,
             CancellationToken cancellationToken)
@@ -79,7 +79,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpPut("admin/{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProduct(
             string id,
             [FromBody] AddProductRequest request,
@@ -93,7 +93,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpPost("admin/category/add")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddNewCategory(
             [FromBody] AddProductCategoryRequest request,
             CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpGet("admin/category/{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCategoryById(
             string id,
             CancellationToken cancellationToken)
@@ -119,7 +119,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpPut("admin/category/{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateCategory(
             string id,
             [FromBody] AddProductCategoryRequest request,
@@ -133,7 +133,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpGet("admin/category/get-combo-list")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCategoryComboList(CancellationToken cancellationToken)
         {
             var response = await _serviceManager.ProductService.GetCategoryComboList(cancellationToken);
@@ -142,7 +142,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpGet("admin/get-combo-list")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetProductComboList(CancellationToken cancellationToken)
         {
             var response = await _serviceManager.ProductService.GetProductComboList(cancellationToken);
@@ -151,7 +151,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpGet("admin/get-list/{pageNumber:int?}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetProductList([FromRoute] int? pageNumber, CancellationToken cancellationToken)
         {
             var productPage = pageNumber.GetValueOrDefault(0);
@@ -170,7 +170,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpPost("admin/get-product-images")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetProductImages(
             [FromBody] GetProductImagesRequest request,
             CancellationToken cancellationToken)
@@ -184,7 +184,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpGet("admin/category/get-list/{pageNumber:int?}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCategoryList([FromRoute] int? pageNumber,CancellationToken cancellationToken)
         {
             var categoryPage = pageNumber.GetValueOrDefault(0);
@@ -203,7 +203,7 @@ namespace pramukhraj.Controllers
 
 
         [HttpPost("admin/category/get-category-images")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCategoryImages([FromBody] GetProductCategoriesImagesRequest request, CancellationToken cancellationToken)
         {
             var response = await _serviceManager.ProductService.GetCategoryImagesByCategoryIds(

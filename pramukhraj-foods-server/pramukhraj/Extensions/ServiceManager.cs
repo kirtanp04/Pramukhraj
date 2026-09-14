@@ -25,6 +25,8 @@ namespace pramukhraj.Extensions
 
         private readonly Lazy<IFaqService> _FaqService;
         private readonly Lazy<IHomepageCmsService> _HomepageCmsService;
+        private readonly Lazy<ICustomerOtpSender> _CustomerOtpService;
+        private readonly Lazy<IProviderCredentialService> _ProviderCredentialService;
 
       
         public ServiceManager(
@@ -35,7 +37,9 @@ namespace pramukhraj.Extensions
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IValidatorManager validatorManager,
-            ICacheService cache
+            ICacheService cache,
+            ICustomerOtpSender customerOtpService,
+            IProviderCredentialService providerCredentialService
             )
         {
           
@@ -55,6 +59,9 @@ namespace pramukhraj.Extensions
             _FaqService = new Lazy<IFaqService>(() => new FaqService(_db, loggerFactory.CreateLogger<FaqService>(), httpContextAccessor, validatorManager, cache));
 
             _HomepageCmsService = new Lazy<IHomepageCmsService>(() => new HomepageCmsService(_db, loggerFactory.CreateLogger<HomepageCmsService>(), httpContextAccessor, validatorManager, cache));
+
+            _CustomerOtpService = new Lazy<ICustomerOtpSender>(() => customerOtpService);
+            _ProviderCredentialService = new Lazy<IProviderCredentialService>(() => providerCredentialService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -65,6 +72,8 @@ namespace pramukhraj.Extensions
         public IReviewService ReviewService => _ReviewService.Value;
         public IFaqService FaqService => _FaqService.Value;
         public IHomepageCmsService HomepageCmsService => _HomepageCmsService.Value;
+        public ICustomerOtpSender CustomerOtpService => _CustomerOtpService.Value;
+        public IProviderCredentialService ProviderCredentialService => _ProviderCredentialService.Value;
       
     }
 }

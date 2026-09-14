@@ -16,6 +16,7 @@ namespace pramukhraj.Controllers
     [Route("api/admin")]
     [ApiController]
     [EnableRateLimiting("rate-limit")]
+    [Authorize(Roles = "Admin")]
     public class AdminActions : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -30,7 +31,6 @@ namespace pramukhraj.Controllers
         }
 
         [HttpGet("get-admin-actions")]
-        [Authorize]
         public async Task<IActionResult> GetAdminActions(
         [FromQuery] int pageNumber = 1,
         CancellationToken cancellationToken = default)

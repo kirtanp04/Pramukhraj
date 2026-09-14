@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using pramukhraj.Entities;
 using pramukhraj.Entities.Cart;
 using pramukhraj.Entities.Coupon;
+using pramukhraj.Entities.Customer;
 using pramukhraj.Entities.FAQs;
 using pramukhraj.Entities.Product;
+using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 
 namespace pramukhraj.Database
@@ -19,8 +21,6 @@ namespace pramukhraj.Database
         }
 
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-        public DbSet<Customer> Customers => Set<Customer>();
-
         // --- New E-Commerce DbSets ---
         public DbSet<Product> Products => Set<Product>();
         public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
@@ -36,6 +36,11 @@ namespace pramukhraj.Database
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<FAQs> Faqs => Set<FAQs>();
         public DbSet<HomepageCMS> HomepageCms => Set<HomepageCMS>();
+        public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<CustomerOtpChallenge> CustomerOtpChallenges => Set<CustomerOtpChallenge>();
+        public DbSet<CustomerRefreshTokens> CustomerRefreshTokens => Set<CustomerRefreshTokens>();
+        public DbSet<CustomerAddresses> CustomerAddresses => Set<CustomerAddresses>();
+        public DbSet<ProviderCredentials> ProviderCredentials => Set<ProviderCredentials>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -95,12 +100,17 @@ namespace pramukhraj.Database
 
             builder.Entity<Customer>(b =>
             {
-                b.HasKey(c => c.Id);
-                b.Property(c => c.Email).IsRequired();
-                b.HasIndex(c => c.Email).IsUnique();
-                b.Property(c => c.CreatedAt).HasDefaultValueSql("now()");
-                b.Property(c => c.RowVersion).IsRowVersion();
+                b.Property(c => c.CreatedOn).HasDefaultValueSql("now()");
+                b.Property(c => c.UpdatedOn).HasDefaultValueSql("now()");
+                b.HasMany(c => c.RefreshTokens).WithOne(t => t.Customer)
+                    .HasForeignKey(t => t.CustomerId).OnDelete(DeleteBehavior.Cascade);
+                b.HasMany(c => c.Addresses).WithOne(a => a.Customer)
+                    .HasForeignKey(a => a.CustomerId).OnDelete(DeleteBehavior.Cascade);
             });
+
+            builder.Entity<CustomerOtpChallenge>()
+                .HasOne(x => x.Customer).WithMany()
+                .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
 
             // --- Product Category Configurations ---
             builder.Entity<ProductCategory>(b =>
@@ -476,6 +486,35 @@ namespace pramukhraj.Database
                         "CK_HomepageCms_HeroImageAltText_NotEmpty",
                         "LENGTH(TRIM(\"HeroImageAltText\")) > 0");
                 });
+            });
+
+            builder.Entity<ProviderCredentials>(provider =>
+            {
+                provider.ToTable("ProviderCredentials");
+
+                provider.HasKey(x => x.Id);
+
+                provider.Property(x => x.ProviderKey)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                provider.Property(x => x.EncryptedData)
+                    .HasColumnType("text")
+                    .IsRequired();
+
+                provider.Property(x => x.EncryptionKeyVersion)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                provider.Property(x => x.IsActive)
+                    .HasDefaultValue(true);
+
+                provider.Property(x => x.CreatedOn)
+                    .IsRequired();
+
+                provider.HasIndex(x => x.ProviderKey)
+                    .IsUnique()
+                    .HasDatabaseName("IX_ProviderCredentials_ProviderKey");
             });
         }
     }

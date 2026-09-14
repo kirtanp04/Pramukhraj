@@ -4,8 +4,11 @@ import { Header } from './Header'
 import { Footer } from './Footer'
 import { CartDrawer } from '@/components/storefront/CartDrawer'
 import { CustomerCategoriesProvider } from '@/contexts/CustomerCategoriesProvider'
+import { CustomerAuthModal } from '@/features/customer-auth/components/CustomerAuthModal'
+import { useCustomerSession } from '@/features/customer-auth/hooks/useCustomerSession'
 
 export function StorefrontLayout() {
+  useCustomerSession()
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -20,6 +23,7 @@ export function StorefrontLayout() {
         </main>
         <Footer />
         <CartDrawer />
+        <CustomerAuthModal />
       </div>
     </CustomerCategoriesProvider>
   )

@@ -4,6 +4,7 @@ using pramukhraj.DTOs.Coupon;
 using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
+using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -16,8 +17,9 @@ public sealed class ValidatorManager : IValidatorManager
     public ValidatorManager(
         IValidator<RegisterRequest> registerRequest,
         IValidator<LoginRequest> loginRequest,
-        IValidator<CustomerRegisterRequest> customerRegisterRequest,
-        IValidator<CustomerLoginRequest> customerLoginRequest,
+        IValidator<SendCustomerOtpRequest> sendCustomerOtpRequest,
+        IValidator<VerifyCustomerOtpRequest> verifyCustomerOtpRequest,
+        IValidator<CompleteCustomerProfileRequest> completeCustomerProfileRequest,
         IValidator<AddProductRequest> productRequest,
         IValidator<AddProductCategoryRequest> productCategoryRequest,
         IValidator<GetProductCategoriesImagesRequest> productCategoryImagesRequest,
@@ -28,12 +30,15 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<CreateAdminReviewRequest> createAdminReviewRequest,
         IValidator<UpdateAdminReviewRequest> updateAdminReviewRequest,
         IValidator<FaqWriteRequest> faqWriteRequest,
-        IValidator<HomepageCmsWriteRequest> homepageCmsWriteRequest)
+        IValidator<HomepageCmsWriteRequest> homepageCmsWriteRequest,
+        IValidator<CreateProviderCredentialRequest> createProviderCredentialRequest,
+        IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
-        CustomerRegisterRequest = customerRegisterRequest;
-        CustomerLoginRequest = customerLoginRequest;
+        SendCustomerOtpRequest = sendCustomerOtpRequest;
+        VerifyCustomerOtpRequest = verifyCustomerOtpRequest;
+        CompleteCustomerProfileRequest = completeCustomerProfileRequest;
         ProductRequest = productRequest;
         ProductCategoryRequest = productCategoryRequest;
         ProductCategoryImagesRequest = productCategoryImagesRequest;
@@ -45,12 +50,15 @@ public sealed class ValidatorManager : IValidatorManager
         UpdateAdminReviewRequest = updateAdminReviewRequest;
         FaqWriteRequest = faqWriteRequest;
         HomepageCmsWriteRequest = homepageCmsWriteRequest;
+        CreateProviderCredentialRequest = createProviderCredentialRequest;
+        UpdateProviderCredentialRequest = updateProviderCredentialRequest;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
     public IValidator<LoginRequest> LoginRequest { get; }
-    public IValidator<CustomerRegisterRequest> CustomerRegisterRequest { get; }
-    public IValidator<CustomerLoginRequest> CustomerLoginRequest { get; }
+    public IValidator<SendCustomerOtpRequest> SendCustomerOtpRequest { get; }
+    public IValidator<VerifyCustomerOtpRequest> VerifyCustomerOtpRequest { get; }
+    public IValidator<CompleteCustomerProfileRequest> CompleteCustomerProfileRequest { get; }
     public IValidator<AddProductRequest> ProductRequest { get; }
     public IValidator<AddProductCategoryRequest> ProductCategoryRequest { get; }
     public IValidator<GetProductCategoriesImagesRequest> ProductCategoryImagesRequest { get; }
@@ -62,4 +70,6 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<UpdateAdminReviewRequest> UpdateAdminReviewRequest { get; }
     public IValidator<FaqWriteRequest> FaqWriteRequest { get; }
     public IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
+    public IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
+    public IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
 }
