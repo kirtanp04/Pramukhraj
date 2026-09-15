@@ -86,7 +86,7 @@ export function ProductCard({ product, className, selectedStatus }: ProductCardP
           variant="outline"
           className="mt-2 w-full group-hover:bg-oxblood group-hover:text-ivory group-hover:border-oxblood"
           disabled={product.stock === 0}
-          onClick={() => addToCart(product.id)}
+          onClick={() => void addToCart(product.productVariantId ?? product.id)}
         >
           <ShoppingBag size={14} /> Add to Cart
         </Button>

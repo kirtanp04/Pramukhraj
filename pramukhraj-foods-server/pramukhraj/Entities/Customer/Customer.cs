@@ -83,5 +83,7 @@ namespace pramukhraj.Entities.Customer
         public ICollection<CustomerRefreshTokens> RefreshTokens { get; set; } = [];
 
         public ICollection<CustomerAddresses> Addresses { get; set; } = [];
+
+        public ICollection<Cart.Cart> Carts { get; set; } = [];
     }
 }

@@ -20,6 +20,10 @@ export function setCustomerAccessToken(token: string | null) {
   customerAccessToken = token;
 }
 
+export function hasCustomerAccessToken() {
+  return Boolean(customerAccessToken);
+}
+
 // Get token
 
 function getAccessToken(): string {
@@ -65,18 +69,26 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const customerAuthRequest = config.url?.includes("auth/customer/") ?? false;
-    const customerPublicRequest = customerAuthRequest && ["send-otp", "verify-otp", "refresh-token", "logout"]
-      .some(path => config.url?.includes(path));
-    if (customerAuthRequest && !customerPublicRequest) {
+    const customerCartRequest = config.url?.includes("customer/cart") ?? false;
+    const customerPublicRequest =
+      customerAuthRequest &&
+      ["send-otp", "verify-otp", "refresh-token", "logout"].some(path =>
+        config.url?.includes(path)
+      );
+    if (
+      (customerAuthRequest && !customerPublicRequest) ||
+      customerCartRequest
+    ) {
       const token = customerAccessToken;
       if (token) config.headers["Authorization"] = `Bearer ${token}`;
       config.headers["Time-zone"] = new Date().getTimezoneOffset();
       return config;
     }
-    const isPublicRequest = config.url !== undefined && (
-      config.url.includes("auth/admin") ||
-      config.url.includes("/customer/")
-    );
+    const isPublicRequest =
+      config.url !== undefined &&
+      (config.url.includes("auth/admin") ||
+        config.url.includes("/customer/") ||
+        config.url.includes("guest/"));
     if (isPublicRequest) {
       config.headers["Time-zone"] = new Date().getTimezoneOffset();
       return config;
@@ -100,10 +112,11 @@ async function refreshCustomerToken(): Promise<string> {
   const response = await axios.post<unknown>(
     `${baseUrl}/auth/customer/refresh-token`,
     CryptoService.encrypt("null"),
-    { withCredentials: true, headers: { "Content-Type": "application/json" } },
+    { withCredentials: true, headers: { "Content-Type": "application/json" } }
   );
   const payload = decodeApiResponse<{ accessToken: string }>(response.data);
-  if (!payload.success || !payload.data?.accessToken) throw new Error("Unable to refresh session.");
+  if (!payload.success || !payload.data?.accessToken)
+    throw new Error("Unable to refresh session.");
   setCustomerAccessToken(payload.data.accessToken);
   return payload.data.accessToken;
 }
@@ -112,15 +125,27 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: unknown) => {
     if (!axios.isAxiosError(error)) return Promise.reject(error);
-    const config = error.config as (InternalAxiosRequestConfig & { _customerRetry?: boolean }) | undefined;
+    const config = error.config as
+      | (InternalAxiosRequestConfig & { _customerRetry?: boolean })
+      | undefined;
     const customerToken = customerAccessToken;
-    const usedCustomerToken = Boolean(customerToken && config?.headers?.Authorization === `Bearer ${customerToken}`);
-    if (error.response?.status !== 401 || !config || config._customerRetry || !usedCustomerToken)
+    const usedCustomerToken = Boolean(
+      customerToken &&
+      config?.headers?.Authorization === `Bearer ${customerToken}`
+    );
+    if (
+      error.response?.status !== 401 ||
+      !config ||
+      config._customerRetry ||
+      !usedCustomerToken
+    )
       return Promise.reject(error);
 
     config._customerRetry = true;
     try {
-      customerRefreshPromise ??= refreshCustomerToken().finally(() => { customerRefreshPromise = null; });
+      customerRefreshPromise ??= refreshCustomerToken().finally(() => {
+        customerRefreshPromise = null;
+      });
       const token = await customerRefreshPromise;
       config.headers.Authorization = `Bearer ${token}`;
       return apiClient(config);
@@ -134,14 +159,18 @@ apiClient.interceptors.response.use(
 
 // ─── Error Formatting Helper ──────────────────────────────────────────────────
 
-function isApiResponse(value: unknown): value is ApiResponse<unknown> {
+type DecodedApiResponse<T> = Omit<ApiResponse<T>, "message"> & {
+  message: string | null;
+};
+
+function isApiResponse(value: unknown): value is DecodedApiResponse<unknown> {
   return (
     value !== null &&
     typeof value === "object" &&
     "success" in value &&
     typeof value.success === "boolean" &&
     "message" in value &&
-    typeof value.message === "string" &&
+    (value.message === null || typeof value.message === "string") &&
     "data" in value
   );
 }
@@ -156,7 +185,10 @@ function decodeApiResponse<T>(payload: unknown): ApiResponse<T> {
     throw new Error("The server returned an invalid response.");
   }
 
-  return decoded as ApiResponse<T>;
+  return {
+    ...decoded,
+    message: decoded.message ?? "",
+  } as ApiResponse<T>;
 }
 
 function tryDecodeApiResponse(
@@ -220,14 +252,21 @@ export function getApiErrorStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-export function getApiValidationErrors(error: unknown): Record<string, string[]> {
-  if (error === null || typeof error !== 'object' || !('errors' in error)) return {};
+export function getApiValidationErrors(
+  error: unknown
+): Record<string, string[]> {
+  if (error === null || typeof error !== "object" || !("errors" in error))
+    return {};
   const errors = error.errors;
-  if (errors === null || typeof errors !== 'object' || Array.isArray(errors)) return {};
+  if (errors === null || typeof errors !== "object" || Array.isArray(errors))
+    return {};
   const result: Record<string, string[]> = {};
   for (const [key, value] of Object.entries(errors)) {
-    if (Array.isArray(value)) result[key] = value.filter((item): item is string => typeof item === 'string');
-    else if (typeof value === 'string') result[key] = [value];
+    if (Array.isArray(value))
+      result[key] = value.filter(
+        (item): item is string => typeof item === "string"
+      );
+    else if (typeof value === "string") result[key] = [value];
   }
   return result;
 }
@@ -335,9 +374,15 @@ export async function apiPut<T>(
   url: string,
   body?: unknown,
   config?: AxiosRequestConfig
-): Promise<T | null> {
-  const response = await apiPutResponse<T>(url, body, config);
-  return response.data;
+): Promise<ApiResponse<T | null>> {
+  try {
+    const response = await apiPutResponse<T>(url, body, config);
+    const responsePayload = decodeApiResponse<T>(response.data);
+    parseResponseData(responsePayload);
+    return responsePayload;
+  } catch (error) {
+    handleApiError(error);
+  }
 }
 
 export async function apiPutResponse<T>(

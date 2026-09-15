@@ -12,6 +12,7 @@ export function toCatalogProduct(product: CustomerProductCardResponse): Product 
 
   return {
     id: product.id,
+    productVariantId: product.productVariantId,
     sku: '',
     name: product.name,
     slug: product.slug,

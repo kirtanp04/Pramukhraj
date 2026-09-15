@@ -15,5 +15,6 @@ namespace pramukhraj.Interfaces
         IHomepageCmsService HomepageCmsService { get; }
         ICustomerOtpSender CustomerOtpService { get; }
         IProviderCredentialService ProviderCredentialService { get; }
+        ICartService CartService { get; }
     }
 }

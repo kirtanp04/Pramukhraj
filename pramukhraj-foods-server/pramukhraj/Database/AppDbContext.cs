@@ -170,31 +170,49 @@ namespace pramukhraj.Database
             // --- Cart Configurations ---
             builder.Entity<Cart>(b =>
             {
-                b.Property(c => c.CreatedOn).HasDefaultValueSql("now()");
-                b.Property(c => c.UpdatedOn).HasDefaultValueSql("now()");
+                b.HasKey(cart => cart.Id);
+
+                /*
+                 * PostgreSQL partial unique index:
+                 * one active cart per customer.
+                 */
+                b.HasIndex(cart => cart.CustomerId)
+                    .IsUnique()
+                    .HasFilter("\"Status\" = 1");
+
+                b.HasOne(cart => cart.Customer)
+                    .WithMany(customer => customer.Carts)
+                    .HasForeignKey(cart => cart.CustomerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                b.HasMany(cart => cart.Items)
+                    .WithOne(item => item.Cart)
+                    .HasForeignKey(item => item.CartId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.Property(cart => cart.ConcurrencyStamp)
+                    .IsConcurrencyToken();
             });
 
             // --- Cart Item Configurations ---
             builder.Entity<CartItem>(b =>
             {
-                b.Property(ci => ci.CreatedOn).HasDefaultValueSql("now()");
-                b.Property(ci => ci.UpdatedOn).HasDefaultValueSql("now()");
+                b.HasKey(item => item.Id);
 
-                b.HasOne(ci => ci.Cart)
-                 .WithMany(c => c.Items)
-                 .HasForeignKey(ci => ci.CartId)
-                 .OnDelete(DeleteBehavior.Cascade); // Deleting a cart deletes its items
+                b.Property(item => item.Quantity)
+                    .IsRequired();
 
-                // Prevent deleting a product or variant if it is currently in someone's cart
-                b.HasOne(ci => ci.Product)
-                 .WithMany()
-                 .HasForeignKey(ci => ci.ProductId)
-                 .OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(item => new
+                {
+                    item.CartId,
+                    item.ProductVariantId
+                })
+                .IsUnique();
 
-                b.HasOne(ci => ci.Variant)
-                 .WithMany()
-                 .HasForeignKey(ci => ci.VariantId)
-                 .OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(item => item.ProductVariant)
+                    .WithMany()
+                    .HasForeignKey(item => item.ProductVariantId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // --- Coupon Configurations ---

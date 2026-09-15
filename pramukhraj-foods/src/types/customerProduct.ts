@@ -47,6 +47,7 @@ export interface CustomerProductListResponse {
 
 export interface CustomerProductCardResponse {
   id: string
+  productVariantId: string
   categoryId: string
   categoryName: string
   name: string

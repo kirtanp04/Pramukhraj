@@ -29,6 +29,7 @@ export interface Review {
 
 export interface Product {
   id: string
+  productVariantId?: string
   sku: string
   name: string
   slug: string

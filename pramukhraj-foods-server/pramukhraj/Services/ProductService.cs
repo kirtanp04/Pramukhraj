@@ -3014,6 +3014,12 @@ namespace pramukhraj.Services
                         .Select(product => new CustomerProductCardResponse
                         {
                             Id = product.Id.ToString(),
+                            ProductVariantId = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.Id.ToString())
+                                .FirstOrDefault() ?? string.Empty,
                             CategoryId = product.CategoryId.ToString(),
                             CategoryName = product.Category.Name,
                             Name = product.Name,

@@ -99,6 +99,8 @@ public sealed class CustomerTokenService(
             new Claim(JwtRegisteredClaimNames.Sub, customer.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new Claim(ClaimTypes.Role, "Customer"),
+            new Claim(ClaimTypes.Name, customer.FullName ?? string.Empty),
+            new Claim(ClaimTypes.MobilePhone, customer.MobileNumber),
             new Claim("token_version", customer.TokenVersion.ToString()),
             new Claim("mobile_verified", customer.IsMobileVerified.ToString().ToLowerInvariant())
         };

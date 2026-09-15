@@ -10,6 +10,8 @@ using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
+using pramukhraj.DTOs.Cart.Requests;
+using pramukhraj.Common;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
@@ -145,6 +147,21 @@ namespace pramukhraj.Extensions
                         PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                         AutoReplenishment = true
                     }));
+                options.AddPolicy("cart-mutation", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("guest-cart-resolve", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
             });
 
             // caching setup
@@ -159,6 +176,9 @@ namespace pramukhraj.Extensions
             services.AddSingleton<ICacheService, MemoryCacheService>();
             services.AddScoped<ICustomerTokenService, CustomerTokenService>();
             services.AddScoped<IProviderCredentialService, ProviderCredentialsService>();
+            services.AddHttpContextAccessor();
+            services.AddScoped<CustomerClaimsHelper>();
+            services.AddScoped<ICartService, CartService>();
             services.AddScoped<ICustomerOtpSender, TwilioCustomerOtpSender>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
@@ -191,6 +211,12 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<HomepageCmsWriteRequest>, Validators.HomepageCms.HomepageCmsWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<CreateProviderCredentialRequest>, Validators.ProviderCredentials.CreateProviderCredentialRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateProviderCredentialRequest>, Validators.ProviderCredentials.UpdateProviderCredentialRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<AddCartItemRequest>, Validators.Cart.AddCartItemRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCartItemQuantityRequest>, Validators.Cart.UpdateCartItemQuantityRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<ChangeCartItemVariantRequest>, Validators.Cart.ChangeCartItemVariantRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCartItemSelectionRequest>, Validators.Cart.UpdateCartItemSelectionRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<ResolveGuestCartRequest>, Validators.Cart.ResolveGuestCartRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<MergeGuestCartRequest>, Validators.Cart.MergeGuestCartRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;
