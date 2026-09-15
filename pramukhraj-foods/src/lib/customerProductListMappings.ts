@@ -8,6 +8,7 @@ export function toCatalogListProduct(product: CustomerProductListItemResponse): 
 
   return {
     id: product.productId,
+    productVariantId: product.productVariantId,
     sku: product.productVariantSku || product.sku,
     name: product.productName,
     slug: product.productSlug,

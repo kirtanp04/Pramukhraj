@@ -27,6 +27,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IHomepageCmsService> _HomepageCmsService;
         private readonly Lazy<ICustomerOtpSender> _CustomerOtpService;
         private readonly Lazy<IProviderCredentialService> _ProviderCredentialService;
+        private readonly Lazy<ICartService> _CartService;
 
       
         public ServiceManager(
@@ -39,7 +40,8 @@ namespace pramukhraj.Extensions
             IValidatorManager validatorManager,
             ICacheService cache,
             ICustomerOtpSender customerOtpService,
-            IProviderCredentialService providerCredentialService
+            IProviderCredentialService providerCredentialService,
+            ICartService cartService
             )
         {
           
@@ -62,6 +64,7 @@ namespace pramukhraj.Extensions
 
             _CustomerOtpService = new Lazy<ICustomerOtpSender>(() => customerOtpService);
             _ProviderCredentialService = new Lazy<IProviderCredentialService>(() => providerCredentialService);
+            _CartService = new Lazy<ICartService>(() => cartService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -74,6 +77,7 @@ namespace pramukhraj.Extensions
         public IHomepageCmsService HomepageCmsService => _HomepageCmsService.Value;
         public ICustomerOtpSender CustomerOtpService => _CustomerOtpService.Value;
         public IProviderCredentialService ProviderCredentialService => _ProviderCredentialService.Value;
+        public ICartService CartService => _CartService.Value;
       
     }
 }

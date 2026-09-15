@@ -25,6 +25,16 @@ const CustomerApiPaths = {
   homepageCms: {
     getHero: "homepage-cms/customer/hero",
   },
+  cart: {
+    get: "customer/cart",
+    items: "customer/cart/items",
+    item: (id: string) => `customer/cart/items/${encodeURIComponent(id)}`,
+    selection: (id: string) =>
+      `customer/cart/items/${encodeURIComponent(id)}/selection`,
+    variant: (id: string) =>
+      `customer/cart/items/${encodeURIComponent(id)}/variant`,
+    merge: "customer/cart/merge",
+  },
 };
 
 const AdminApiPaths = {
@@ -41,10 +51,10 @@ const AdminApiPaths = {
     add: "products/admin/add",
     getById: (id: string) => `products/admin/${encodeURIComponent(id)}`,
     update: (id: string) => `products/admin/${encodeURIComponent(id)}`,
-     getAdminList: (pageNumber: number) =>
+    getAdminList: (pageNumber: number) =>
       "products/admin/get-list/" + pageNumber,
-     getImagesListByIds: "products/admin/get-product-images",
-     getComboList: "products/admin/get-combo-list",
+    getImagesListByIds: "products/admin/get-product-images",
+    getComboList: "products/admin/get-combo-list",
   },
   inventory: {
     getAdminList: (pageNumber: number) =>
@@ -54,7 +64,8 @@ const AdminApiPaths = {
   },
   productCategory: {
     add: "products/admin/category/add",
-    getById: (id: string) => `products/admin/category/${encodeURIComponent(id)}`,
+    getById: (id: string) =>
+      `products/admin/category/${encodeURIComponent(id)}`,
     update: (id: string) => `products/admin/category/${encodeURIComponent(id)}`,
     getComboList: "products/admin/category/get-combo-list",
     getAdminList: (pageNumber: number) =>
@@ -72,8 +83,7 @@ const AdminApiPaths = {
     create: "review/admin/add",
     getById: (id: string) => `review/admin/${encodeURIComponent(id)}`,
     update: (id: string) => `review/admin/${encodeURIComponent(id)}`,
-    getList: (pageNumber: number) =>
-      `review/admin/get-list/${pageNumber}`,
+    getList: (pageNumber: number) => `review/admin/get-list/${pageNumber}`,
   },
   faq: {
     create: "admin/faqs",
@@ -87,8 +97,10 @@ const AdminApiPaths = {
   },
   providerCredentials: {
     create: "admin/provider-credentials",
-    getByKey: (providerKey: string) => `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
-    update: (providerKey: string) => `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
+    getByKey: (providerKey: string) =>
+      `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
+    update: (providerKey: string) =>
+      `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
   },
   cacheMetrics: {
     get: "admin/cache-metrics",
@@ -101,4 +113,5 @@ const AdminApiPaths = {
 export const ApiPath = {
   admin: AdminApiPaths,
   customer: CustomerApiPaths,
+  guest: { cart: { resolve: "guest/cart/resolve" } },
 };

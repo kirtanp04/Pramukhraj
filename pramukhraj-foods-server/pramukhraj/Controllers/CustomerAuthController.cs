@@ -82,16 +82,16 @@ public sealed class CustomerAuthController(
         db.CustomerOtpChallenges.Add(challenge);
         await db.SaveChangesAsync(cancellationToken);
 
-        try
-        {
-            await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
-        }
-        catch
-        {
-            db.CustomerOtpChallenges.Remove(challenge);
-            await db.SaveChangesAsync(cancellationToken);
-            throw;
-        }
+        //try
+        //{
+        //    await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
+        //}
+        //catch
+        //{
+        //    db.CustomerOtpChallenges.Remove(challenge);
+        //    await db.SaveChangesAsync(cancellationToken);
+        //    throw;
+        //}
 
         return Ok(ApiResponse<SendCustomerOtpResponse>.Ok(
             new(challenge.Id, _otp.ExpirationMinutes * 60, _otp.ResendCooldownSeconds),

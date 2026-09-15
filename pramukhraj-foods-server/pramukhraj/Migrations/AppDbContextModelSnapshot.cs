@@ -295,32 +295,44 @@ namespace pramukhraj.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CreatedOn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SessionId")
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ConvertedToOrderOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ExpiresOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastMergeRequestId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedOn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("now()");
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SessionId");
+                    b.HasIndex("CustomerId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 1");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("Status", "UpdatedOn");
 
                     b.ToTable("Carts");
                 });
@@ -335,33 +347,27 @@ namespace pramukhraj.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("now()");
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("ProductId")
+                    b.Property<bool>("IsSelected")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedOn")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<Guid?>("VariantId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CartId");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("ProductVariantId");
 
-                    b.HasIndex("VariantId");
-
-                    b.HasIndex("CartId", "ProductId", "VariantId")
+                    b.HasIndex("CartId", "ProductVariantId")
                         .IsUnique();
 
                     b.ToTable("CartItems");
@@ -1559,6 +1565,17 @@ namespace pramukhraj.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("pramukhraj.Entities.Cart.Cart", b =>
+                {
+                    b.HasOne("pramukhraj.Entities.Customer.Customer", "Customer")
+                        .WithMany("Carts")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("pramukhraj.Entities.Cart.CartItem", b =>
                 {
                     b.HasOne("pramukhraj.Entities.Cart.Cart", "Cart")
@@ -1567,22 +1584,15 @@ namespace pramukhraj.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("pramukhraj.Entities.Product.Product", "Product")
+                    b.HasOne("pramukhraj.Entities.Product.ProductVariant", "ProductVariant")
                         .WithMany()
-                        .HasForeignKey("ProductId")
+                        .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("pramukhraj.Entities.Product.ProductVariant", "Variant")
-                        .WithMany()
-                        .HasForeignKey("VariantId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Cart");
 
-                    b.Navigation("Product");
-
-                    b.Navigation("Variant");
+                    b.Navigation("ProductVariant");
                 });
 
             modelBuilder.Entity("pramukhraj.Entities.Coupon.CouponScope", b =>
@@ -1747,6 +1757,8 @@ namespace pramukhraj.Migrations
             modelBuilder.Entity("pramukhraj.Entities.Customer.Customer", b =>
                 {
                     b.Navigation("Addresses");
+
+                    b.Navigation("Carts");
 
                     b.Navigation("RefreshTokens");
                 });

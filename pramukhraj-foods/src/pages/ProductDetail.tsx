@@ -108,10 +108,10 @@ export function ProductDetail() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <QuantityStepper value={quantity} onChange={setQuantity} max={Math.max(1, product.stock)} />
-            <Button size="lg" disabled={product.stock === 0} onClick={() => addToCart(product.id, quantity)}>
+            <Button size="lg" disabled={product.stock === 0} onClick={() => void addToCart(product.productVariantId ?? product.id, quantity)}>
               <ShoppingBag size={16} /> Add to Cart
             </Button>
-            <Button size="lg" variant="secondary" disabled={product.stock === 0} onClick={() => addToCart(product.id, quantity)}>
+            <Button size="lg" variant="secondary" disabled={product.stock === 0} onClick={() => void addToCart(product.productVariantId ?? product.id, quantity)}>
               Buy Now
             </Button>
           </div>

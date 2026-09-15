@@ -9,6 +9,7 @@ import { getApiErrorMessage } from "@/lib/apiClient";
 import { mobileSchema, otpSchema, profileSchema } from "../schemas/authSchemas";
 import { customerAuthApi } from "../services/customerAuthApi";
 import { useCustomerAuthStore } from "../store/customerAuthStore";
+import { useCartStore } from "@/features/cart/store/cart.store";
 
 type AuthStep = "mobile" | "otp" | "profile";
 
@@ -74,6 +75,7 @@ export function CustomerAuthModal() {
       const result = await customerAuthApi.verifyOtp(challengeId, mobileNumber, parsed.data.code);
       if (!result) throw new Error("Unable to verify code.");
       acceptAuth(result);
+      await useCartStore.getState().mergeGuestCart();
       if (result.isNewCustomer && !result.customer.isProfileCompleted) setStep("profile");
       else finishClose();
     } catch (requestError) { setError(getApiErrorMessage(requestError)); }

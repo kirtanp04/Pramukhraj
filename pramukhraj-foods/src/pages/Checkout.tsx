@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CreditCard, Smartphone, Landmark, Wallet, Truck, MapPin } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
-import { products } from '@/mock'
 import { formatINR, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 
@@ -18,16 +17,15 @@ export function Checkout() {
   const [step, setStep] = useState(0)
   const [payment, setPayment] = useState('upi')
   const [slot, setSlot] = useState('standard')
-  const lines = useCartStore((s) => s.lines)
+  const cart = useCartStore((s) => s.cart)
   const clearCart = useCartStore((s) => s.clearCart)
+  const loadCart = useCartStore((s) => s.loadCart)
   const navigate = useNavigate()
 
-  const items = useMemo(
-    () => lines.map((l) => ({ product: products.find((p) => p.id === l.productId), quantity: l.quantity }))
-      .filter((i): i is { product: (typeof products)[number]; quantity: number } => !!i.product),
-    [lines],
-  )
-  const subtotal = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
+  useEffect(() => { void loadCart() }, [loadCart])
+
+  const items = cart?.items.filter(item => item.isSelected && item.isAvailable) ?? []
+  const subtotal = cart?.subtotal ?? 0
   const shipping = slot === 'express' ? 79 : subtotal > 499 ? 0 : 49
   const tax = Math.round(subtotal * 0.05)
   const total = subtotal + shipping + tax
@@ -43,7 +41,7 @@ export function Checkout() {
   }
 
   function placeOrder() {
-    clearCart()
+    void clearCart()
     navigate('/order-confirmation')
   }
 
@@ -129,14 +127,14 @@ export function Checkout() {
         <aside className="h-fit space-y-4 rounded-card border border-ink/10 bg-ivory-dim p-5">
           <h2 className="font-display text-lg">Order Summary</h2>
           <div className="max-h-64 space-y-3 overflow-y-auto">
-            {items.map(({ product, quantity }) => (
-              <div key={product.id} className="flex items-center gap-3">
-                <img src={product.thumbnail} alt="" className="h-12 w-12 rounded-lg object-cover" />
+            {items.map(item => (
+              <div key={item.productVariantId} className="flex items-center gap-3">
+                <img src={item.imageUrl || '/favicon.ico'} alt="" className="h-12 w-12 rounded-lg object-cover" />
                 <div className="flex-1">
-                  <p className="line-clamp-1 text-sm">{product.name}</p>
-                  <p className="text-xs text-ink-soft">Qty {quantity}</p>
+                  <p className="line-clamp-1 text-sm">{item.productName}</p>
+                  <p className="text-xs text-ink-soft">Qty {item.quantity}</p>
                 </div>
-                <span className="font-mono text-sm">{formatINR(product.price * quantity)}</span>
+                <span className="font-mono text-sm">{formatINR(item.lineSubtotal)}</span>
               </div>
             ))}
           </div>
