@@ -114,14 +114,14 @@ export function MessageDialog({
                   </motion.span>
 
                   {/* Title */}
-                  <Dialog.Title className="font-display text-xl text-ink">
+                  <Dialog.Title className="font-display text-xl! text-ink">
                     {displayTitle}
                   </Dialog.Title>
 
                   {/* Message */}
                   <Dialog.Description
                     id="msg-dialog-desc"
-                    className="mt-2 text-sm leading-relaxed text-ink-soft"
+                    className="mt-2 text-sm! leading-relaxed text-ink-soft"
                   >
                     {message}
                   </Dialog.Description>
@@ -131,7 +131,7 @@ export function MessageDialog({
                     type="button"
                     onClick={handleAction}
                     className={cn(
-                      'mt-6 w-full rounded-full px-5 py-2.5 text-sm font-medium transition-colors',
+                      'mt-6 w-full rounded-full px-5 py-2.5 text-sm! font-medium transition-colors',
                       buttonClass,
                     )}
                   >

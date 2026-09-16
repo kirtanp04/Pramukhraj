@@ -27,6 +27,8 @@ interface DataTableProps<T> {
   serverPagination?: ServerPaginationOptions
   hideFooter?: boolean
   initialSorting?: SortingState
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }
 
 export function DataTable<T>({
@@ -41,20 +43,24 @@ export function DataTable<T>({
   serverPagination,
   hideFooter = false,
   initialSorting = [],
+  searchValue,
+  onSearchChange,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting)
   const [globalFilter, setGlobalFilter] = useState('')
 
+  const effectiveGlobalFilter = searchValue ?? globalFilter
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter: effectiveGlobalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualFiltering: onSearchChange !== undefined,
     initialState: { pagination: { pageSize } },
   })
   const filteredRowCount = table.getFilteredRowModel().rows.length
@@ -72,20 +78,20 @@ export function DataTable<T>({
         <div className="flex min-w-52 flex-1 items-center gap-2 rounded-full border border-ink/15 bg-ivory-dim px-3 py-1.5">
           <Search size={14} className="text-ink-soft" />
           <input
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={effectiveGlobalFilter}
+            onChange={(e) => onSearchChange ? onSearchChange(e.target.value) : setGlobalFilter(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft/60"
+            className="w-full bg-transparent text-sm! outline-none placeholder:text-ink-soft/60"
           />
         </div>
         {toolbar}
       </div>
 
       <div className="max-w-full overflow-x-auto overscroll-x-contain">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm!">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-ink/10 text-left text-xs uppercase tracking-wide text-ink-soft">
+              <tr key={hg.id} className="border-b border-ink/10 text-left text-xs! uppercase tracking-wide text-ink-soft">
                 {hg.headers.map((header) => (
                   <th key={header.id} className="whitespace-nowrap px-4 py-3 font-medium">
                     {header.isPlaceholder ? null : (
@@ -131,7 +137,7 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {!hideFooter && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs text-ink-soft">
+      {!hideFooter && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-4 py-3 text-xs! text-ink-soft">
         <span className="flex items-center gap-2">
           {serverPagination
             ? `Page ${serverPagination.page} · ${table.getFilteredRowModel().rows.length} results on this page`

@@ -29,6 +29,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IProviderCredentialService> _ProviderCredentialService;
         private readonly Lazy<ICartService> _CartService;
         private readonly Lazy<IAdminMonitoringService> _MonitoringService;
+        private readonly Lazy<IAdminCustomerService> _AdminCustomerService;
 
       
         public ServiceManager(
@@ -43,7 +44,8 @@ namespace pramukhraj.Extensions
             ICustomerOtpSender customerOtpService,
             IProviderCredentialService providerCredentialService,
             ICartService cartService,
-            IAdminMonitoringService monitoringService
+            IAdminMonitoringService monitoringService,
+            IAdminCustomerService adminCustomerService
             )
         {
           
@@ -68,6 +70,7 @@ namespace pramukhraj.Extensions
             _ProviderCredentialService = new Lazy<IProviderCredentialService>(() => providerCredentialService);
             _CartService = new Lazy<ICartService>(() => cartService);
             _MonitoringService = new Lazy<IAdminMonitoringService>(() => monitoringService);
+            _AdminCustomerService = new Lazy<IAdminCustomerService>(() => adminCustomerService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -82,6 +85,7 @@ namespace pramukhraj.Extensions
         public IProviderCredentialService ProviderCredentialService => _ProviderCredentialService.Value;
         public ICartService CartService => _CartService.Value;
         public IAdminMonitoringService MonitoringService => _MonitoringService.Value;
+        public IAdminCustomerService AdminCustomerService => _AdminCustomerService.Value;
       
     }
 }
