@@ -31,7 +31,6 @@ const columns = [
     title: 'Company',
     links: [
       { label: 'About PramukhRaj', to: '/about' },
-      { label: 'Blog', to: '/blog' },
       { label: 'Careers', to: '/about' },
       { label: 'Sustainability', to: '/about' },
     ],

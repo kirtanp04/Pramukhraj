@@ -39,7 +39,6 @@ const OrderConfirmation = lazyNamed(
 const TrackOrder = lazyNamed(() => import("@/pages/TrackOrder"), "TrackOrder");
 const Help = lazyNamed(() => import("@/pages/Help"), "Help");
 const About = lazyNamed(() => import("@/pages/About"), "About");
-const BlogPost = lazyNamed(() => import("@/pages/BlogPost"), "BlogPost");
 const NotFound = lazyNamed(() => import("@/pages/NotFound"), "NotFound");
 const AccountDashboard = lazyNamed(
   () => import("@/pages/account/AccountDashboard"),
@@ -187,14 +186,6 @@ const ShiprocketCredentialsPage = lazyNamed(
   () => import("@/pages/admin/provider-credentials/ShiprocketCredentialsPage"),
   "ShiprocketCredentialsPage"
 );
-const AdminBlog = lazyNamed(
-  () => import("@/pages/admin/AdminBlog"),
-  "AdminBlog"
-);
-const AdminMedia = lazyNamed(
-  () => import("@/pages/admin/AdminMedia"),
-  "AdminMedia"
-);
 const AdminEmailTemplates = lazyNamed(
   () => import("@/pages/admin/AdminEmailTemplates"),
   "AdminEmailTemplates"
@@ -257,7 +248,6 @@ export function AppRoutes() {
         { path: "/track-order", element: lazyElement(TrackOrder) },
         { path: "/help", element: lazyElement(Help) },
         { path: "/about", element: lazyElement(About) },
-        { path: "/blog/:slug", element: lazyElement(BlogPost) },
         { path: "/login", element: <AuthEntryRedirect /> },
         { path: "/register", element: <AuthEntryRedirect /> },
         { path: "/otp-login", element: <AuthEntryRedirect /> },
@@ -365,8 +355,6 @@ export function AppRoutes() {
             { path: "provider-credentials/twilio", element: lazyElement(TwilioCredentialsPage) },
             { path: "provider-credentials/razorpay", element: lazyElement(RazorpayCredentialsPage) },
             { path: "provider-credentials/shiprocket", element: lazyElement(ShiprocketCredentialsPage) },
-            { path: "blog", element: lazyElement(AdminBlog) },
-            { path: "media", element: lazyElement(AdminMedia) },
             {
               path: "email-templates",
               element: lazyElement(AdminEmailTemplates),
