@@ -9,6 +9,8 @@ using pramukhraj.Configurations;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Auth;
 using pramukhraj.Entities.Customer;
+using pramukhraj.DTOs.Notifications;
+using pramukhraj.Entities.Notifications;
 using pramukhraj.Interfaces;
 using System.Data;
 using System.Security.Claims;
@@ -26,7 +28,8 @@ public sealed class CustomerAuthController(
     IOptions<CustomerOtpSettings> otpOptions,
     IOptions<JwtSettings> jwtOptions,
     IWebHostEnvironment environment,
-    IValidatorManager validatorManager) : ControllerBase
+    IValidatorManager validatorManager,
+    IAdminNotificationService adminNotifications) : ControllerBase
 {
     private const string RefreshCookieName = "pramukhraj_customer_refresh";
     private readonly CustomerOtpSettings _otp = otpOptions.Value;
@@ -106,11 +109,13 @@ public sealed class CustomerAuthController(
         if (invalid is not null) return invalid;
 
         string? refreshToken = null;
+        AdminNotificationResponse? notificationToPublish = null;
         var strategy = db.Database.CreateExecutionStrategy();
         var result = await strategy.ExecuteAsync(async () =>
         {
             db.ChangeTracker.Clear();
             refreshToken = null;
+            notificationToPublish = null;
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var mobile = request.MobileNumber.Trim();
             var challenge = await db.CustomerOtpChallenges.SingleOrDefaultAsync(
@@ -163,7 +168,22 @@ public sealed class CustomerAuthController(
             }
 
             var tokens = await tokenService.IssueAsync(customer, request.DeviceName, ClientIp(), cancellationToken);
+            if (isNewCustomer)
+            {
+                notificationToPublish = await adminNotifications.CreateAsync(
+                    new CreateAdminNotification(
+                        AdminNotificationTypes.CustomerRegistered,
+                        NotificationSeverities.Info,
+                        "New customer registered",
+                        $"A new customer registered with mobile number {customer.MobileNumber}.",
+                        "Customer",
+                        customer.Id.ToString(),
+                        "/admin/customers"),
+                    publishImmediately: false,
+                    cancellationToken);
+            }
             await transaction.CommitAsync(cancellationToken);
+            if (notificationToPublish is not null) await adminNotifications.PublishAsync(notificationToPublish, cancellationToken);
             refreshToken = tokens.RefreshToken;
             return (IActionResult)Ok(ApiResponse<CustomerAuthResponse>.Ok(
                 new(tokens.AccessToken, tokens.ExpiresInSeconds, isNewCustomer, ToResponse(customer)),

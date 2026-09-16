@@ -42,6 +42,7 @@ const AdminApiPaths = {
     // I have removed the invisible character from the line below:
     login: "auth/admin/login",
     refresh: "auth/admin/refresh",
+    logout: "auth/admin/logout",
   },
   adminAction: {
     getList: (pageNumber: number) =>
@@ -111,6 +112,13 @@ const AdminApiPaths = {
   monitoring: {
     background: "admin/monitoring/background",
     server: "admin/monitoring/server",
+  },
+  notifications: {
+    list: (pageNumber: number, pageSize: number, onlyUnacknowledged = false) =>
+      `admin/notifications?pageNumber=${pageNumber}&pageSize=${pageSize}&onlyUnacknowledged=${onlyUnacknowledged}`,
+    acknowledge: (id: string) => `admin/notifications/${encodeURIComponent(id)}/acknowledge`,
+    acknowledgeAll: 'admin/notifications/acknowledge-all',
+    stream: 'admin/notifications/stream',
   },
 };
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,6 +20,7 @@ using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
 using System.Text;
+using System.Net;
 using System.Threading.RateLimiting;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -35,6 +37,16 @@ namespace pramukhraj.Extensions
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardLimit = 1;
+                foreach (var value in configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+                {
+                    if (IPAddress.TryParse(value, out var address)) options.KnownProxies.Add(address);
+                }
+            });
+
             services.AddOptions<BackgroundServiceOptions>()
                 .Bind(configuration.GetSection(BackgroundServiceOptions.SectionName))
                 .ValidateOnStart();
@@ -179,6 +191,17 @@ namespace pramukhraj.Extensions
                         PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                         AutoReplenishment = true
                     }));
+                options.AddPolicy("admin-notification-stream", context => RateLimitPartition.GetConcurrencyLimiter(
+                    context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? context.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
+                        ?? context.Connection.RemoteIpAddress?.ToString()
+                        ?? "unknown",
+                    _ => new ConcurrencyLimiterOptions
+                    {
+                        PermitLimit = 2,
+                        QueueLimit = 0,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                    }));
             });
 
             // caching setup
@@ -197,6 +220,11 @@ namespace pramukhraj.Extensions
             services.AddScoped<CustomerClaimsHelper>();
             services.AddScoped<ICartService, CartService>();
             services.AddScoped<IAdminMonitoringService, AdminMonitoringService>();
+            services.AddSingleton<AdminNotificationStreamHub>();
+            services.AddSingleton<PostgresAdminNotificationBackplane>();
+            services.AddSingleton<IAdminNotificationBackplane>(provider => provider.GetRequiredService<PostgresAdminNotificationBackplane>());
+            services.AddHostedService(provider => provider.GetRequiredService<PostgresAdminNotificationBackplane>());
+            services.AddScoped<IAdminNotificationService, AdminNotificationService>();
             services.AddScoped<ICustomerOtpSender, TwilioCustomerOtpSender>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();

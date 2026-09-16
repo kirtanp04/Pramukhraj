@@ -7,16 +7,16 @@ export interface AdminLoginPayload {
   password: string;
 }
 
-export interface RefreshPayload {
-  refreshToken: string;
-}
-
 export const adminAuthApi = {
   login(payload: AdminLoginPayload) {
     return apiPost<AdminUser>(ApiPath.admin.auth.login, payload);
   },
 
-  refresh(payload: RefreshPayload) {
-    return apiPost<AdminUser>(ApiPath.admin.auth.refresh, payload);
+  refresh() {
+    return apiPost<AdminUser>(ApiPath.admin.auth.refresh);
+  },
+
+  logout() {
+    return apiPost<unknown>(ApiPath.admin.auth.logout);
   },
 };

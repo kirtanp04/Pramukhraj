@@ -7,6 +7,7 @@ using pramukhraj.Entities.Customer;
 using pramukhraj.Entities.FAQs;
 using pramukhraj.Entities.Product;
 using pramukhraj.Entities.ProviderCredentials;
+using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 
 namespace pramukhraj.Database
@@ -41,6 +42,8 @@ namespace pramukhraj.Database
         public DbSet<CustomerRefreshTokens> CustomerRefreshTokens => Set<CustomerRefreshTokens>();
         public DbSet<CustomerAddresses> CustomerAddresses => Set<CustomerAddresses>();
         public DbSet<ProviderCredentials> ProviderCredentials => Set<ProviderCredentials>();
+        public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
+        public DbSet<AdminNotificationRecipient> AdminNotificationRecipients => Set<AdminNotificationRecipient>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -60,6 +63,31 @@ namespace pramukhraj.Database
                 b.HasIndex(t => t.Token).IsUnique();
                 b.Property(t => t.CreatedAt).HasDefaultValueSql("now()");
                 b.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<AdminNotification>(entity =>
+            {
+                entity.HasKey(item => item.Id);
+                entity.Property(item => item.Type).HasMaxLength(100).IsRequired();
+                entity.Property(item => item.Severity).HasMaxLength(30).IsRequired();
+                entity.Property(item => item.Title).HasMaxLength(200).IsRequired();
+                entity.Property(item => item.Message).HasMaxLength(1000).IsRequired();
+                entity.Property(item => item.EntityType).HasMaxLength(100);
+                entity.Property(item => item.EntityId).HasMaxLength(100);
+                entity.Property(item => item.ActionUrl).HasMaxLength(500);
+                entity.HasIndex(item => item.CreatedOn);
+                entity.HasIndex(item => new { item.Type, item.CreatedOn });
+            });
+
+            builder.Entity<AdminNotificationRecipient>(entity =>
+            {
+                entity.HasKey(item => new { item.NotificationId, item.AdminId });
+                entity.Property(item => item.AdminId).HasMaxLength(450).IsRequired();
+                entity.HasIndex(item => new { item.AdminId, item.AcknowledgedOn, item.NotificationId });
+                entity.HasOne(item => item.Notification).WithMany(item => item.Recipients)
+                    .HasForeignKey(item => item.NotificationId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.AdminId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // --- Admin Actions ---

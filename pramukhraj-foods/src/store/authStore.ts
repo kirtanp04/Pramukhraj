@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { initialAuditLog } from "@/mock/auditLog";
 import type { AdminUser, AuditLogEntry } from "@/types/admin";
 import { adminAuthApi } from "@/services/authApi";
+import { setAdminAccessToken } from "@/lib/apiClient";
 
 interface AuthState {
   user: AdminUser | null;
@@ -15,9 +15,12 @@ interface AuthState {
   refresh: () => Promise<boolean>;
 }
 
+if (typeof window !== "undefined") {
+  localStorage.removeItem("pramukhraj-admin-auth");
+}
+
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       user: null,
       isAuthenticated: false,
       auditLog: initialAuditLog,
@@ -34,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
             throw new Error("User response not found");
           }
 
+          setAdminAccessToken(res.accessToken);
           set({
             user: res,
             isAuthenticated: true,
@@ -42,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
 
           return true;
         } catch (error: any) {
+          setAdminAccessToken(null);
           set({
             loginError: error.message,
             isAuthenticated: false,
@@ -54,30 +59,13 @@ export const useAuthStore = create<AuthState>()(
 
       refresh: async () => {
         try {
-          const user = get().user;
-
-          if (
-            user === null ||
-            user.refreshToken === undefined ||
-            user.refreshToken === null ||
-            user.refreshToken === ""
-          ) {
-            set({
-              loginError: "Refresh tooken not found",
-              isAuthenticated: false,
-              user: null,
-            });
-
-            return false;
-          }
-          const res = await adminAuthApi.refresh({
-            refreshToken: user.refreshToken,
-          });
+          const res = await adminAuthApi.refresh();
 
           if (res === null) {
             throw new Error("User response not found");
           }
 
+          setAdminAccessToken(res.accessToken);
           set({
             user: res,
             isAuthenticated: true,
@@ -86,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
 
           return true;
         } catch (error: any) {
+          setAdminAccessToken(null);
           set({
             loginError: error.message,
             isAuthenticated: false,
@@ -98,6 +87,8 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         const userName = get().user?.username;
+        setAdminAccessToken(null);
+        void adminAuthApi.logout();
 
         set({
           user: null,
@@ -127,18 +118,5 @@ export const useAuthStore = create<AuthState>()(
           ],
         });
       },
-    }),
-    {
-      name: "pramukhraj-admin-auth",
-      version: 3,
-      partialize: state => ({
-        user: state.user
-          ? {
-              accessToken: state.user.accessToken,
-              refreshToken: state.user.refreshToken,
-            }
-          : null,
-      }),
-    }
-  )
+    })
 );

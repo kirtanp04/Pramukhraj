@@ -7,12 +7,12 @@ export default function AdminAuthWrapper({
   children: ReactNode;
 }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { refresh } = useAuthStore();
+  const refresh = useAuthStore(state => state.refresh);
 
   useEffect(() => {
     refresh().finally(() => {
       setIsLoading(false);
     });
-  }, []);
+  }, [refresh]);
   return !isLoading ? children : null;
 }

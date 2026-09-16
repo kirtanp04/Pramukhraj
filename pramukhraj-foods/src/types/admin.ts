@@ -1,6 +1,5 @@
 export interface AdminUser {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number; // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
   userId: string;
   email: string;

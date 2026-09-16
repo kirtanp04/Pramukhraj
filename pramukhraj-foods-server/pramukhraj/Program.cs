@@ -29,6 +29,19 @@ else
 
 builder.Services.AddApplication();
 
+if (builder.Environment.IsProduction())
+{
+    var productionOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    if (productionOrigins.Length == 0 || productionOrigins.Any(origin =>
+            !Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+            || uri.Scheme != Uri.UriSchemeHttps
+            || uri.IsLoopback))
+    {
+        throw new InvalidOperationException(
+            "Production Cors:AllowedOrigins must contain only explicit, non-loopback HTTPS origins.");
+    }
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -36,12 +49,8 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.UseStaticFiles();
-
-
 if (app.Environment.IsDevelopment())
 {
-    
     app.MapOpenApi();
 
     app.MapScalarApiReference(options =>
@@ -53,85 +62,76 @@ if (app.Environment.IsDevelopment())
     {
         try
         {
-            var url = app.Urls.FirstOrDefault() ?? "https://localhost:7136";
-            var browse = url.TrimEnd('/') + "/scalar/v1";
+            // Pick HTTPS first, otherwise fallback to the first bound URL or default
+            var url = app.Urls.FirstOrDefault(u => u.StartsWith("https://"))
+                      ?? app.Urls.FirstOrDefault()
+                      ?? "https://localhost:7136";
 
-            // PID file to remember browser process launched by this app
-            var pidFile = Path.Combine(AppContext.BaseDirectory, "scalar_browser.pid");
+            var targetUrl = $"{url.TrimEnd('/')}/scalar/v1";
 
-            // If PID file exists, try to kill previous process launched by this app
+            // Launch explicitly in Microsoft Edge using Windows shell resolution
             try
             {
-                if (File.Exists(pidFile))
+                Process.Start(new ProcessStartInfo
                 {
-                    var txt = File.ReadAllText(pidFile);
-                    if (int.TryParse(txt, out var oldPid))
-                    {
-                        try
-                        {
-                            var oldProc = Process.GetProcessById(oldPid);
-                            if (!oldProc.HasExited)
-                            {
-                                oldProc.Kill(true);
-                                oldProc.WaitForExit(2000);
-                            }
-                        }
-                        catch
-                        {
-                            // ignore any errors when killing
-                        }
-                    }
-
-                    try { File.Delete(pidFile); } catch { }
-                }
+                    FileName = "msedge",
+                    Arguments = targetUrl,
+                    UseShellExecute = true // Required for Windows App Path resolution without full path
+                });
             }
             catch
             {
-                // ignore
-            }
+                // Fallback: Locate full msedge path directly if shell alias fails
+                var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
-            // Try to start Microsoft Edge specifically
-            try
-            {
-                var psi = new ProcessStartInfo
+                var edgePath = Path.Combine(programFilesX86, @"Microsoft\Edge\Application\msedge.exe");
+                if (!File.Exists(edgePath))
                 {
-                    FileName = "msedge",
-                    Arguments = browse,
-                    UseShellExecute = false
-                };
+                    edgePath = Path.Combine(programFiles, @"Microsoft\Edge\Application\msedge.exe");
+                }
 
-                var proc = Process.Start(psi);
-                if (proc != null)
+                if (File.Exists(edgePath))
                 {
-                    try { File.WriteAllText(pidFile, proc.Id.ToString()); } catch { }
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = edgePath,
+                        Arguments = targetUrl,
+                        UseShellExecute = true
+                    });
                 }
                 else
                 {
-                    // Fallback: use protocol which launches default browser (will not guarantee Edge)
-                    Process.Start(new ProcessStartInfo { FileName = browse, UseShellExecute = true });
+                    // Final fallback: System default browser
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = targetUrl,
+                        UseShellExecute = true
+                    });
                 }
-            }
-            catch
-            {
-                // final fallback: use default shell to open url
-                try { Process.Start(new ProcessStartInfo { FileName = browse, UseShellExecute = true }); } catch { }
             }
         }
         catch
         {
-
+            // Suppress background launch errors to prevent application startup failure
         }
     });
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseForwardedHeaders();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseCors("EnterpriseCorsPolicy");
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // EncryptionMiddleware must come AFTER routing/authorization but BEFORE endpoint execution
