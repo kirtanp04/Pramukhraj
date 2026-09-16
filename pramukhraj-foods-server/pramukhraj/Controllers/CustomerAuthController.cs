@@ -29,7 +29,7 @@ public sealed class CustomerAuthController(
     IOptions<JwtSettings> jwtOptions,
     IWebHostEnvironment environment,
     IValidatorManager validatorManager,
-    IAdminNotificationService adminNotifications) : ControllerBase
+    ILogger<CustomerAuthController> logger) : ControllerBase
 {
     private const string RefreshCookieName = "pramukhraj_customer_refresh";
     private readonly CustomerOtpSettings _otp = otpOptions.Value;
@@ -170,7 +170,7 @@ public sealed class CustomerAuthController(
             var tokens = await tokenService.IssueAsync(customer, request.DeviceName, ClientIp(), cancellationToken);
             if (isNewCustomer)
             {
-                notificationToPublish = await adminNotifications.CreateAsync(
+                notificationToPublish = await serviceManager.AdminNotificationService.CreateAsync(
                     new CreateAdminNotification(
                         AdminNotificationTypes.CustomerRegistered,
                         NotificationSeverities.Info,
@@ -183,7 +183,8 @@ public sealed class CustomerAuthController(
                     cancellationToken);
             }
             await transaction.CommitAsync(cancellationToken);
-            if (notificationToPublish is not null) await adminNotifications.PublishAsync(notificationToPublish, cancellationToken);
+            if (notificationToPublish is not null)
+                await serviceManager.AdminNotificationService.PublishAsync(notificationToPublish, cancellationToken);
             refreshToken = tokens.RefreshToken;
             return (IActionResult)Ok(ApiResponse<CustomerAuthResponse>.Ok(
                 new(tokens.AccessToken, tokens.ExpiresInSeconds, isNewCustomer, ToResponse(customer)),
@@ -224,12 +225,15 @@ public sealed class CustomerAuthController(
         var customer = await CurrentCustomerAsync(cancellationToken);
         if (customer is null) return Unauthorized(ApiResponse<object>.Fail("Invalid customer session.", 401));
 
-        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
-        if (await db.Customers.AnyAsync(x => x.Id != customer.Id && x.NormalizedEmail == normalizedEmail, cancellationToken))
+        var email = NullIfWhiteSpace(request.Email)?.ToLowerInvariant();
+        var normalizedEmail = email?.ToUpperInvariant();
+        var shouldSendWelcomeEmail = !customer.IsProfileCompleted && email is not null;
+        if (normalizedEmail is not null && await db.Customers.AnyAsync(
+                x => x.Id != customer.Id && x.NormalizedEmail == normalizedEmail, cancellationToken))
             return Conflict(ApiResponse<object>.Fail("Email is already in use.", 409));
 
         customer.FullName = request.FullName.Trim();
-        customer.Email = request.Email.Trim().ToLowerInvariant();
+        customer.Email = email;
         customer.NormalizedEmail = normalizedEmail;
         customer.City = NullIfWhiteSpace(request.City);
         customer.State = NullIfWhiteSpace(request.State);
@@ -246,6 +250,13 @@ public sealed class CustomerAuthController(
         catch (DbUpdateException)
         {
             return Conflict(ApiResponse<object>.Fail("Email is already in use.", 409));
+        }
+
+        if (shouldSendWelcomeEmail && email is not null)
+        {
+            // Delivery is bounded and asynchronous so an unavailable SMTP provider never delays registration.
+            if (!serviceManager.EmailQueue.TryQueueWelcomeEmail(email, customer.FullName))
+                logger.LogWarning("Welcome email queue is full for customer {CustomerId}.", customer.Id);
         }
         return Ok(ApiResponse<CustomerResponse>.Ok(ToResponse(customer), "Profile completed."));
     }

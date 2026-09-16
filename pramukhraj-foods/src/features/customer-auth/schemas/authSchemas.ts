@@ -18,7 +18,7 @@ export const otpSchema = z.object({
 
 export const profileSchema = z.object({
   fullName: z.string().trim().min(2, "Enter your name").max(120, "Name is too long"),
-  email: z.email("Enter a valid email address").max(256),
+  email: z.union([z.literal(""), z.email("Enter a valid email address").max(256)]),
   city: z.string().trim().max(100).optional(),
   state: z.string().trim().max(100).optional(),
   postalCode: z.string().trim().refine(value => !value || /^[A-Za-z0-9 -]{3,10}$/.test(value), "Enter a valid postal code").optional(),

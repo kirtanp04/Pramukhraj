@@ -33,11 +33,15 @@ public sealed class CustomerOtpValidatorTests
     }
 
     [Fact]
-    public void CompleteProfile_requires_name_and_email()
+    public void CompleteProfile_requires_name_and_validates_email_when_provided()
     {
         var result = new CompleteCustomerProfileRequestValidator().TestValidate(
             new CompleteCustomerProfileRequest("", "not-an-email", null, null, null, false));
         result.ShouldHaveValidationErrorFor(x => x.FullName);
         result.ShouldHaveValidationErrorFor(x => x.Email);
+
+        new CompleteCustomerProfileRequestValidator().TestValidate(
+                new CompleteCustomerProfileRequest("Kirtan Patel", null, null, null, null, false))
+            .ShouldNotHaveValidationErrorFor(x => x.Email);
     }
 }

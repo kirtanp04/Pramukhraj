@@ -6,6 +6,7 @@ import {
   razorpayCredentialsSchema,
   shiprocketCredentialsSchema,
   twilioCredentialsSchema,
+  smtpCredentialsSchema,
 } from '@/types/providerCredentialsSchema'
 
 describe('twilioCredentialsSchema', () => {
@@ -27,6 +28,21 @@ describe('twilioCredentialsSchema', () => {
       [field]: '   ',
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('smtpCredentialsSchema', () => {
+  const valid = { host: 'smtp.gmail.com', port: 587, senderName: 'Pramukhraj Foods', senderEmail: 'store@example.com', username: 'store@example.com', password: 'app-password' }
+
+  it('accepts and trims complete SMTP settings', () => {
+    const result = smtpCredentialsSchema.safeParse({ ...valid, host: ' smtp.gmail.com ' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.host).toBe('smtp.gmail.com')
+  })
+
+  it('rejects invalid ports and email addresses', () => {
+    expect(smtpCredentialsSchema.safeParse({ ...valid, port: 0 }).success).toBe(false)
+    expect(smtpCredentialsSchema.safeParse({ ...valid, senderEmail: 'invalid' }).success).toBe(false)
   })
 })
 

@@ -18,5 +18,8 @@ namespace pramukhraj.Interfaces
         ICartService CartService { get; }
         IAdminMonitoringService MonitoringService { get; }
         IAdminCustomerService AdminCustomerService { get; }
+        IAdminNotificationService AdminNotificationService { get; }
+        IEmailService EmailService { get; }
+        IEmailQueue EmailQueue { get; }
     }
 }

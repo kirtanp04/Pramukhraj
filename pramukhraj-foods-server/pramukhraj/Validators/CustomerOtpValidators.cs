@@ -31,7 +31,8 @@ public sealed class CompleteCustomerProfileRequestValidator : AbstractValidator<
     public CompleteCustomerProfileRequestValidator()
     {
         RuleFor(x => x.FullName).NotEmpty().MaximumLength(120);
-        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
+        RuleFor(x => x.Email).EmailAddress().MaximumLength(256)
+            .When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.City).MaximumLength(100);
         RuleFor(x => x.State).MaximumLength(100);
         RuleFor(x => x.PostalCode).Matches(@"^[A-Za-z0-9 -]{3,10}$")

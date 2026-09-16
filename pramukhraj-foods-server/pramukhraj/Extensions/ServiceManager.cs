@@ -30,6 +30,9 @@ namespace pramukhraj.Extensions
         private readonly Lazy<ICartService> _CartService;
         private readonly Lazy<IAdminMonitoringService> _MonitoringService;
         private readonly Lazy<IAdminCustomerService> _AdminCustomerService;
+        private readonly Lazy<IAdminNotificationService> _AdminNotificationService;
+        private readonly Lazy<IEmailService> _EmailService;
+        private readonly Lazy<IEmailQueue> _EmailQueue;
 
       
         public ServiceManager(
@@ -45,7 +48,10 @@ namespace pramukhraj.Extensions
             IProviderCredentialService providerCredentialService,
             ICartService cartService,
             IAdminMonitoringService monitoringService,
-            IAdminCustomerService adminCustomerService
+            IAdminCustomerService adminCustomerService,
+            IAdminNotificationService adminNotificationService,
+            IEmailService emailService,
+            IEmailQueue emailQueue
             )
         {
           
@@ -71,6 +77,9 @@ namespace pramukhraj.Extensions
             _CartService = new Lazy<ICartService>(() => cartService);
             _MonitoringService = new Lazy<IAdminMonitoringService>(() => monitoringService);
             _AdminCustomerService = new Lazy<IAdminCustomerService>(() => adminCustomerService);
+            _AdminNotificationService = new Lazy<IAdminNotificationService>(() => adminNotificationService);
+            _EmailService = new Lazy<IEmailService>(() => emailService);
+            _EmailQueue = new Lazy<IEmailQueue>(() => emailQueue);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -86,6 +95,9 @@ namespace pramukhraj.Extensions
         public ICartService CartService => _CartService.Value;
         public IAdminMonitoringService MonitoringService => _MonitoringService.Value;
         public IAdminCustomerService AdminCustomerService => _AdminCustomerService.Value;
+        public IAdminNotificationService AdminNotificationService => _AdminNotificationService.Value;
+        public IEmailService EmailService => _EmailService.Value;
+        public IEmailQueue EmailQueue => _EmailQueue.Value;
       
     }
 }

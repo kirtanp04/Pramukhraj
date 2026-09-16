@@ -36,4 +36,5 @@ public interface IValidatorManager
     IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
     IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
     IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
+    IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
 }

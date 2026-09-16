@@ -186,6 +186,10 @@ const ShiprocketCredentialsPage = lazyNamed(
   () => import("@/pages/admin/provider-credentials/ShiprocketCredentialsPage"),
   "ShiprocketCredentialsPage"
 );
+const SmtpCredentialsPage = lazyNamed(
+  () => import("@/pages/admin/provider-credentials/SmtpCredentialsPage"),
+  "SmtpCredentialsPage"
+);
 const AdminEmailTemplates = lazyNamed(
   () => import("@/pages/admin/AdminEmailTemplates"),
   "AdminEmailTemplates"
@@ -355,6 +359,7 @@ export function AppRoutes() {
             { path: "provider-credentials/twilio", element: lazyElement(TwilioCredentialsPage) },
             { path: "provider-credentials/razorpay", element: lazyElement(RazorpayCredentialsPage) },
             { path: "provider-credentials/shiprocket", element: lazyElement(ShiprocketCredentialsPage) },
+            { path: "provider-credentials/smtp", element: lazyElement(SmtpCredentialsPage) },
             {
               path: "email-templates",
               element: lazyElement(AdminEmailTemplates),

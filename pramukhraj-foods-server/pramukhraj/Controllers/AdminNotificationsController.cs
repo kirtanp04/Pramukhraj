@@ -14,8 +14,9 @@ namespace pramukhraj.Controllers;
 [Route("api/admin/notifications")]
 [Authorize(Roles = "Admin")]
 [EnableRateLimiting("rate-limit")]
-public sealed class AdminNotificationsController(IAdminNotificationService notifications) : ControllerBase
+public sealed class AdminNotificationsController(IServiceManager serviceManager) : ControllerBase
 {
+    private IAdminNotificationService Notifications => serviceManager.AdminNotificationService;
     private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
 
     [HttpGet]
@@ -27,7 +28,7 @@ public sealed class AdminNotificationsController(IAdminNotificationService notif
     {
         var adminId = GetAdminId();
         if (adminId is null) return Unauthorized(ApiResponse<object>.Fail("Authenticated administrator information was not found.", 401));
-        var result = await notifications.GetForAdminAsync(adminId, pageNumber, pageSize, onlyUnacknowledged, cancellationToken);
+        var result = await Notifications.GetForAdminAsync(adminId, pageNumber, pageSize, onlyUnacknowledged, cancellationToken);
         return Ok(ApiResponse<object>.Ok(result, "Notifications retrieved successfully."));
     }
 
@@ -36,7 +37,7 @@ public sealed class AdminNotificationsController(IAdminNotificationService notif
     {
         var adminId = GetAdminId();
         if (adminId is null) return Unauthorized(ApiResponse<object>.Fail("Authenticated administrator information was not found.", 401));
-        var changed = await notifications.AcknowledgeAsync(adminId, notificationId, cancellationToken);
+        var changed = await Notifications.AcknowledgeAsync(adminId, notificationId, cancellationToken);
         return Ok(ApiResponse<object>.Ok(new { changed }, changed ? "Notification acknowledged." : "Notification was already acknowledged."));
     }
 
@@ -45,7 +46,7 @@ public sealed class AdminNotificationsController(IAdminNotificationService notif
     {
         var adminId = GetAdminId();
         if (adminId is null) return Unauthorized(ApiResponse<object>.Fail("Authenticated administrator information was not found.", 401));
-        var count = await notifications.AcknowledgeAllAsync(adminId, cancellationToken);
+        var count = await Notifications.AcknowledgeAllAsync(adminId, cancellationToken);
         return Ok(ApiResponse<object>.Ok(new { count }, "Notifications acknowledged successfully."));
     }
 
@@ -64,7 +65,7 @@ public sealed class AdminNotificationsController(IAdminNotificationService notif
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache, no-store, no-transform";
         Response.Headers["X-Accel-Buffering"] = "no";
-        using var subscription = notifications.Subscribe(adminId);
+        using var subscription = Notifications.Subscribe(adminId);
         using var streamLifetime = CreateStreamLifetime(cancellationToken);
         var streamCancellationToken = streamLifetime.Token;
 

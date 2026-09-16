@@ -34,6 +34,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Twilio (SMS)', to: '/admin/provider-credentials/twilio', icon: MessageSquareText },
       { label: 'Razorpay (Payment)', to: '/admin/provider-credentials/razorpay', icon: CreditCard },
       { label: 'Shiprocket (Shipment)', to: '/admin/provider-credentials/shiprocket', icon: Truck },
+      { label: 'Email (SMTP)', to: '/admin/provider-credentials/smtp', icon: Mail },
     ],
   },
   {

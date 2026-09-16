@@ -48,3 +48,25 @@ export const DEFAULT_SHIPROCKET_CREDENTIALS: ShiprocketCredentialsFormValues = {
   password: '',
   webhookSecret: '',
 }
+
+export const smtpCredentialsSchema = z.object({
+  host: requiredCredential('SMTP host').max(253, 'SMTP host cannot exceed 253 characters.'),
+  port: z.number({ error: 'SMTP port is required.' }).int('SMTP port must be a whole number.')
+    .min(1, 'SMTP port must be between 1 and 65535.')
+    .max(65535, 'SMTP port must be between 1 and 65535.'),
+  senderName: requiredCredential('Sender name').max(120, 'Sender name cannot exceed 120 characters.'),
+  senderEmail: requiredCredential('Sender email').pipe(z.email('Enter a valid sender email address.')),
+  username: requiredCredential('Username').pipe(z.email('Enter a valid SMTP username.')),
+  password: requiredCredential('Password'),
+})
+
+export type SmtpCredentialsFormValues = z.infer<typeof smtpCredentialsSchema>
+
+export const DEFAULT_SMTP_CREDENTIALS: SmtpCredentialsFormValues = {
+  host: 'smtp.gmail.com',
+  port: 587,
+  senderName: 'Pramukhraj Foods',
+  senderEmail: '',
+  username: '',
+  password: '',
+}
