@@ -120,6 +120,28 @@ const AdminApiPaths = {
     acknowledgeAll: 'admin/notifications/acknowledge-all',
     stream: 'admin/notifications/stream',
   },
+  customers: {
+    list: (query: {
+      pageNumber: number
+      pageSize: number
+      search?: string
+      status: string
+      sortBy: string
+      sortDirection: string
+    }) => {
+      const params = new URLSearchParams({
+        pageNumber: String(query.pageNumber),
+        pageSize: String(query.pageSize),
+        status: query.status,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      })
+      if (query.search) params.set('search', query.search)
+      return `admin/customers?${params.toString()}`
+    },
+    details: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
+    patch: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
+  },
 };
 
 export const ApiPath = {

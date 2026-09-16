@@ -73,7 +73,7 @@ export function ToggleField({ label, description, checked, onCheckedChange, disa
         <Switch.Thumb
           className={cn(
             'block h-4 w-4 rounded-full bg-ivory shadow transition-transform',
-            checked ? 'translate-x-[18px]' : 'translate-x-0.5',
+            checked ? 'translate-x-4.5' : 'translate-x-0.5',
           )}
         />
       </Switch.Root>
