@@ -5,6 +5,7 @@ using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
+using pramukhraj.DTOs.Customer;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -35,7 +36,9 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<HomepageCmsWriteRequest> homepageCmsWriteRequest,
         IValidator<CreateProviderCredentialRequest> createProviderCredentialRequest,
         IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest,
-        IValidator<SmtpProviderCredentials> smtpProviderCredentials)
+        IValidator<SmtpProviderCredentials> smtpProviderCredentials,
+        IValidator<AdminCustomerListRequest> adminCustomerListRequest,
+        IValidator<PatchAdminCustomerRequest> patchAdminCustomerRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -56,6 +59,8 @@ public sealed class ValidatorManager : IValidatorManager
         HomepageCmsWriteRequest = homepageCmsWriteRequest;
         CreateProviderCredentialRequest = createProviderCredentialRequest;
         UpdateProviderCredentialRequest = updateProviderCredentialRequest;
+        AdminCustomerListRequest = adminCustomerListRequest;
+        PatchAdminCustomerRequest = patchAdminCustomerRequest;
         SmtpProviderCredentials = smtpProviderCredentials;
     }
 
@@ -78,5 +83,7 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
     public IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
     public IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
+    public IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
+    public IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     public IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
 }

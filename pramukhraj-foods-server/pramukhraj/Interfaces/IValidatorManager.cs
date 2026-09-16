@@ -5,6 +5,7 @@ using pramukhraj.DTOs.FAQ;
 using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
+using pramukhraj.DTOs.Customer;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
@@ -33,5 +34,7 @@ public interface IValidatorManager
     IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
     IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
     IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
+    IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
+    IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
 }

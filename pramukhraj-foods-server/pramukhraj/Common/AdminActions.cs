@@ -12,6 +12,7 @@
             public const string Faq = "FAQ";
             public const string HomepageCms = "Homepage CMS";
             public const string ProviderCredentials = "Provider Credentials";
+            public const string Customer = "Customer";
         }
 
         public static class AdminActionTypes
