@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using pramukhraj.BackgroundServices;
+using pramukhraj.BackgroundServices.Tasks;
 using pramukhraj.Configurations;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Coupon;
@@ -32,6 +35,20 @@ namespace pramukhraj.Extensions
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddOptions<BackgroundServiceOptions>()
+                .Bind(configuration.GetSection(BackgroundServiceOptions.SectionName))
+                .ValidateOnStart();
+            services.AddSingleton<IValidateOptions<BackgroundServiceOptions>, BackgroundServiceOptionsValidator>();
+            services.AddSingleton<IBackgroundMetricsStore, BackgroundMetricsStore>();
+            services.AddSingleton<ServerMetricsSampler>();
+            services.AddHealthChecks()
+                .AddCheck<DatabaseHealthCheck>("PostgreSQL");
+            services.AddScoped<IApplicationBackgroundTask, ManageExpiredCartsTask>();
+            services.AddScoped<IApplicationBackgroundTask, RemoveExpiredOtpChallengesTask>();
+            services.AddScoped<IApplicationBackgroundTask, CleanExpiredRefreshTokensTask>();
+            services.AddScoped<IApplicationBackgroundTask, CleanExpiredAdminRefreshTokensTask>();
+            services.AddHostedService<ApplicationBackgroundService>();
+
             // Configure JwtSettings
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
@@ -179,6 +196,7 @@ namespace pramukhraj.Extensions
             services.AddHttpContextAccessor();
             services.AddScoped<CustomerClaimsHelper>();
             services.AddScoped<ICartService, CartService>();
+            services.AddScoped<IAdminMonitoringService, AdminMonitoringService>();
             services.AddScoped<ICustomerOtpSender, TwilioCustomerOtpSender>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();

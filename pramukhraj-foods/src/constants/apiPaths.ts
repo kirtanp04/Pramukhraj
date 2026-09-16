@@ -108,6 +108,10 @@ const AdminApiPaths = {
     clearKey: "admin/cache-metrics/key",
     clearModule: "admin/cache-metrics/module",
   },
+  monitoring: {
+    background: "admin/monitoring/background",
+    server: "admin/monitoring/server",
+  },
 };
 
 export const ApiPath = {
