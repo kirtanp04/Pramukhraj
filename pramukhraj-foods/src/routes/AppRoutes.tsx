@@ -199,9 +199,13 @@ const AdminActions = lazyNamed(
   () => import("@/pages/admin/admin-action/AdminActions"),
   "AdminActions"
 );
-const AdminSystemHealth = lazyNamed(
-  () => import("@/pages/admin/AdminSystemHealth"),
-  "AdminSystemHealth"
+const AdminBackgroundMetrics = lazyNamed(
+  () => import("@/pages/admin/background-metrics/AdminBackgroundMetrics"),
+  "AdminBackgroundMetrics"
+);
+const AdminServerMetrics = lazyNamed(
+  () => import("@/pages/admin/server-metrics/AdminServerMetrics"),
+  "AdminServerMetrics"
 );
 const AdminApiKeys = lazyNamed(
   () => import("@/pages/admin/AdminApiKeys"),
@@ -360,7 +364,8 @@ export function AppRoutes() {
             { path: "users", element: lazyElement(AdminUsers) },
             { path: "admin-actions", element: lazyElement(AdminActions) },
             { path: "audit-logs", element: lazyElement(AdminActions) },
-            { path: "system-health", element: lazyElement(AdminSystemHealth) },
+            { path: "background-metrics", element: lazyElement(AdminBackgroundMetrics) },
+            { path: "server-metrics", element: lazyElement(AdminServerMetrics) },
             { path: "api-keys", element: lazyElement(AdminApiKeys) },
             { path: "integrations", element: lazyElement(AdminIntegrations) },
             { path: "feature-flags", element: lazyElement(AdminFeatureFlags) },

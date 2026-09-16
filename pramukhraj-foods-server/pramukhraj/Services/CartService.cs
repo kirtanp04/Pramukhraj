@@ -3,7 +3,9 @@ using System.Data.Common;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using pramukhraj.BackgroundServices;
 using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Cart.Requests;
@@ -22,10 +24,11 @@ public sealed class CartService(
     IValidator<ChangeCartItemVariantRequest> variantValidator,
     IValidator<UpdateCartItemSelectionRequest> selectionValidator,
     IValidator<ResolveGuestCartRequest> resolveValidator,
-    IValidator<MergeGuestCartRequest> mergeValidator) : ICartService
+    IValidator<MergeGuestCartRequest> mergeValidator,
+    IOptions<BackgroundServiceOptions> backgroundOptions) : ICartService
 {
     private const int MaximumQuantity = 20;
-    private static readonly TimeSpan CartLifetime = TimeSpan.FromDays(30);
+    private readonly TimeSpan _cartLifetime = TimeSpan.FromDays(backgroundOptions.Value.CartExpirationDays);
 
     public async Task<ApiResponse<CartResponse>> GetAsync(CancellationToken cancellationToken)
     {
@@ -444,20 +447,23 @@ public sealed class CartService(
     private async Task AbandonExpiredCartAsync(Guid customerId, CancellationToken cancellationToken)
     {
         await db.Carts.Where(x => x.CustomerId == customerId && x.Status == CartStatus.Active && x.ExpiresOn != null && x.ExpiresOn <= DateTime.UtcNow)
-            .ExecuteUpdateAsync(x => x.SetProperty(c => c.Status, CartStatus.Abandoned).SetProperty(c => c.UpdatedOn, DateTime.UtcNow), cancellationToken);
+            .ExecuteUpdateAsync(x => x
+                .SetProperty(c => c.Status, CartStatus.Abandoned)
+                .SetProperty(c => c.UpdatedOn, DateTime.UtcNow)
+                .SetProperty(c => c.Version, c => c.Version + 1), cancellationToken);
     }
 
-    private static Cart NewCart(Guid customerId, DateTime now) => new()
+    private Cart NewCart(Guid customerId, DateTime now) => new()
     {
         Id = Guid.NewGuid(), CustomerId = customerId, Status = CartStatus.Active, Version = 0,
-        CreatedOn = now, UpdatedOn = now, ExpiresOn = now.Add(CartLifetime)
+        CreatedOn = now, UpdatedOn = now, ExpiresOn = now.Add(_cartLifetime)
     };
 
-    private static void Touch(Cart cart, DateTime now)
+    private void Touch(Cart cart, DateTime now)
     {
         cart.Version++;
         cart.UpdatedOn = now;
-        cart.ExpiresOn = now.Add(CartLifetime);
+        cart.ExpiresOn = now.Add(_cartLifetime);
         cart.ConcurrencyStamp = Guid.NewGuid().ToString("N");
     }
 
