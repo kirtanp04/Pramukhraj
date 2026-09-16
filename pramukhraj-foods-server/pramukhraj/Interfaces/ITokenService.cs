@@ -6,6 +6,6 @@ namespace pramukhraj.Interfaces
     {
         Task<(string AccessToken, string RefreshToken)> CreateTokensAsync(ApplicationUser user, string ipAddress,bool IsAdmin);
         Task<bool> RevokeRefreshTokenAsync(string refreshToken, string ipAddress);
-        Task<(string AccessToken, string RefreshToken)> RefreshTokensAsync(string refreshToken, string ipAddress,bool IsAdmin);
+        Task<(string AccessToken, string RefreshToken, string UserId)> RefreshTokensAsync(string refreshToken, string ipAddress,bool IsAdmin);
     }
 }

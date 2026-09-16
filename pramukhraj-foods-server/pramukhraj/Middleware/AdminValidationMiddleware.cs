@@ -38,7 +38,7 @@ namespace pramukhraj.Middleware
         {
             var path = context.Request.Path.Value ?? string.Empty;
             // Allow unauthenticated access to admin auth endpoints (login/register/refresh)
-            var allowedAdminAuthPaths = new[] { "/api/auth/admin/login", "/api/auth/admin/register", "/api/auth/admin/refresh" };
+            var allowedAdminAuthPaths = new[] { "/api/auth/admin/login", "/api/auth/admin/refresh", "/api/auth/admin/logout" };
 
             try
             {

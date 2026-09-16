@@ -30,6 +30,14 @@ namespace pramukhraj.Middleware
             var path = context.Request.Path.Value ?? string.Empty;
             var method = context.Request.Method;
 
+            // SSE must remain an unbuffered text stream. Authentication and
+            // authorization still run for this narrowly scoped admin endpoint.
+            if (path.Equals("/api/admin/notifications/stream", StringComparison.OrdinalIgnoreCase))
+            {
+                await _next(context);
+                return;
+            }
+
             _logger.LogInformation(
                 "EncryptionMiddleware: Path={Path}, Method={Method}, EncryptionEnabled={Enabled}, ApiPrefix={Prefix}",
                 path,

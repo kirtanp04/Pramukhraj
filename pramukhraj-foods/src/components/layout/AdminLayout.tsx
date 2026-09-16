@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, Bell, Search, LogOut, Settings, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react'
+import { Menu, X, Search, LogOut, Settings, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react'
+import { AdminNotificationBell } from '@/components/admin/notifications/AdminNotificationBell'
 import { Logo } from '@/components/layout/Logo'
 import { adminNavGroups } from '@/constants/adminNav'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
+import { useAdminNotificationsStore } from '@/store/adminNotificationsStore'
 
 export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -16,6 +18,13 @@ export function AdminLayout() {
   const theme = useUIStore((s) => s.theme)
   const toggleTheme = useUIStore((s) => s.toggleTheme)
   const navigate = useNavigate()
+  const startNotificationStream = useAdminNotificationsStore(state => state.startStream)
+  const stopNotificationStream = useAdminNotificationsStore(state => state.stopStream)
+
+  useEffect(() => {
+    startNotificationStream()
+    return stopNotificationStream
+  }, [startNotificationStream, stopNotificationStream])
 
   function handleLogout() {
     logout()
@@ -96,10 +105,7 @@ export function AdminLayout() {
             <button onClick={toggleTheme} aria-label="Toggle theme" className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5">
               {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
             </button>
-            <button aria-label="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5">
-              <Bell size={17} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-oxblood" />
-            </button>
+            <AdminNotificationBell />
 
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>

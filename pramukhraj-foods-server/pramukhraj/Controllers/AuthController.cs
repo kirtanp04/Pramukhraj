@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using pramukhraj.Common;
+using pramukhraj.Configurations;
 using pramukhraj.DTOs.Auth;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
@@ -15,19 +18,24 @@ namespace pramukhraj.Controllers
     public sealed class AuthController : ControllerBase
     {
         private readonly IServiceManager _serviceManager;
+        private readonly IWebHostEnvironment _environment;
+        private readonly JwtSettings _jwtSettings;
+        private const string AdminRefreshCookieName = "pramukhraj_admin_refresh";
 
-
-        public AuthController(IServiceManager serviceManager)
+        public AuthController(IServiceManager serviceManager, IWebHostEnvironment environment, IOptions<JwtSettings> jwtOptions)
         {
             _serviceManager = serviceManager;
+            _environment = environment;
+            _jwtSettings = jwtOptions.Value;
         }
 
 
 
         [HttpPost("admin/refresh")]
-        public async Task<IActionResult> AdminRefresh([FromBody] pramukhraj.DTOs.Auth.RefreshRequest request)
+        public async Task<IActionResult> AdminRefresh()
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.RefreshToken))
+            var suppliedRefreshToken = Request.Cookies[AdminRefreshCookieName];
+            if (string.IsNullOrWhiteSpace(suppliedRefreshToken))
             {
                 return BadRequest(ApiResponse<string>.Fail("Refresh token is required."));
             }
@@ -36,17 +44,8 @@ namespace pramukhraj.Controllers
 
             try
             {
-                var (accessToken, refreshToken) = await _serviceManager.TokenService.RefreshTokensAsync(request.RefreshToken, ip, IsAdmin: true);
-
-                // load the newly created refresh token to get the associated user
-                var db = HttpContext.RequestServices.GetService<pramukhraj.Database.AppDbContext>()!;
-                var newRefresh = await db.RefreshTokens.SingleOrDefaultAsync(t => t.Token == refreshToken);
-                if (newRefresh == null)
-                {
-                    return Unauthorized(ApiResponse<string>.Fail("Unable to refresh token."));
-                }
-
-                var user = await _serviceManager.UserManager.FindByIdAsync(newRefresh.UserId);
+                var (accessToken, refreshToken, userId) = await _serviceManager.TokenService.RefreshTokensAsync(suppliedRefreshToken, ip, IsAdmin: true);
+                var user = await _serviceManager.UserManager.FindByIdAsync(userId);
                 if (user == null)
                 {
                     return Unauthorized(ApiResponse<string>.Fail("Invalid user for refresh token."));
@@ -55,18 +54,19 @@ namespace pramukhraj.Controllers
                 var response = new AuthResponse
                 {
                     AccessToken = accessToken,
-                    RefreshToken = refreshToken,
-                    ExpiresIn = 60 * 60,
+                    ExpiresIn = checked(_jwtSettings.AccessTokenExpirationMinutes * 60),
                     UserId = user.Id,
                     Email = user.Email ?? string.Empty,
                     Username = user.UserName ?? string.Empty,
                     IsDeleted = user.IsDeleted
                 };
 
+                SetAdminRefreshCookie(refreshToken);
                 return Ok(ApiResponse<AuthResponse>.Ok(response, "Token refreshed."));
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
             {
+                DeleteAdminRefreshCookie();
                 return Unauthorized(ApiResponse<string>.Fail(ex.Message, 401));
             }
             catch
@@ -76,6 +76,7 @@ namespace pramukhraj.Controllers
         }
 
         [HttpPost("admin/register")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AdminRegister([FromBody] RegisterRequest request)
         {
            
@@ -156,15 +157,52 @@ namespace pramukhraj.Controllers
             var response = new AuthResponse
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresIn = 60 * 60, // seconds, aligns with JwtSettings.AccessTokenExpirationMinutes if 60
+                ExpiresIn = checked(_jwtSettings.AccessTokenExpirationMinutes * 60),
                 UserId = user.Id,
                 Email = user.Email ?? string.Empty,
                 Username = user.UserName ?? "",
                 IsDeleted = user.IsDeleted
             };
 
+            SetAdminRefreshCookie(refreshToken);
             return Ok(ApiResponse<AuthResponse>.Ok(response, "Login successful."));
+        }
+
+        [HttpPost("admin/logout")]
+        public async Task<IActionResult> AdminLogout()
+        {
+            var refreshToken = Request.Cookies[AdminRefreshCookieName];
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+            {
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                await _serviceManager.TokenService.RevokeRefreshTokenAsync(refreshToken, ip);
+            }
+
+            DeleteAdminRefreshCookie();
+            return Ok(ApiResponse<object>.Ok(new { }, "Logged out successfully."));
+        }
+
+        private void SetAdminRefreshCookie(string refreshToken)
+        {
+            var options = AdminRefreshCookieOptions();
+            options.Expires = DateTimeOffset.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
+            Response.Cookies.Append(AdminRefreshCookieName, refreshToken, options);
+        }
+
+        private void DeleteAdminRefreshCookie() =>
+            Response.Cookies.Delete(AdminRefreshCookieName, AdminRefreshCookieOptions());
+
+        private CookieOptions AdminRefreshCookieOptions()
+        {
+            var crossSchemeDevelopment = _environment.IsDevelopment() && Request.IsHttps;
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !_environment.IsDevelopment() || Request.IsHttps,
+                SameSite = crossSchemeDevelopment ? SameSiteMode.None : SameSiteMode.Strict,
+                Path = "/api/auth/admin",
+                IsEssential = true
+            };
         }
 
     }

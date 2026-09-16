@@ -15,6 +15,7 @@ export interface ApiResponse<T> {
 }
 
 let customerAccessToken: string | null = null;
+let adminAccessToken: string | null = null;
 
 export function setCustomerAccessToken(token: string | null) {
   customerAccessToken = token;
@@ -24,34 +25,13 @@ export function hasCustomerAccessToken() {
   return Boolean(customerAccessToken);
 }
 
-// Get token
+export function setAdminAccessToken(token: string | null) {
+  adminAccessToken = token;
+}
 
-function getAccessToken(): string {
-  try {
-    const strData = localStorage.getItem("pramukhraj-admin-auth");
-    if (strData === null) {
-      throw new Error("Access token not found. Please log in and try again.");
-    }
-    const data: unknown = JSON.parse(strData);
-    if (
-      data === null ||
-      typeof data !== "object" ||
-      !("state" in data) ||
-      data.state === null ||
-      typeof data.state !== "object" ||
-      !("user" in data.state) ||
-      data.state.user === null ||
-      typeof data.state.user !== "object" ||
-      !("accessToken" in data.state.user) ||
-      typeof data.state.user.accessToken !== "string" ||
-      data.state.user.accessToken.trim() === ""
-    ) {
-      throw new Error("Access token not found. Please log in and try again.");
-    }
-    return data.state.user.accessToken;
-  } catch {
-    throw new Error("Access token not found. Please log in and try again.");
-  }
+export function getAdminAccessToken(): string {
+  if (!adminAccessToken) throw new Error("Access token not found. Please log in and try again.");
+  return adminAccessToken;
 }
 
 // ─── Base instance ────────────────────────────────────────────────────────────
@@ -86,14 +66,16 @@ apiClient.interceptors.request.use(
     }
     const isPublicRequest =
       config.url !== undefined &&
-      (config.url.includes("auth/admin") ||
+      (["auth/admin/login", "auth/admin/refresh", "auth/admin/logout"].some(path =>
+        config.url?.includes(path)
+      ) ||
         config.url.includes("/customer/") ||
         config.url.includes("guest/"));
     if (isPublicRequest) {
       config.headers["Time-zone"] = new Date().getTimezoneOffset();
       return config;
     }
-    const token = getAccessToken();
+    const token = getAdminAccessToken();
     if (token && config.headers) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
