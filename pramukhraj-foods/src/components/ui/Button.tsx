@@ -16,7 +16,7 @@ const buttonVariants = cva(
         link: 'bg-transparent text-oxblood underline-offset-4 hover:underline p-0 rounded-none',
       },
       size: {
-        sm: 'h-8 px-3 text-xs',
+        sm: 'h-8 px-3 text-xs!',
         md: 'h-10 px-5',
         lg: 'h-12 px-7 text-base',
         icon: 'h-10 w-10',

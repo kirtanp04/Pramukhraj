@@ -3,6 +3,8 @@ import { apiGet, apiPostResponse, apiPutResponse, type ApiResponse } from '@/lib
 import type {
   CreateProviderCredentialRequest,
   ProviderCredentialResponse,
+  RazorpayCredentials,
+  ShiprocketCredentials,
   TwilioCredentials,
   UpdateProviderCredentialRequest,
 } from '@/types/providerCredentials'
@@ -14,18 +16,30 @@ export const providerCredentialsApi = {
       { signal },
     )
   },
-  create(payload: CreateProviderCredentialRequest, signal?: AbortSignal): Promise<ApiResponse<string>> {
+  create<TCredentials>(payload: CreateProviderCredentialRequest<TCredentials>, signal?: AbortSignal): Promise<ApiResponse<string>> {
     return apiPostResponse<string>(ApiPath.admin.providerCredentials.create, payload, { signal })
   },
-  update(
+  update<TCredentials>(
     providerKey: string,
-    payload: UpdateProviderCredentialRequest,
+    payload: UpdateProviderCredentialRequest<TCredentials>,
     signal?: AbortSignal,
   ): Promise<ApiResponse<string>> {
     return apiPutResponse<string>(ApiPath.admin.providerCredentials.update(providerKey), payload, { signal })
   },
   getTwilio(providerKey: string, signal?: AbortSignal) {
     return apiGet<ProviderCredentialResponse<TwilioCredentials>>(
+      ApiPath.admin.providerCredentials.getByKey(providerKey),
+      { signal },
+    )
+  },
+  getRazorpay(providerKey: string, signal?: AbortSignal) {
+    return apiGet<ProviderCredentialResponse<RazorpayCredentials>>(
+      ApiPath.admin.providerCredentials.getByKey(providerKey),
+      { signal },
+    )
+  },
+  getShiprocket(providerKey: string, signal?: AbortSignal) {
+    return apiGet<ProviderCredentialResponse<ShiprocketCredentials>>(
       ApiPath.admin.providerCredentials.getByKey(providerKey),
       { signal },
     )
