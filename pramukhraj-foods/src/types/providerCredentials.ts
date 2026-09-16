@@ -1,5 +1,7 @@
 export const PROVIDER_KEYS = {
   twilio: 'TWILIO',
+  razorpay: 'RAZORPAY',
+  shiprocket: 'SHIPROCKET',
 } as const
 
 export interface TwilioCredentials {
@@ -9,14 +11,26 @@ export interface TwilioCredentials {
   serviceId: string
 }
 
-export interface CreateProviderCredentialRequest {
+export interface RazorpayCredentials {
+  apiKey: string
+  keySecret: string
+  webhookSecret: string
+}
+
+export interface ShiprocketCredentials {
+  email: string
+  password: string
+  webhookSecret: string
+}
+
+export interface CreateProviderCredentialRequest<TCredentials = Record<string, unknown>> {
   providerKey: string
-  credentials: TwilioCredentials
+  credentials: TCredentials
   isActive: boolean
 }
 
-export interface UpdateProviderCredentialRequest {
-  credentials: TwilioCredentials
+export interface UpdateProviderCredentialRequest<TCredentials = Record<string, unknown>> {
+  credentials: TCredentials
   isActive: boolean
 }
 

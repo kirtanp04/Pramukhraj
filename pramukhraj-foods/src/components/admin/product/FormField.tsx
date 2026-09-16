@@ -14,14 +14,14 @@ interface FormFieldProps {
 export function FormField({ label, error, hint, required, htmlFor, children, className }: FormFieldProps) {
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <label htmlFor={htmlFor} className="block text-xs font-medium text-ink-soft">
+      <label htmlFor={htmlFor} className="block text-xs! font-medium text-ink-soft">
         {label}
         {required && <span className="ml-0.5 text-oxblood" aria-hidden>*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-[11px] text-ink-soft">{hint}</p>}
+      {hint && !error && <p className="text-[11px]! text-ink-soft">{hint}</p>}
       {error && (
-        <p className="text-[11px] font-medium text-oxblood" role="alert">
+        <p className="text-[11px]! font-medium text-oxblood" role="alert">
           {error}
         </p>
       )}
@@ -33,7 +33,7 @@ export function FormField({ label, error, hint, required, htmlFor, children, cla
 
 export function inputCls(hasError?: boolean) {
   return cn(
-    'w-full rounded-lg border bg-ivory px-3 py-2 text-sm text-ink outline-none transition-colors',
+    'w-full rounded-lg border bg-ivory px-3 py-2 text-sm! text-ink outline-none transition-colors',
     'placeholder:text-ink-soft/50',
     hasError
       ? 'border-oxblood/50 focus:border-oxblood'

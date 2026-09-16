@@ -20,3 +20,31 @@ export const DEFAULT_TWILIO_CREDENTIALS: TwilioCredentialsFormValues = {
   fromNumber: '',
   serviceId: '',
 }
+
+export const razorpayCredentialsSchema = z.object({
+  apiKey: requiredCredential('API key'),
+  keySecret: requiredCredential('Key secret'),
+  webhookSecret: requiredCredential('Webhook secret'),
+})
+
+export type RazorpayCredentialsFormValues = z.infer<typeof razorpayCredentialsSchema>
+
+export const DEFAULT_RAZORPAY_CREDENTIALS: RazorpayCredentialsFormValues = {
+  apiKey: '',
+  keySecret: '',
+  webhookSecret: '',
+}
+
+export const shiprocketCredentialsSchema = z.object({
+  email: requiredCredential('Email').pipe(z.email('Enter a valid email address.')),
+  password: requiredCredential('Password'),
+  webhookSecret: requiredCredential('Webhook secret'),
+})
+
+export type ShiprocketCredentialsFormValues = z.infer<typeof shiprocketCredentialsSchema>
+
+export const DEFAULT_SHIPROCKET_CREDENTIALS: ShiprocketCredentialsFormValues = {
+  email: '',
+  password: '',
+  webhookSecret: '',
+}

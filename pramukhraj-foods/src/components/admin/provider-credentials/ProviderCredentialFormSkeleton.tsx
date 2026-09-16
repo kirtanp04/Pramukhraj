@@ -1,8 +1,12 @@
 import { Skeleton } from '@/components/ui/Skeleton'
 
-export function ProviderCredentialFormSkeleton() {
+interface ProviderCredentialFormSkeletonProps {
+  label?: string
+}
+
+export function ProviderCredentialFormSkeleton({ label = 'Loading provider credentials' }: ProviderCredentialFormSkeletonProps) {
   return (
-    <div className="mx-auto max-w-4xl space-y-6" aria-label="Loading Twilio credentials" aria-busy="true">
+    <div className="mx-auto max-w-4xl space-y-6" aria-label={label} aria-busy="true">
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-8 w-56" />
