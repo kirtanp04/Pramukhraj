@@ -5,6 +5,7 @@ import type {
   ProviderCredentialResponse,
   RazorpayCredentials,
   ShiprocketCredentials,
+  SmtpCredentials,
   TwilioCredentials,
   UpdateProviderCredentialRequest,
 } from '@/types/providerCredentials'
@@ -40,6 +41,12 @@ export const providerCredentialsApi = {
   },
   getShiprocket(providerKey: string, signal?: AbortSignal) {
     return apiGet<ProviderCredentialResponse<ShiprocketCredentials>>(
+      ApiPath.admin.providerCredentials.getByKey(providerKey),
+      { signal },
+    )
+  },
+  getSmtp(providerKey: string, signal?: AbortSignal) {
+    return apiGet<ProviderCredentialResponse<SmtpCredentials>>(
       ApiPath.admin.providerCredentials.getByKey(providerKey),
       { signal },
     )

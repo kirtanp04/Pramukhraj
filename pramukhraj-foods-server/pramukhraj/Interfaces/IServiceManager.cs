@@ -17,5 +17,8 @@ namespace pramukhraj.Interfaces
         IProviderCredentialService ProviderCredentialService { get; }
         ICartService CartService { get; }
         IAdminMonitoringService MonitoringService { get; }
+        IAdminNotificationService AdminNotificationService { get; }
+        IEmailService EmailService { get; }
+        IEmailQueue EmailQueue { get; }
     }
 }

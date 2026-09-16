@@ -10,7 +10,7 @@ public sealed record VerifyCustomerOtpRequest(
 
 public sealed record CompleteCustomerProfileRequest(
     string FullName,
-    string Email,
+    string? Email,
     string? City,
     string? State,
     string? PostalCode,

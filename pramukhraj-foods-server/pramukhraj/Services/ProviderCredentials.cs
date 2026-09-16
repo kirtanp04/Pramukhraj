@@ -51,6 +51,10 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
         if (!admin.Success) return ApiResponse<Guid>.Fail(admin.Message, admin.StatusCode, admin.Errors);
 
         var providerKey = NormalizeKey(request.ProviderKey);
+        var schemaError = await GetSchemaErrorAsync(providerKey, request.Credentials, cancellationToken);
+        if (schemaError is not null)
+            return ApiResponse<Guid>.Fail("Provider credential validation failed.", StatusCodes.Status400BadRequest,
+                new Dictionary<string, string[]> { [nameof(request.Credentials)] = [schemaError] });
         try
         {
             if (await _db.ProviderCredentials.AsNoTracking()
@@ -120,6 +124,11 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
 
         var validation = await _validatorManager.UpdateProviderCredentialRequest.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid) return ValidationFailure<Guid>(validation);
+
+        var schemaError = await GetSchemaErrorAsync(keyValidation.Key, request.Credentials, cancellationToken);
+        if (schemaError is not null)
+            return ApiResponse<Guid>.Fail("Provider credential validation failed.", StatusCodes.Status400BadRequest,
+                new Dictionary<string, string[]> { [nameof(request.Credentials)] = [schemaError] });
 
         var admin = GetAdmin();
         if (!admin.Success) return ApiResponse<Guid>.Fail(admin.Message, admin.StatusCode, admin.Errors);
@@ -264,6 +273,29 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
     }
 
     private static string NormalizeKey(string providerKey) => providerKey.Trim().ToUpperInvariant();
+    private async Task<string?> GetSchemaErrorAsync(
+        string providerKey,
+        JsonElement credentials,
+        CancellationToken cancellationToken)
+    {
+        if (!StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Smtp))
+            return null;
+
+        try
+        {
+            var settings = credentials.Deserialize<SmtpProviderCredentials>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (settings is null) return "SMTP credentials are required.";
+            var result = await _validatorManager.SmtpProviderCredentials.ValidateAsync(settings, cancellationToken);
+            return result.IsValid
+                ? null
+                : string.Join(" ", result.Errors.Select(error => error.ErrorMessage).Distinct());
+        }
+        catch (JsonException)
+        {
+            return "SMTP credentials have an invalid format.";
+        }
+    }
+
     private static bool IsUniqueViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     private static ApiResponse<T> DuplicateFailure<T>(string key) => ApiResponse<T>.Fail(

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.Validators.ProviderCredentials;
+using FluentValidation.TestHelper;
 using Xunit;
 
 namespace pramukhraj.Tests;
@@ -51,6 +52,33 @@ public sealed class ProviderCredentialRequestValidatorTests
 
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(request.Credentials));
     }
+
+    [Fact]
+    public void Smtp_schema_accepts_all_required_fields()
+    {
+        new SmtpProviderCredentialsValidator().TestValidate(ValidSmtp())
+            .ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData("", 587, "store@example.com")]
+    [InlineData("smtp.gmail.com", 0, "store@example.com")]
+    [InlineData("smtp.gmail.com", 587, "invalid")]
+    public void Smtp_schema_rejects_invalid_required_fields(string host, int port, string senderEmail)
+    {
+        var settings = ValidSmtp();
+        settings.Host = host;
+        settings.Port = port;
+        settings.SenderEmail = senderEmail;
+
+        new SmtpProviderCredentialsValidator().TestValidate(settings).ShouldHaveAnyValidationError();
+    }
+
+    private static SmtpProviderCredentials ValidSmtp() => new()
+    {
+        Host = "smtp.gmail.com", Port = 587, SenderName = "Pramukhraj Foods",
+        SenderEmail = "store@example.com", Username = "store@example.com", Password = "app-password"
+    };
 
     private static JsonElement Json(string value)
     {

@@ -14,5 +14,6 @@ describe("customer auth schemas", () => {
   it("requires valid basic profile identity fields", () => {
     expect(profileSchema.safeParse({ fullName: "A", email: "bad", marketingConsent: false }).success).toBe(false);
     expect(profileSchema.safeParse({ fullName: "Kirtan Patel", email: "kirtan@example.com", marketingConsent: false }).success).toBe(true);
+    expect(profileSchema.safeParse({ fullName: "Kirtan Patel", email: "", marketingConsent: false }).success).toBe(true);
   });
 });

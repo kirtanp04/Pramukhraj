@@ -33,4 +33,5 @@ public interface IValidatorManager
     IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
     IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
     IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
+    IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
 }

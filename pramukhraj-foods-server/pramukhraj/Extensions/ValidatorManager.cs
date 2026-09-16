@@ -34,7 +34,8 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<FaqWriteRequest> faqWriteRequest,
         IValidator<HomepageCmsWriteRequest> homepageCmsWriteRequest,
         IValidator<CreateProviderCredentialRequest> createProviderCredentialRequest,
-        IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest)
+        IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest,
+        IValidator<SmtpProviderCredentials> smtpProviderCredentials)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -55,6 +56,7 @@ public sealed class ValidatorManager : IValidatorManager
         HomepageCmsWriteRequest = homepageCmsWriteRequest;
         CreateProviderCredentialRequest = createProviderCredentialRequest;
         UpdateProviderCredentialRequest = updateProviderCredentialRequest;
+        SmtpProviderCredentials = smtpProviderCredentials;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
@@ -76,4 +78,5 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<HomepageCmsWriteRequest> HomepageCmsWriteRequest { get; }
     public IValidator<CreateProviderCredentialRequest> CreateProviderCredentialRequest { get; }
     public IValidator<UpdateProviderCredentialRequest> UpdateProviderCredentialRequest { get; }
+    public IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
 }

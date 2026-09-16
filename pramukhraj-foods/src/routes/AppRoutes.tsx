@@ -187,6 +187,10 @@ const ShiprocketCredentialsPage = lazyNamed(
   () => import("@/pages/admin/provider-credentials/ShiprocketCredentialsPage"),
   "ShiprocketCredentialsPage"
 );
+const SmtpCredentialsPage = lazyNamed(
+  () => import("@/pages/admin/provider-credentials/SmtpCredentialsPage"),
+  "SmtpCredentialsPage"
+);
 const AdminBlog = lazyNamed(
   () => import("@/pages/admin/AdminBlog"),
   "AdminBlog"
@@ -365,6 +369,7 @@ export function AppRoutes() {
             { path: "provider-credentials/twilio", element: lazyElement(TwilioCredentialsPage) },
             { path: "provider-credentials/razorpay", element: lazyElement(RazorpayCredentialsPage) },
             { path: "provider-credentials/shiprocket", element: lazyElement(ShiprocketCredentialsPage) },
+            { path: "provider-credentials/smtp", element: lazyElement(SmtpCredentialsPage) },
             { path: "blog", element: lazyElement(AdminBlog) },
             { path: "media", element: lazyElement(AdminMedia) },
             {

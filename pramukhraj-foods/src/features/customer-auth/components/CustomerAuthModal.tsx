@@ -121,37 +121,37 @@ export function CustomerAuthModal() {
               <motion.div key={step} initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -14 }} transition={{ duration: 0.18 }}>
                 {step === "mobile" && (
                   <form onSubmit={sendOtp} noValidate>
-                    <Dialog.Title className="font-display text-3xl text-ink">Welcome to Pramukhraj</Dialog.Title>
-                    <Dialog.Description className="mt-2 text-sm leading-6 text-ink-soft">Sign in or create an account with one secure verification code. No password to remember.</Dialog.Description>
+                    <Dialog.Title className="font-display text-3xl! text-ink">Welcome to Pramukhraj</Dialog.Title>
+                    <Dialog.Description className="mt-2 text-sm! leading-6 text-ink-soft">Sign in or create an account with one secure verification code. No password to remember.</Dialog.Description>
                     <div className="mt-7"><FieldLabel htmlFor="customer-mobile">Mobile number</FieldLabel><Input id="customer-mobile" autoFocus inputMode="tel" autoComplete="tel" placeholder="+91 98765 43210" value={mobileInput} onChange={event => setMobileInput(event.target.value)} error={Boolean(error)} /></div>
                     {error && <FieldError>{error}</FieldError>}
                     <Button className="mt-6 w-full" size="lg" disabled={busy}>{busy ? <><LoaderCircle className="animate-spin" size={18} /> Sending code…</> : "Continue securely"}</Button>
-                    <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-ink-soft"><LockKeyhole size={13} /> Your number is used only to secure your account.</p>
+                    <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs! text-ink-soft"><LockKeyhole size={13} /> Your number is used only to secure your account.</p>
                   </form>
                 )}
 
                 {step === "otp" && (
                   <form onSubmit={verifyOtp} noValidate>
-                    <button type="button" onClick={() => { setStep("mobile"); setError(""); }} className="mb-4 flex items-center gap-1 text-xs font-medium text-ink-soft hover:text-ink"><ArrowLeft size={14} /> Change number</button>
-                    <Dialog.Title className="font-display text-3xl text-ink">Check your messages</Dialog.Title>
-                    <Dialog.Description className="mt-2 text-sm leading-6 text-ink-soft">Enter the 6-digit code sent to <span className="font-medium text-ink">{mobileNumber}</span>.</Dialog.Description>
-                    <div className="mt-7"><FieldLabel htmlFor="customer-otp">Verification code</FieldLabel><Input id="customer-otp" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} error={Boolean(error)} className="h-14 text-center font-mono text-2xl tracking-[0.45em]" /></div>
+                    <button type="button" onClick={() => { setStep("mobile"); setError(""); }} className="mb-4 flex items-center gap-1 text-xs! font-medium text-ink-soft hover:text-ink"><ArrowLeft size={14} /> Change number</button>
+                    <Dialog.Title className="font-display text-3xl! text-ink">Check your messages</Dialog.Title>
+                    <Dialog.Description className="mt-2 text-sm! leading-6 text-ink-soft">Enter the 6-digit code sent to <span className="font-medium text-ink">{mobileNumber}</span>.</Dialog.Description>
+                    <div className="mt-7"><FieldLabel htmlFor="customer-otp">Verification code</FieldLabel><Input id="customer-otp" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} error={Boolean(error)} className="h-14 text-center font-mono text-2xl! tracking-[0.45em]" /></div>
                     {error && <FieldError>{error}</FieldError>}
                     <Button className="mt-6 w-full" size="lg" disabled={busy}>{busy ? <><LoaderCircle className="animate-spin" size={18} /> Verifying…</> : "Verify & continue"}</Button>
-                    <button type="button" onClick={() => void resend()} disabled={countdown > 0 || busy} className="mt-4 w-full text-center text-sm font-medium text-oxblood disabled:text-ink-soft">{countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}</button>
+                    <button type="button" onClick={() => void resend()} disabled={countdown > 0 || busy} className="mt-4 w-full text-center text-sm! font-medium text-oxblood disabled:text-ink-soft">{countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}</button>
                   </form>
                 )}
 
                 {step === "profile" && (
                   <form onSubmit={saveProfile} noValidate>
-                    <Dialog.Title className="font-display text-3xl text-ink">A little about you</Dialog.Title>
-                    <Dialog.Description className="mt-2 text-sm leading-6 text-ink-soft">Your account is ready. Add basic details for faster checkout, or do this later.</Dialog.Description>
+                    <Dialog.Title className="font-display text-3xl! text-ink">A little about you</Dialog.Title>
+                    <Dialog.Description className="mt-2 text-sm! leading-6 text-ink-soft">Your account is ready. Add basic details for faster checkout, or do this later.</Dialog.Description>
                     <div className="mt-6 space-y-4">
                       <div><FieldLabel htmlFor="profile-name">Full name *</FieldLabel><Input id="profile-name" autoFocus autoComplete="name" value={profile.fullName} onChange={event => setProfile(value => ({ ...value, fullName: event.target.value }))} /></div>
-                      <div><FieldLabel htmlFor="profile-email">Email *</FieldLabel><Input id="profile-email" type="email" autoComplete="email" value={profile.email} onChange={event => setProfile(value => ({ ...value, email: event.target.value }))} /></div>
+                      <div><FieldLabel htmlFor="profile-email">Email <span className="font-normal text-ink-soft">(optional)</span></FieldLabel><Input id="profile-email" type="email" autoComplete="email" placeholder="you@example.com" value={profile.email} onChange={event => setProfile(value => ({ ...value, email: event.target.value }))} /><p className="mt-1.5 text-xs! leading-5 text-ink-soft">Add an email to receive your account confirmation and future order updates.</p></div>
                       <div className="grid grid-cols-2 gap-3"><div><FieldLabel htmlFor="profile-city">City</FieldLabel><Input id="profile-city" autoComplete="address-level2" value={profile.city} onChange={event => setProfile(value => ({ ...value, city: event.target.value }))} /></div><div><FieldLabel htmlFor="profile-state">State</FieldLabel><Input id="profile-state" autoComplete="address-level1" value={profile.state} onChange={event => setProfile(value => ({ ...value, state: event.target.value }))} /></div></div>
                       <div><FieldLabel htmlFor="profile-postal">Postal code</FieldLabel><Input id="profile-postal" autoComplete="postal-code" value={profile.postalCode} onChange={event => setProfile(value => ({ ...value, postalCode: event.target.value }))} /></div>
-                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-tan/45 p-3 text-xs leading-5 text-ink-soft"><input type="checkbox" className="mt-1 accent-oxblood" checked={profile.marketingConsent} onChange={event => setProfile(value => ({ ...value, marketingConsent: event.target.checked }))} />Keep me updated about new products and offers.</label>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-tan/45 p-3 text-xs! leading-5 text-ink-soft"><input type="checkbox" className="mt-1 accent-oxblood" checked={profile.marketingConsent} onChange={event => setProfile(value => ({ ...value, marketingConsent: event.target.checked }))} />Keep me updated about new products and offers.</label>
                     </div>
                     {error && <FieldError>{error}</FieldError>}
                     <Button className="mt-6 w-full" size="lg" disabled={busy}>{busy ? <><LoaderCircle className="animate-spin" size={18} /> Saving…</> : "Save basic info"}</Button>
