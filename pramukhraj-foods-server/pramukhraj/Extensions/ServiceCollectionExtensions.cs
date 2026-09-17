@@ -15,6 +15,7 @@ using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.DTOs.Cart.Requests;
+using pramukhraj.DTOs.EmailTemplates;
 using pramukhraj.Common;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
@@ -217,6 +218,7 @@ namespace pramukhraj.Extensions
             services.AddScoped<ICustomerTokenService, CustomerTokenService>();
             services.AddScoped<IProviderCredentialService, ProviderCredentialsService>();
             services.AddScoped<IEmailService, SmtpEmailService>();
+            services.AddScoped<IEmailTemplateService, EmailTemplateService>();
             services.AddSingleton<EmailDeliveryQueue>();
             services.AddSingleton<IEmailQueue>(provider => provider.GetRequiredService<EmailDeliveryQueue>());
             services.AddHostedService(provider => provider.GetRequiredService<EmailDeliveryQueue>());
@@ -265,6 +267,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<DTOs.Customer.AdminCustomerListRequest>, Validators.Customer.AdminCustomerListRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<DTOs.Customer.PatchAdminCustomerRequest>, Validators.Customer.PatchAdminCustomerRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<SmtpProviderCredentials>, Validators.ProviderCredentials.SmtpProviderCredentialsValidator>();
+            services.AddTransient<FluentValidation.IValidator<EmailTemplateWriteRequest>, Validators.EmailTemplates.EmailTemplateWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<AddCartItemRequest>, Validators.Cart.AddCartItemRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateCartItemQuantityRequest>, Validators.Cart.UpdateCartItemQuantityRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<ChangeCartItemVariantRequest>, Validators.Cart.ChangeCartItemVariantRequestValidator>();

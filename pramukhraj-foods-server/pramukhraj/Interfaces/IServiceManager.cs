@@ -21,5 +21,6 @@ namespace pramukhraj.Interfaces
         IAdminNotificationService AdminNotificationService { get; }
         IEmailService EmailService { get; }
         IEmailQueue EmailQueue { get; }
+        IEmailTemplateService EmailTemplateService { get; }
     }
 }

@@ -194,6 +194,10 @@ const AdminEmailTemplates = lazyNamed(
   () => import("@/pages/admin/AdminEmailTemplates"),
   "AdminEmailTemplates"
 );
+const EmailTemplateFormPage = lazyNamed(
+  () => import("@/pages/admin/email-templates/EmailTemplateFormPage"),
+  "EmailTemplateFormPage"
+);
 const AdminUsers = lazyNamed(
   () => import("@/pages/admin/AdminUsers"),
   "AdminUsers"
@@ -362,7 +366,12 @@ export function AppRoutes() {
             { path: "provider-credentials/smtp", element: lazyElement(SmtpCredentialsPage) },
             {
               path: "email-templates",
-              element: lazyElement(AdminEmailTemplates),
+              element: <Outlet />,
+              children: [
+                { index: true, element: lazyElement(AdminEmailTemplates) },
+                { path: "new", element: lazyElement(EmailTemplateFormPage) },
+                { path: ":id/edit", element: lazyElement(EmailTemplateFormPage) },
+              ],
             },
             { path: "users", element: lazyElement(AdminUsers) },
             { path: "admin-actions", element: lazyElement(AdminActions) },

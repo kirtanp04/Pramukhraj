@@ -5,4 +5,7 @@ public sealed record EmailMessage(
     string RecipientName,
     string Subject,
     string HtmlBody,
-    string TextBody);
+    string TextBody,
+    IReadOnlyList<EmailAttachment>? Attachments = null);
+
+public sealed record EmailAttachment(string FileName, string ContentType, byte[] Content);

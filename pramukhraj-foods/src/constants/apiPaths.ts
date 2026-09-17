@@ -103,6 +103,13 @@ const AdminApiPaths = {
     update: (providerKey: string) =>
       `admin/provider-credentials/${encodeURIComponent(providerKey)}`,
   },
+  emailTemplates: {
+    list: "admin/email-templates",
+    create: "admin/email-templates",
+    getById: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
+    update: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
+    delete: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
+  },
   cacheMetrics: {
     get: "admin/cache-metrics",
     clearAll: "admin/cache-metrics",
