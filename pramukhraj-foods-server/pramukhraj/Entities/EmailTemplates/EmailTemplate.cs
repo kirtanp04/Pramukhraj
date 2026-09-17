@@ -35,6 +35,7 @@ public enum EmailTemplateCategory
 public static class EmailTemplateKeys
 {
     public const string Welcome = "WELCOME";
+    public const string EmailVerificationOtp = "EMAIL_VERIFICATION_OTP";
     public const string OrderSuccess = "ORDER_SUCCESS";
     public const string PaymentSuccess = "PAYMENT_SUCCESS";
     public const string Invoice = "INVOICE";
@@ -43,4 +44,6 @@ public static class EmailTemplateKeys
     public const string Cancelled = "ORDER_CANCELLED";
     public const string Refund = "REFUND_PROCESSED";
     public const string PasswordReset = "PASSWORD_RESET";
+    public const string Newsletter = "NEWSLETTER";
+    public const string SecurityAlert = "SECURITY_ALERT";
 }
