@@ -36,8 +36,24 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
                 {
                     await using var scope = _scopeFactory.CreateAsyncScope();
                     var serviceManager = scope.ServiceProvider.GetRequiredService<IServiceManager>();
-                    await serviceManager.EmailService.SendWelcomeAsync(
-                        request.RecipientEmail, request.RecipientName, stoppingToken);
+                    var template = await serviceManager.EmailTemplateService.RenderActiveAsync(
+                        Entities.EmailTemplates.EmailTemplateKeys.Welcome,
+                        new Dictionary<string, string?>
+                        {
+                            ["customer_name"] = request.RecipientName,
+                            ["customer_email"] = request.RecipientEmail
+                        }, stoppingToken);
+                    if (template is null)
+                    {
+                        _logger.LogWarning("Active WELCOME email template was not found; welcome email was skipped.");
+                        break;
+                    }
+
+                    await serviceManager.EmailService.SendAsync(
+                        new DTOs.Email.EmailMessage(
+                            request.RecipientEmail, request.RecipientName,
+                            template.Subject, template.HtmlContent, template.PlainTextContent),
+                        stoppingToken);
                     break;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

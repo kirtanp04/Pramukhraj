@@ -33,6 +33,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IAdminNotificationService> _AdminNotificationService;
         private readonly Lazy<IEmailService> _EmailService;
         private readonly Lazy<IEmailQueue> _EmailQueue;
+        private readonly Lazy<IEmailTemplateService> _EmailTemplateService;
 
       
         public ServiceManager(
@@ -51,7 +52,8 @@ namespace pramukhraj.Extensions
             IAdminCustomerService adminCustomerService,
             IAdminNotificationService adminNotificationService,
             IEmailService emailService,
-            IEmailQueue emailQueue
+            IEmailQueue emailQueue,
+            IEmailTemplateService emailTemplateService
             )
         {
           
@@ -80,6 +82,7 @@ namespace pramukhraj.Extensions
             _AdminNotificationService = new Lazy<IAdminNotificationService>(() => adminNotificationService);
             _EmailService = new Lazy<IEmailService>(() => emailService);
             _EmailQueue = new Lazy<IEmailQueue>(() => emailQueue);
+            _EmailTemplateService = new Lazy<IEmailTemplateService>(() => emailTemplateService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -98,6 +101,7 @@ namespace pramukhraj.Extensions
         public IAdminNotificationService AdminNotificationService => _AdminNotificationService.Value;
         public IEmailService EmailService => _EmailService.Value;
         public IEmailQueue EmailQueue => _EmailQueue.Value;
+        public IEmailTemplateService EmailTemplateService => _EmailTemplateService.Value;
       
     }
 }

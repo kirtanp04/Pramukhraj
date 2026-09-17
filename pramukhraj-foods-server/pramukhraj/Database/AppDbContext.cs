@@ -9,6 +9,7 @@ using pramukhraj.Entities.Product;
 using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
+using pramukhraj.Entities.EmailTemplates;
 
 namespace pramukhraj.Database
 {
@@ -44,6 +45,7 @@ namespace pramukhraj.Database
         public DbSet<ProviderCredentials> ProviderCredentials => Set<ProviderCredentials>();
         public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
         public DbSet<AdminNotificationRecipient> AdminNotificationRecipients => Set<AdminNotificationRecipient>();
+        public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -88,6 +90,24 @@ namespace pramukhraj.Database
                     .HasForeignKey(item => item.NotificationId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.AdminId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<EmailTemplate>(entity =>
+            {
+                entity.HasKey(item => item.Id);
+                entity.Property(item => item.Key).HasMaxLength(100).IsRequired();
+                entity.Property(item => item.Name).HasMaxLength(150).IsRequired();
+                entity.Property(item => item.Description).HasMaxLength(500);
+                entity.Property(item => item.Category).HasConversion<string>().HasMaxLength(30);
+                entity.Property(item => item.Subject).HasMaxLength(300).IsRequired();
+                entity.Property(item => item.DesignJson).HasColumnType("jsonb").IsRequired();
+                entity.Property(item => item.HtmlContent).HasColumnType("text").IsRequired();
+                entity.Property(item => item.PlainTextContent).HasColumnType("text");
+                entity.Property(item => item.VariablesJson).HasColumnType("jsonb").IsRequired();
+                entity.Property(item => item.AttachmentsJson).HasColumnType("jsonb").IsRequired();
+                entity.Property(item => item.ConcurrencyStamp).IsConcurrencyToken();
+                entity.HasIndex(item => item.Key).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
+                entity.HasIndex(item => new { item.IsActive, item.IsDeleted, item.Category });
             });
 
             // --- Admin Actions ---

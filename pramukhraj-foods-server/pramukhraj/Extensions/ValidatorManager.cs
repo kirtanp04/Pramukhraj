@@ -6,6 +6,7 @@ using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.DTOs.Customer;
+using pramukhraj.DTOs.EmailTemplates;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -38,7 +39,8 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest,
         IValidator<SmtpProviderCredentials> smtpProviderCredentials,
         IValidator<AdminCustomerListRequest> adminCustomerListRequest,
-        IValidator<PatchAdminCustomerRequest> patchAdminCustomerRequest)
+        IValidator<PatchAdminCustomerRequest> patchAdminCustomerRequest,
+        IValidator<EmailTemplateWriteRequest> emailTemplateWriteRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -62,6 +64,7 @@ public sealed class ValidatorManager : IValidatorManager
         AdminCustomerListRequest = adminCustomerListRequest;
         PatchAdminCustomerRequest = patchAdminCustomerRequest;
         SmtpProviderCredentials = smtpProviderCredentials;
+        EmailTemplateWriteRequest = emailTemplateWriteRequest;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
@@ -86,4 +89,5 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
     public IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     public IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
+    public IValidator<EmailTemplateWriteRequest> EmailTemplateWriteRequest { get; }
 }

@@ -6,6 +6,7 @@ using pramukhraj.DTOs.HomepageCms;
 using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.DTOs.Customer;
+using pramukhraj.DTOs.EmailTemplates;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
@@ -37,4 +38,5 @@ public interface IValidatorManager
     IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
     IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
+    IValidator<EmailTemplateWriteRequest> EmailTemplateWriteRequest { get; }
 }

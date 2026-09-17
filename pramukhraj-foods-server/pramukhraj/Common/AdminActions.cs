@@ -13,6 +13,7 @@
             public const string HomepageCms = "Homepage CMS";
             public const string ProviderCredentials = "Provider Credentials";
             public const string Customer = "Customer";
+            public const string EmailTemplates = "Email Templates";
         }
 
         public static class AdminActionTypes
