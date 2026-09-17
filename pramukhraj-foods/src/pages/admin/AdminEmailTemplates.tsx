@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FileText, Mail, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Eye, FileText, Mail, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { EmailTemplatePreviewDialog } from '@/components/admin/email-template/EmailTemplatePreviewDialog'
 import { ServerError } from '@/components/ui/ApiErrorPage'
 import { getApiErrorMessage } from '@/lib/apiClient'
 import { formatDateTime } from '@/lib/utils'
 import { emailTemplateApi } from '@/services/emailTemplateApi'
-import { EMAIL_TEMPLATE_CATEGORY_LABELS, type EmailTemplateListItem } from '@/types/emailTemplate'
+import { EMAIL_TEMPLATE_CATEGORY_LABELS, type EmailTemplateListItem, type EmailTemplateResponse } from '@/types/emailTemplate'
 
 export function AdminEmailTemplates() {
   const navigate = useNavigate()
@@ -17,6 +18,11 @@ export function AdminEmailTemplates() {
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<EmailTemplateListItem | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateListItem | null>(null)
+  const [previewDetails, setPreviewDetails] = useState<EmailTemplateResponse | null>(null)
+  const [previewError, setPreviewError] = useState('')
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
+  const [previewRequestVersion, setPreviewRequestVersion] = useState(0)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true); setError('')
@@ -30,6 +36,25 @@ export function AdminEmailTemplates() {
     void load(controller.signal)
     return () => controller.abort()
   }, [load])
+
+  useEffect(() => {
+    if (!previewTemplate) return
+    const controller = new AbortController()
+    setPreviewDetails(null)
+    setPreviewError('')
+    setIsPreviewLoading(true)
+    void emailTemplateApi.getById(previewTemplate.id, controller.signal)
+      .then(template => {
+        if (!controller.signal.aborted) setPreviewDetails(template)
+      })
+      .catch(previewLoadError => {
+        if (!controller.signal.aborted) setPreviewError(getApiErrorMessage(previewLoadError))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsPreviewLoading(false)
+      })
+    return () => controller.abort()
+  }, [previewTemplate, previewRequestVersion])
 
   async function remove(template: EmailTemplateListItem) {
     setDeletingId(template.id)
@@ -53,11 +78,21 @@ export function AdminEmailTemplates() {
           <article key={template.id} className="flex min-h-52 flex-col rounded-card border border-ink/10 bg-ivory p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-oxblood/10 text-oxblood"><Mail size={18} aria-hidden /></span><Badge variant={template.isActive ? 'teal' : 'soft'}>{template.isActive ? 'Active' : 'Draft'}</Badge></div>
             <div className="mt-4 flex-1"><p className="text-[11px]! font-semibold uppercase tracking-wider text-teal">{EMAIL_TEMPLATE_CATEGORY_LABELS[template.category]}</p><h2 className="mt-1 font-display text-lg! text-ink">{template.name}</h2><p className="mt-1 line-clamp-2 text-xs! leading-5 text-ink-soft">{template.subject}</p><code className="mt-3 inline-block rounded bg-ink/5 px-2 py-1 text-[10px]! text-ink-soft">{template.key}</code></div>
-            <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-3"><time className="text-[11px]! text-ink-soft" dateTime={template.updatedOn}>{formatDateTime(template.updatedOn)}</time><div className="flex gap-1"><button type="button" onClick={() => navigate(`/admin/email-templates/${template.id}/edit`)} className="rounded-full p-2 text-ink-soft hover:bg-ink/5 hover:text-oxblood" aria-label={`Edit ${template.name}`}><Pencil size={15} /></button><button type="button" disabled={deletingId === template.id} onClick={() => setPendingDelete(template)} className="rounded-full p-2 text-ink-soft hover:bg-red-50 hover:text-red-700 disabled:opacity-50" aria-label={`Delete ${template.name}`}>{deletingId === template.id ? <RefreshCw size={15} className="animate-spin" /> : <Trash2 size={15} />}</button></div></div>
+            <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-3"><time className="text-[11px]! text-ink-soft" dateTime={template.updatedOn}>{formatDateTime(template.updatedOn)}</time><div className="flex gap-1"><button type="button" onClick={() => setPreviewTemplate(template)} className="rounded-full p-2 text-ink-soft hover:bg-ink/5 hover:text-oxblood" aria-label={`Preview ${template.name}`}><Eye size={15} aria-hidden /></button><button type="button" onClick={() => navigate(`/admin/email-templates/${template.id}/edit`)} className="rounded-full p-2 text-ink-soft hover:bg-ink/5 hover:text-oxblood" aria-label={`Edit ${template.name}`}><Pencil size={15} /></button><button type="button" disabled={deletingId === template.id} onClick={() => setPendingDelete(template)} className="rounded-full p-2 text-ink-soft hover:bg-red-50 hover:text-red-700 disabled:opacity-50" aria-label={`Delete ${template.name}`}>{deletingId === template.id ? <RefreshCw size={15} className="animate-spin" /> : <Trash2 size={15} />}</button></div></div>
           </article>
         ))}</div>
       )}
       <ConfirmDialog open={pendingDelete !== null} onOpenChange={open => { if (!open) setPendingDelete(null) }} title="Delete email template?" description={pendingDelete ? `“${pendingDelete.name}” will no longer be available for email delivery.` : ''} onConfirm={() => { if (pendingDelete) void remove(pendingDelete) }} />
+      <EmailTemplatePreviewDialog
+        open={previewTemplate !== null}
+        name={previewDetails?.name ?? previewTemplate?.name ?? ''}
+        subject={previewDetails?.subject ?? previewTemplate?.subject ?? ''}
+        html={previewDetails?.htmlContent ?? ''}
+        isLoading={isPreviewLoading}
+        error={previewError}
+        onOpenChange={open => { if (!open) setPreviewTemplate(null) }}
+        onRetry={() => setPreviewRequestVersion(version => version + 1)}
+      />
     </div>
   )
 }
