@@ -56,7 +56,6 @@ public sealed class TwilioCustomerOtpSender : ICustomerOtpSender
 
         if (string.IsNullOrWhiteSpace(credentials.ServiceId))
         {
-            message = "sms_2fa";
             await MessageResource.CreateAsync(
                 to: new PhoneNumber(mobileNumber),
                 from: new PhoneNumber(credentials.FromNumber.Trim()),

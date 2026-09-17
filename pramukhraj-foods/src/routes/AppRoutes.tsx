@@ -4,6 +4,7 @@ import { lazyNamed } from "@/routes/lazyNamed";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
 import { AuthEntryRedirect } from "@/features/customer-auth/components/AuthEntryRedirect";
 import { RequireCustomerAuth } from "@/features/customer-auth/components/RequireCustomerAuth";
+import { CustomerVerifiedRoute } from "@/features/customer-verification/components/CustomerVerifiedRoute";
 
 const StorefrontLayout = lazyNamed(
   () => import("@/components/layout/StorefrontLayout"),
@@ -31,7 +32,8 @@ const ProductDetail = lazyNamed(
   "ProductDetail"
 );
 const Cart = lazyNamed(() => import("@/pages/Cart"), "Cart");
-const Checkout = lazyNamed(() => import("@/pages/Checkout"), "Checkout");
+const Checkout = lazyNamed(() => import("@/features/checkout/pages/CheckoutPage"), "CheckoutPage");
+const CustomerVerification = lazyNamed(() => import("@/features/customer-verification/pages/CustomerVerificationPage"), "CustomerVerificationPage");
 const OrderConfirmation = lazyNamed(
   () => import("@/pages/OrderConfirmation"),
   "OrderConfirmation"
@@ -53,8 +55,8 @@ const AccountWishlist = lazyNamed(
   "AccountWishlist"
 );
 const AccountAddresses = lazyNamed(
-  () => import("@/pages/account/AccountAddresses"),
-  "AccountAddresses"
+  () => import("@/features/customer-addresses/pages/CustomerAddressesPage"),
+  "CustomerAddressesPage"
 );
 const AccountNotifications = lazyNamed(
   () => import("@/pages/account/AccountNotifications"),
@@ -248,7 +250,8 @@ export function AppRoutes() {
         { path: "/products", element: lazyElement(ProductListing) },
         { path: "/product/:slug", element: lazyElement(ProductDetail) },
         { path: "/cart", element: lazyElement(Cart) },
-        { path: "/checkout", element: lazyElement(Checkout) },
+        { path: "/checkout", element: <RequireCustomerAuth><CustomerVerifiedRoute>{lazyElement(Checkout)}</CustomerVerifiedRoute></RequireCustomerAuth> },
+        { path: "/verify-checkout", element: <RequireCustomerAuth>{lazyElement(CustomerVerification)}</RequireCustomerAuth> },
         {
           path: "/order-confirmation",
           element: lazyElement(OrderConfirmation),

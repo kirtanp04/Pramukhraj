@@ -35,6 +35,27 @@ const CustomerApiPaths = {
       `customer/cart/items/${encodeURIComponent(id)}/variant`,
     merge: "customer/cart/merge",
   },
+  verification: {
+    status: "customer/account/verification/status",
+    requestMobile: "customer/account/verification/mobile/request",
+    verifyMobile: "customer/account/verification/mobile/verify",
+    updateEmail: "customer/account/verification/email",
+    requestEmail: "customer/account/verification/email/request",
+    verifyEmail: "customer/account/verification/email/verify",
+  },
+  addresses: {
+    list: "customer/addresses",
+    byId: (id: string) => `customer/addresses/${encodeURIComponent(id)}`,
+    defaultShipping: (id: string) => `customer/addresses/${encodeURIComponent(id)}/default-shipping`,
+    defaultBilling: (id: string) => `customer/addresses/${encodeURIComponent(id)}/default-billing`,
+  },
+  checkout: {
+    sessions: "customer/checkout/sessions",
+    session: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}`,
+    address: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/address`,
+    coupon: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/coupon`,
+    refresh: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/refresh`,
+  },
 };
 
 const AdminApiPaths = {
@@ -148,6 +169,10 @@ const AdminApiPaths = {
     },
     details: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
     patch: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
+  },
+  settings: {
+    get: "admin/settings",
+    update: "admin/settings",
   },
 };
 

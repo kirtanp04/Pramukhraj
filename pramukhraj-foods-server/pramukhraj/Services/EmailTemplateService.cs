@@ -168,10 +168,22 @@ public sealed partial class EmailTemplateService(
             item => !item.IsDeleted && item.IsActive && item.Key == normalizedKey, cancellationToken);
         if (entity is null) return null;
 
-        var allowedVariables = Deserialize<List<string>>(entity.VariablesJson) ?? [];
+        var declaredVariables = Deserialize<List<string>>(entity.VariablesJson) ?? [];
         var normalizedVariables = variables
-            .Where(pair => allowedVariables.Contains(pair.Key, StringComparer.Ordinal))
+            .Where(pair => MergeTokenNamePattern().IsMatch(pair.Key))
             .ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty, StringComparer.Ordinal);
+        var undeclaredVariables = normalizedVariables.Keys
+            .Except(declaredVariables, StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (undeclaredVariables.Length > 0)
+        {
+            logger.LogWarning(
+                "Email template {TemplateKey} received variables missing from its saved metadata: {VariableNames}. " +
+                "Rendering them because runtime values are authoritative.",
+                normalizedKey,
+                string.Join(", ", undeclaredVariables));
+        }
         var htmlVariables = normalizedVariables.ToDictionary(
             pair => pair.Key, pair => WebUtility.HtmlEncode(pair.Value), StringComparer.Ordinal);
         var plainText = string.IsNullOrWhiteSpace(entity.PlainTextContent)
@@ -248,6 +260,8 @@ public sealed partial class EmailTemplateService(
 
     [GeneratedRegex(@"\{\{\s*([a-z][a-z0-9_]*)\s*\}\}", RegexOptions.CultureInvariant)]
     private static partial Regex MergeTokenPattern();
+    [GeneratedRegex(@"\A[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant)]
+    private static partial Regex MergeTokenNamePattern();
     [GeneratedRegex("<[^>]+>", RegexOptions.CultureInvariant)]
     private static partial Regex HtmlTagPattern();
 }

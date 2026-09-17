@@ -2,9 +2,10 @@ using pramukhraj.Extensions;
 using pramukhraj.Middleware;
 using pramukhraj.Services;
 using Scalar.AspNetCore;
+using Serilog;
 using System.Diagnostics;
-using System.Linq;
 using System.IO;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,14 @@ if (builder.Environment.IsProduction())
             "Production Cors:AllowedOrigins must contain only explicit, non-loopback HTTPS origins.");
     }
 }
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 

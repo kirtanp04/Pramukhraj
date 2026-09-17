@@ -49,7 +49,12 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const customerAuthRequest = config.url?.includes("auth/customer/") ?? false;
-    const customerCartRequest = config.url?.includes("customer/cart") ?? false;
+    const customerProtectedRequest = [
+      "customer/cart",
+      "customer/account/",
+      "customer/addresses",
+      "customer/checkout",
+    ].some(path => config.url?.includes(path));
     const customerPublicRequest =
       customerAuthRequest &&
       ["send-otp", "verify-otp", "refresh-token", "logout"].some(path =>
@@ -57,7 +62,7 @@ apiClient.interceptors.request.use(
       );
     if (
       (customerAuthRequest && !customerPublicRequest) ||
-      customerCartRequest
+      customerProtectedRequest
     ) {
       const token = customerAccessToken;
       if (token) config.headers["Authorization"] = `Bearer ${token}`;

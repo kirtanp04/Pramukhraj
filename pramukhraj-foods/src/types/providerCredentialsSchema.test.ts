@@ -71,8 +71,9 @@ describe('razorpayCredentialsSchema', () => {
 })
 
 describe('shiprocketCredentialsSchema', () => {
-  it('accepts and trims all three credentials', () => {
+  it('accepts and trims all five required settings', () => {
     const result = shiprocketCredentialsSchema.safeParse({
+      ...DEFAULT_SHIPROCKET_CREDENTIALS,
       email: ' admin@example.com ',
       password: ' password-secret ',
       webhookSecret: ' webhook-secret ',
@@ -82,7 +83,7 @@ describe('shiprocketCredentialsSchema', () => {
     if (result.success) expect(result.data.email).toBe('admin@example.com')
   })
 
-  it.each(['email', 'password', 'webhookSecret'] as const)('requires %s', field => {
+  it.each(['email', 'password', 'webhookSecret', 'pickupPostalCode'] as const)('requires %s', field => {
     const result = shiprocketCredentialsSchema.safeParse({
       ...DEFAULT_SHIPROCKET_CREDENTIALS,
       email: 'admin@example.com',
@@ -95,10 +96,16 @@ describe('shiprocketCredentialsSchema', () => {
 
   it('rejects an invalid email address', () => {
     const result = shiprocketCredentialsSchema.safeParse({
+      ...DEFAULT_SHIPROCKET_CREDENTIALS,
       email: 'not-an-email',
       password: 'password-secret',
       webhookSecret: 'webhook-secret',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects invalid pickup PIN and minimum chargeable weight values', () => {
+    expect(shiprocketCredentialsSchema.safeParse({ ...DEFAULT_SHIPROCKET_CREDENTIALS, email: 'admin@example.com', password: 'password-secret', webhookSecret: 'webhook-secret', pickupPostalCode: '000000' }).success).toBe(false)
+    expect(shiprocketCredentialsSchema.safeParse({ ...DEFAULT_SHIPROCKET_CREDENTIALS, email: 'admin@example.com', password: 'password-secret', webhookSecret: 'webhook-secret', minimumChargeableWeightKg: 0 }).success).toBe(false)
   })
 })

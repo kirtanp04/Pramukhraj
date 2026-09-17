@@ -4,6 +4,8 @@ import { StorageKey } from "@/constants/StorageKeys";
 import { setCustomerAccessToken } from "@/lib/apiClient";
 import { customerAuthApi } from "../services/customerAuthApi";
 import type { CompleteProfilePayload, Customer, CustomerAuthResult } from "../types";
+import { useVerificationStore } from "@/features/customer-verification/store/verification.store";
+import { useCheckoutStore } from "@/features/checkout/store/checkout.store";
 
 interface CustomerAuthState {
   customer: Customer | null;
@@ -37,6 +39,8 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
       openAuth: () => set({ isAuthOpen: true }),
       closeAuth: () => set({ isAuthOpen: false }),
       acceptAuth: result => {
+        useVerificationStore.getState().clear();
+        useCheckoutStore.getState().reset();
         saveToken(result.accessToken);
         set({ customer: result.customer, isAuthenticated: true, isInitialized: true });
       },
@@ -64,11 +68,15 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
       },
       logout: async () => {
         try { await customerAuthApi.logout(); } finally {
+          useVerificationStore.getState().clear();
+          useCheckoutStore.getState().reset();
           removeToken();
           set({ customer: null, isAuthenticated: false, isAuthOpen: false });
         }
       },
       clearSession: () => {
+        useVerificationStore.getState().clear();
+        useCheckoutStore.getState().reset();
         removeToken();
         set({ customer: null, isAuthenticated: false, isAuthOpen: true });
       },

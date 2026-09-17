@@ -21,6 +21,7 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
     private readonly Crypto _crypto;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IValidatorManager _validatorManager;
+    private readonly ICacheService _cache;
     private readonly ILogger<ProviderCredentialsService> _logger;
 
     public ProviderCredentialsService(
@@ -28,12 +29,14 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
         Crypto crypto,
         IHttpContextAccessor httpContextAccessor,
         IValidatorManager validatorManager,
+        ICacheService cache,
         ILogger<ProviderCredentialsService> logger)
     {
         _db = db;
         _crypto = crypto;
         _httpContextAccessor = httpContextAccessor;
         _validatorManager = validatorManager;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -75,6 +78,7 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
             await _db.ProviderCredentials.AddAsync(credential, cancellationToken);
             await _db.AdminActions.AddAsync(BuildAudit(admin.Id, admin.Name, credential, AdminActionTypes.Create, now), cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            InvalidateCredentialCache(providerKey);
 
             return new ApiResponse<Guid>
             {
@@ -157,6 +161,7 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
                 BuildAudit(admin.Id, admin.Name, credential, AdminActionTypes.Update, credential.UpdatedOn.Value),
                 cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            InvalidateCredentialCache(keyValidation.Key);
 
             return ApiResponse<Guid>.Ok(credential.Id, "Provider credentials updated successfully.");
         }
@@ -229,6 +234,41 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
         }
     }
 
+    public Task<TCredential> GetRequiredAsync<TCredential>(
+        string providerKey,
+        CancellationToken cancellationToken = default)
+        where TCredential : class
+    {
+        var keyValidation = ValidateAndNormalizeKey(providerKey);
+        if (!keyValidation.Success)
+            throw new ProviderCredentialException("The provider configuration key is invalid.");
+
+        var cacheKey = CredentialCacheKey(keyValidation.Key, typeof(TCredential));
+        return _cache.GetOrCreateAsync(
+            cacheKey,
+            async token =>
+            {
+                var response = await GetByKeyAsync(keyValidation.Key, token);
+                if (!response.Success || response.Data is null)
+                    throw new ProviderCredentialException("The requested provider is not configured.");
+                if (!response.Data.IsActive)
+                    throw new ProviderCredentialException("The requested provider is currently unavailable.");
+
+                try
+                {
+                    var value = response.Data.Credentials.Deserialize<TCredential>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    return value ?? throw new ProviderCredentialException("The provider configuration is invalid.");
+                }
+                catch (JsonException exception)
+                {
+                    _logger.LogError(exception, "Provider configuration JSON is invalid for {ProviderKey}.", keyValidation.Key);
+                    throw new ProviderCredentialException("The provider configuration is invalid.");
+                }
+            },
+            TimeSpan.FromMinutes(5),
+            cancellationToken: cancellationToken);
+    }
+
     private (bool Success, Guid Id, string Name, int StatusCode, string Message, object? Errors) GetAdmin()
     {
         var result = Common.Common.GetAdminClaimInfo(_httpContextAccessor);
@@ -273,19 +313,35 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
     }
 
     private static string NormalizeKey(string providerKey) => providerKey.Trim().ToUpperInvariant();
+    private static string CredentialCacheKey(string providerKey, Type type) =>
+        $"provider:credentials:{providerKey}:{type.FullName}";
+    private void InvalidateCredentialCache(string providerKey)
+    {
+        _cache.RemoveByPrefix($"provider:credentials:{providerKey}:", "Provider credentials changed");
+        if (StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Shiprocket))
+            _cache.Remove("provider:shiprocket:access-token", "Shiprocket credentials changed");
+    }
     private async Task<string?> GetSchemaErrorAsync(
         string providerKey,
         JsonElement credentials,
         CancellationToken cancellationToken)
     {
-        if (!StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Smtp))
-            return null;
-
         try
         {
-            var settings = credentials.Deserialize<SmtpProviderCredentials>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            if (settings is null) return "SMTP credentials are required.";
-            var result = await _validatorManager.SmtpProviderCredentials.ValidateAsync(settings, cancellationToken);
+            FluentValidation.Results.ValidationResult? result = null;
+            if (StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Smtp))
+            {
+                var settings = credentials.Deserialize<SmtpProviderCredentials>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                if (settings is null) return "SMTP credentials are required.";
+                result = await _validatorManager.SmtpProviderCredentials.ValidateAsync(settings, cancellationToken);
+            }
+            else if (StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Shiprocket))
+            {
+                var settings = credentials.Deserialize<ShiprocketProviderCredentials>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                if (settings is null) return "Shiprocket credentials are required.";
+                result = await _validatorManager.ShiprocketProviderCredentials.ValidateAsync(settings, cancellationToken);
+            }
+            if (result is null) return null;
             return result.IsValid
                 ? null
                 : string.Join(" ", result.Errors.Select(error => error.ErrorMessage).Distinct());
@@ -313,3 +369,5 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
     private static ApiResponse<T> UnexpectedFailure<T>() => ApiResponse<T>.Fail(
         "An unexpected error occurred while processing provider credentials.", StatusCodes.Status500InternalServerError);
 }
+
+public sealed class ProviderCredentialException(string message) : Exception(message);

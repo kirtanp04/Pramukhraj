@@ -17,11 +17,18 @@ public sealed class RemoveExpiredOtpChallengesTask(
         var deletedCount = await db.CustomerOtpChallenges
             .Where(challenge => challenge.ExpiresOn <= currentTime)
             .ExecuteDeleteAsync(cancellationToken);
+        var deletedEmailCount = await db.CustomerEmailVerificationChallenges
+            .Where(challenge => challenge.ExpiresOn <= currentTime)
+            .ExecuteDeleteAsync(cancellationToken);
 
-        metrics.ReportTaskWork(Name, deletedCount, 0);
+        var totalDeleted = deletedCount + deletedEmailCount;
+        metrics.ReportTaskWork(Name, totalDeleted, 0);
 
-        if (deletedCount > 0)
-            logger.LogInformation("Removed {OtpChallengeCount} expired OTP challenges.", deletedCount);
+        if (totalDeleted > 0)
+            logger.LogInformation(
+                "Removed {SmsOtpChallengeCount} SMS and {EmailOtpChallengeCount} email verification challenges.",
+                deletedCount,
+                deletedEmailCount);
         else
             logger.LogDebug("No expired OTP challenges were found.");
     }

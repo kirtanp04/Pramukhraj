@@ -22,6 +22,8 @@ export interface ShiprocketCredentials {
   email: string
   password: string
   webhookSecret: string
+  pickupPostalCode: string
+  minimumChargeableWeightKg: number
 }
 
 export interface SmtpCredentials {

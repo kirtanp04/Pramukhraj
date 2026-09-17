@@ -22,5 +22,11 @@ namespace pramukhraj.Interfaces
         IEmailService EmailService { get; }
         IEmailQueue EmailQueue { get; }
         IEmailTemplateService EmailTemplateService { get; }
+        ICustomerVerificationService CustomerVerificationService { get; }
+        ICustomerAddressService CustomerAddressService { get; }
+        ICheckoutService CheckoutService { get; }
+        IPricingService PricingService { get; }
+        IShiprocketRateService ShiprocketRateService { get; }
+        IStoreSettingsService StoreSettingsService { get; }
     }
 }

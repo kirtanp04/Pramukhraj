@@ -10,6 +10,8 @@ using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 using pramukhraj.Entities.EmailTemplates;
+using pramukhraj.Entities.Checkout;
+using pramukhraj.Entities.Settings;
 
 namespace pramukhraj.Database
 {
@@ -46,6 +48,9 @@ namespace pramukhraj.Database
         public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
         public DbSet<AdminNotificationRecipient> AdminNotificationRecipients => Set<AdminNotificationRecipient>();
         public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+        public DbSet<CustomerEmailVerificationChallenge> CustomerEmailVerificationChallenges => Set<CustomerEmailVerificationChallenge>();
+        public DbSet<CheckoutSession> CheckoutSessions => Set<CheckoutSession>();
+        public DbSet<StoreSettings> StoreSettings => Set<StoreSettings>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -159,6 +164,41 @@ namespace pramukhraj.Database
             builder.Entity<CustomerOtpChallenge>()
                 .HasOne(x => x.Customer).WithMany()
                 .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<CustomerEmailVerificationChallenge>(b =>
+            {
+                b.HasOne(x => x.Customer).WithMany(x => x.EmailVerificationChallenges)
+                    .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<CustomerAddresses>(b =>
+            {
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasIndex(x => x.CustomerId).IsUnique()
+                    .HasFilter("\"IsActive\" AND \"IsDefaultShipping\"")
+                    .HasDatabaseName("IX_CustomerAddresses_DefaultShipping");
+                b.HasIndex(x => x.CustomerId).IsUnique()
+                    .HasFilter("\"IsActive\" AND \"IsDefaultBilling\"")
+                    .HasDatabaseName("IX_CustomerAddresses_DefaultBilling");
+            });
+
+            builder.Entity<CheckoutSession>(b =>
+            {
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<Cart>().WithMany().HasForeignKey(x => x.CartId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<CustomerAddresses>().WithMany().HasForeignKey(x => x.ShippingAddressId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<CustomerAddresses>().WithMany().HasForeignKey(x => x.BillingAddressId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<Coupon>().WithMany().HasForeignKey(x => x.CouponId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<StoreSettings>(b =>
+            {
+                b.Property(x => x.Id).ValueGeneratedNever();
+                b.Property(x => x.SettingsJson).HasColumnType("jsonb").IsRequired();
+                b.Property(x => x.ConcurrencyStamp).HasMaxLength(64).IsConcurrencyToken();
+                b.ToTable("StoreSettings", table => table.HasCheckConstraint("CK_StoreSettings_SingleRow", "\"Id\" = 1"));
+            });
 
             // --- Product Category Configurations ---
             builder.Entity<ProductCategory>(b =>

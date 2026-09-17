@@ -34,6 +34,12 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IEmailService> _EmailService;
         private readonly Lazy<IEmailQueue> _EmailQueue;
         private readonly Lazy<IEmailTemplateService> _EmailTemplateService;
+        private readonly Lazy<ICustomerVerificationService> _CustomerVerificationService;
+        private readonly Lazy<ICustomerAddressService> _CustomerAddressService;
+        private readonly Lazy<ICheckoutService> _CheckoutService;
+        private readonly Lazy<IPricingService> _PricingService;
+        private readonly Lazy<IShiprocketRateService> _ShiprocketRateService;
+        private readonly Lazy<IStoreSettingsService> _StoreSettingsService;
 
       
         public ServiceManager(
@@ -53,7 +59,13 @@ namespace pramukhraj.Extensions
             IAdminNotificationService adminNotificationService,
             IEmailService emailService,
             IEmailQueue emailQueue,
-            IEmailTemplateService emailTemplateService
+            IEmailTemplateService emailTemplateService,
+            ICustomerVerificationService customerVerificationService,
+            ICustomerAddressService customerAddressService,
+            ICheckoutService checkoutService,
+            IPricingService pricingService,
+            IShiprocketRateService shiprocketRateService,
+            IStoreSettingsService storeSettingsService
             )
         {
           
@@ -83,6 +95,12 @@ namespace pramukhraj.Extensions
             _EmailService = new Lazy<IEmailService>(() => emailService);
             _EmailQueue = new Lazy<IEmailQueue>(() => emailQueue);
             _EmailTemplateService = new Lazy<IEmailTemplateService>(() => emailTemplateService);
+            _CustomerVerificationService = new Lazy<ICustomerVerificationService>(() => customerVerificationService);
+            _CustomerAddressService = new Lazy<ICustomerAddressService>(() => customerAddressService);
+            _CheckoutService = new Lazy<ICheckoutService>(() => checkoutService);
+            _PricingService = new Lazy<IPricingService>(() => pricingService);
+            _ShiprocketRateService = new Lazy<IShiprocketRateService>(() => shiprocketRateService);
+            _StoreSettingsService = new Lazy<IStoreSettingsService>(() => storeSettingsService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -102,6 +120,12 @@ namespace pramukhraj.Extensions
         public IEmailService EmailService => _EmailService.Value;
         public IEmailQueue EmailQueue => _EmailQueue.Value;
         public IEmailTemplateService EmailTemplateService => _EmailTemplateService.Value;
+        public ICustomerVerificationService CustomerVerificationService => _CustomerVerificationService.Value;
+        public ICustomerAddressService CustomerAddressService => _CustomerAddressService.Value;
+        public ICheckoutService CheckoutService => _CheckoutService.Value;
+        public IPricingService PricingService => _PricingService.Value;
+        public IShiprocketRateService ShiprocketRateService => _ShiprocketRateService.Value;
+        public IStoreSettingsService StoreSettingsService => _StoreSettingsService.Value;
       
     }
 }

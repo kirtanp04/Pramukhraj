@@ -7,6 +7,7 @@ export interface Customer {
   state: string | null;
   postalCode: string | null;
   isMobileVerified: boolean;
+  isEmailVerified: boolean;
   isProfileCompleted: boolean;
   marketingConsent: boolean;
 }

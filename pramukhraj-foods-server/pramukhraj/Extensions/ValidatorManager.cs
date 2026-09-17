@@ -7,6 +7,8 @@ using pramukhraj.DTOs.Product;
 using pramukhraj.DTOs.ProviderCredentials;
 using pramukhraj.DTOs.Customer;
 using pramukhraj.DTOs.EmailTemplates;
+using pramukhraj.DTOs.Checkout;
+using pramukhraj.DTOs.Settings;
 using pramukhraj.Interfaces;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
@@ -38,9 +40,17 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<CreateProviderCredentialRequest> createProviderCredentialRequest,
         IValidator<UpdateProviderCredentialRequest> updateProviderCredentialRequest,
         IValidator<SmtpProviderCredentials> smtpProviderCredentials,
+        IValidator<ShiprocketProviderCredentials> shiprocketProviderCredentials,
         IValidator<AdminCustomerListRequest> adminCustomerListRequest,
         IValidator<PatchAdminCustomerRequest> patchAdminCustomerRequest,
-        IValidator<EmailTemplateWriteRequest> emailTemplateWriteRequest)
+        IValidator<EmailTemplateWriteRequest> emailTemplateWriteRequest,
+        IValidator<VerifyContactCodeRequest> verifyContactCodeRequest,
+        IValidator<UpdateCustomerEmailRequest> updateCustomerEmailRequest,
+        IValidator<CustomerAddressWriteRequest> customerAddressWriteRequest,
+        IValidator<InitializeCheckoutRequest> initializeCheckoutRequest,
+        IValidator<UpdateCheckoutAddressRequest> updateCheckoutAddressRequest,
+        IValidator<ApplyCheckoutCouponRequest> applyCheckoutCouponRequest,
+        IValidator<StoreSettingsWriteRequest> storeSettingsWriteRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -64,7 +74,15 @@ public sealed class ValidatorManager : IValidatorManager
         AdminCustomerListRequest = adminCustomerListRequest;
         PatchAdminCustomerRequest = patchAdminCustomerRequest;
         SmtpProviderCredentials = smtpProviderCredentials;
+        ShiprocketProviderCredentials = shiprocketProviderCredentials;
         EmailTemplateWriteRequest = emailTemplateWriteRequest;
+        VerifyContactCodeRequest = verifyContactCodeRequest;
+        UpdateCustomerEmailRequest = updateCustomerEmailRequest;
+        CustomerAddressWriteRequest = customerAddressWriteRequest;
+        InitializeCheckoutRequest = initializeCheckoutRequest;
+        UpdateCheckoutAddressRequest = updateCheckoutAddressRequest;
+        ApplyCheckoutCouponRequest = applyCheckoutCouponRequest;
+        StoreSettingsWriteRequest = storeSettingsWriteRequest;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
@@ -89,5 +107,13 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<AdminCustomerListRequest> AdminCustomerListRequest { get; }
     public IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     public IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
+    public IValidator<ShiprocketProviderCredentials> ShiprocketProviderCredentials { get; }
     public IValidator<EmailTemplateWriteRequest> EmailTemplateWriteRequest { get; }
+    public IValidator<VerifyContactCodeRequest> VerifyContactCodeRequest { get; }
+    public IValidator<UpdateCustomerEmailRequest> UpdateCustomerEmailRequest { get; }
+    public IValidator<CustomerAddressWriteRequest> CustomerAddressWriteRequest { get; }
+    public IValidator<InitializeCheckoutRequest> InitializeCheckoutRequest { get; }
+    public IValidator<UpdateCheckoutAddressRequest> UpdateCheckoutAddressRequest { get; }
+    public IValidator<ApplyCheckoutCouponRequest> ApplyCheckoutCouponRequest { get; }
+    public IValidator<StoreSettingsWriteRequest> StoreSettingsWriteRequest { get; }
 }

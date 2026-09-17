@@ -38,11 +38,13 @@ export function ShiprocketCredentialsPage() {
       return
     }
 
-    reset(shiprocketCredentialsSchema.parse({
+    reset({
       email: data.credentials.email ?? '',
       password: data.credentials.password ?? '',
       webhookSecret: data.credentials.webhookSecret ?? '',
-    }))
+      pickupPostalCode: data.credentials.pickupPostalCode ?? '',
+      minimumChargeableWeightKg: data.credentials.minimumChargeableWeightKg ?? 0.5,
+    })
   }, [data, reset])
 
   async function onSubmit(values: ShiprocketCredentialsFormValues) {
@@ -80,12 +82,12 @@ export function ShiprocketCredentialsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl text-ink">Shiprocket</h1>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${isConfigured ? 'bg-teal/10 text-teal' : 'bg-turmeric/20 text-ink'}`}>
+            <h1 className="font-display text-2xl! text-ink">Shiprocket</h1>
+            <span className={`rounded-full px-2.5 py-1 text-[11px]! font-semibold ${isConfigured ? 'bg-teal/10 text-teal' : 'bg-turmeric/20 text-ink'}`}>
               {isConfigured ? 'Configured' : 'Not configured'}
             </span>
           </div>
-          <p className="mt-1 text-sm text-ink-soft">Manage credentials used for Shiprocket shipping and webhook integration.</p>
+          <p className="mt-1 text-sm! text-ink-soft">Manage credentials and package-rating defaults used for Shiprocket shipping.</p>
         </div>
         <Button type="submit" disabled={isBusy || !isDirty} className="min-w-40 self-end sm:self-auto">
           {isBusy
@@ -98,8 +100,8 @@ export function ShiprocketCredentialsPage() {
         <div className="flex items-start gap-3 border-b border-ink/10 bg-ivory-dim px-4 py-4 sm:px-6">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-oxblood/8 text-oxblood"><Truck size={20} aria-hidden /></span>
           <div>
-            <h2 id="shiprocket-credentials-heading" className="font-display text-lg text-ink">Shipping Provider Details</h2>
-            <p className="text-xs text-ink-soft">All three values are required and encrypted before storage.</p>
+            <h2 id="shiprocket-credentials-heading" className="font-display text-lg! text-ink">Shipping Provider Details</h2>
+            <p className="text-xs! text-ink-soft">All five values are required and encrypted before storage.</p>
           </div>
         </div>
 
@@ -113,12 +115,18 @@ export function ShiprocketCredentialsPage() {
           <FormField label="Webhook Secret" htmlFor="shiprocket-webhook-secret" error={errors.webhookSecret?.message} required>
             <input id="shiprocket-webhook-secret" type="password" autoComplete="new-password" placeholder="Enter the Shiprocket webhook secret" disabled={isBusy} {...register('webhookSecret')} className={inputCls(!!errors.webhookSecret)} />
           </FormField>
+          <FormField label="Pickup PIN Code" htmlFor="shiprocket-pickup-postal-code" error={errors.pickupPostalCode?.message} hint="Example: 388001. Used as the shipment origin for serviceability and rates." required>
+            <input id="shiprocket-pickup-postal-code" type="text" inputMode="numeric" autoComplete="postal-code" maxLength={6} placeholder="388001" disabled={isBusy} {...register('pickupPostalCode')} className={inputCls(!!errors.pickupPostalCode)} />
+          </FormField>
+          <FormField label="Minimum Chargeable Weight (kg)" htmlFor="shiprocket-minimum-weight" error={errors.minimumChargeableWeightKg?.message} hint="Example: 0.5 kg. Packages below this value are rated at this minimum." required>
+            <input id="shiprocket-minimum-weight" type="number" inputMode="decimal" min="0.1" max="100" step="0.1" placeholder="0.5" disabled={isBusy} {...register('minimumChargeableWeightKg', { valueAsNumber: true })} className={inputCls(!!errors.minimumChargeableWeightKg)} />
+          </FormField>
         </div>
       </section>
 
-      <aside className="flex items-start gap-3 rounded-card border border-teal/15 bg-teal/5 p-4 text-sm text-ink-soft">
+      <aside className="flex items-start gap-3 rounded-card border border-teal/15 bg-teal/5 p-4 text-sm! text-ink-soft">
         <ShieldCheck size={19} className="mt-0.5 shrink-0 text-teal" aria-hidden />
-        <div><p className="font-medium text-ink">Credential security</p><p className="mt-0.5 text-xs leading-relaxed">Only administrators can access this page. Secret values are sent through the protected API and encrypted at rest.</p></div>
+        <div><p className="font-medium text-ink">Credential security</p><p className="mt-0.5 text-xs! leading-relaxed">Only administrators can access this page. Secret values and shipping settings are sent through the protected API and encrypted at rest.</p></div>
         <KeyRound size={17} className="ml-auto hidden shrink-0 text-teal/60 sm:block" aria-hidden />
       </aside>
 

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, CheckCircle2, LoaderCircle, LockKeyhole, ShieldCheck, Smartphone, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FieldError, FieldLabel } from "@/components/ui/Typography";
@@ -10,10 +11,12 @@ import { mobileSchema, otpSchema, profileSchema } from "../schemas/authSchemas";
 import { customerAuthApi } from "../services/customerAuthApi";
 import { useCustomerAuthStore } from "../store/customerAuthStore";
 import { useCartStore } from "@/features/cart/store/cart.store";
+import { StorageKey } from "@/constants/StorageKeys";
 
 type AuthStep = "mobile" | "otp" | "profile";
 
 export function CustomerAuthModal() {
+  const navigate = useNavigate();
   const open = useCustomerAuthStore(state => state.isAuthOpen);
   const closeAuth = useCustomerAuthStore(state => state.closeAuth);
   const acceptAuth = useCustomerAuthStore(state => state.acceptAuth);
@@ -47,6 +50,11 @@ export function CustomerAuthModal() {
 
   const finishClose = () => {
     closeAuth();
+    const intendedPath = sessionStorage.getItem(StorageKey.CustomerIntendedPath);
+    if (intendedPath) {
+      sessionStorage.removeItem(StorageKey.CustomerIntendedPath);
+      navigate(intendedPath, { replace: true });
+    }
     window.setTimeout(reset, 200);
   };
 

@@ -1,0 +1,23 @@
+using FluentValidation;
+using pramukhraj.DTOs.Settings;
+
+namespace pramukhraj.Validators.Settings;
+
+public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<StoreSettingsWriteRequest>
+{
+    public StoreSettingsWriteRequestValidator()
+    {
+        RuleFor(x => x.StoreName).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.SupportEmail).NotEmpty().MaximumLength(254).EmailAddress();
+        RuleFor(x => x.SupportPhoneNumber)
+            .NotEmpty().MaximumLength(20)
+            .Matches(@"^\+?[1-9]\d{7,14}$")
+            .WithMessage("Support phone number must be a valid international number, for example +919876543210.");
+        RuleFor(x => x.StoreAddress).NotEmpty().MaximumLength(1000);
+        RuleFor(x => x.TaxRatePercent).InclusiveBetween(0m, 100m)
+            .WithMessage("Tax rate must be between 0 and 100 percent.");
+        RuleFor(x => x.FreeShippingMinimumAmount).InclusiveBetween(0m, 10_000_000m)
+            .WithMessage("Free shipping minimum must be between 0 and 10,000,000.");
+        RuleFor(x => x.ConcurrencyStamp).MaximumLength(64);
+    }
+}

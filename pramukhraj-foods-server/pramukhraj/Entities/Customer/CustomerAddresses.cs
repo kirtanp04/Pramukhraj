@@ -22,6 +22,9 @@ namespace pramukhraj.Entities.Customer
         [MaxLength(16)]
         public string MobileNumber { get; set; } = string.Empty;
 
+        [MaxLength(256)]
+        public string? Email { get; set; }
+
         [Required]
         [MaxLength(250)]
         public string AddressLine1 { get; set; } = string.Empty;
@@ -41,6 +44,10 @@ namespace pramukhraj.Entities.Customer
         [MaxLength(10)]
         public string PostalCode { get; set; } = string.Empty;
 
+        [Required]
+        [MaxLength(80)]
+        public string Country { get; set; } = "India";
+
         [MaxLength(150)]
         public string? Landmark { get; set; }
 
@@ -55,6 +62,10 @@ namespace pramukhraj.Entities.Customer
         public DateTime CreatedOn { get; set; }
 
         public DateTime UpdatedOn { get; set; }
+
+        [MaxLength(64)]
+        [ConcurrencyCheck]
+        public string ConcurrencyStamp { get; set; } = Guid.NewGuid().ToString("N");
 
         [ForeignKey(nameof(CustomerId))]
         public Customer Customer { get; set; } = null!;
