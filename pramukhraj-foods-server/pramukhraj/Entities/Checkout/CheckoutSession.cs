@@ -23,6 +23,8 @@ public sealed class CheckoutSession
     [Column(TypeName = "decimal(18,2)")] public decimal CustomerShippingAmount { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal ProviderShippingCost { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal TaxAmount { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal ProductTaxAmount { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal PaymentServiceTaxAmount { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal GrandTotal { get; set; }
     [Required, MaxLength(3)] public string Currency { get; set; } = "INR";
     public int? SelectedCourierId { get; set; }

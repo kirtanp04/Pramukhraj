@@ -35,6 +35,7 @@ export function AdminSettings() {
         if (!controller.signal.aborted) reset({
           ...settings,
           taxRatePercent: finiteOrZero(settings.taxRatePercent),
+          paymentServiceTaxRatePercent: finiteOrZero(settings.paymentServiceTaxRatePercent),
         })
       } catch (error) {
         if (!controller.signal.aborted) setLoadError(getApiErrorMessage(error))
@@ -54,6 +55,7 @@ export function AdminSettings() {
       if (response.data) reset({
         ...response.data,
         taxRatePercent: finiteOrZero(response.data.taxRatePercent),
+        paymentServiceTaxRatePercent: finiteOrZero(response.data.paymentServiceTaxRatePercent),
       })
       dialog.success(response.message, { title: 'Settings Saved' })
     } catch (error) {
@@ -117,6 +119,9 @@ export function AdminSettings() {
           <div className="mt-5 grid gap-5 md:grid-cols-2">
             <FormField label="Tax rate (%)" htmlFor="tax-rate" error={errors.taxRatePercent?.message} hint="Example: 5 displays as 5% and adds ₹5 tax to a ₹100 taxable amount." required>
               <div className="relative"><input id="tax-rate" type="number" min={0} max={100} step="0.01" {...register('taxRatePercent', { setValueAs: value => value === '' || value === null || value === undefined ? 0 : Number(value) })} className={cn(inputCls(!!errors.taxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
+            </FormField>
+            <FormField label="Payment service tax (%)" htmlFor="payment-service-tax-rate" error={errors.paymentServiceTaxRatePercent?.message} hint="Example: 2 adds ₹2 on a ₹100 pre-payment-tax total. Enter 0 to disable it." required>
+              <div className="relative"><input id="payment-service-tax-rate" type="number" min={0} max={100} step="0.01" {...register('paymentServiceTaxRatePercent', { setValueAs: value => value === '' || value === null || value === undefined ? 0 : Number(value) })} className={cn(inputCls(!!errors.paymentServiceTaxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
             </FormField>
             <FormField label="Free shipping minimum (₹)" htmlFor="free-shipping" error={errors.freeShippingMinimumAmount?.message} hint="Applied after coupon discounts. Enter 0 to disable automatic free shipping." required>
               <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">₹</span><input id="free-shipping" type="number" min={0} max={10000000} step="0.01" {...register('freeShippingMinimumAmount', { valueAsNumber: true })} className={cn(inputCls(!!errors.freeShippingMinimumAmount), 'pl-9')} /></div>

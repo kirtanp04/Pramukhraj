@@ -40,6 +40,9 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IPricingService> _PricingService;
         private readonly Lazy<IShiprocketRateService> _ShiprocketRateService;
         private readonly Lazy<IStoreSettingsService> _StoreSettingsService;
+        private readonly Lazy<IOrderService> _OrderService;
+        private readonly Lazy<IPaymentService> _PaymentService;
+        private readonly Lazy<IInventoryReservationService> _InventoryReservationService;
 
       
         public ServiceManager(
@@ -65,7 +68,10 @@ namespace pramukhraj.Extensions
             ICheckoutService checkoutService,
             IPricingService pricingService,
             IShiprocketRateService shiprocketRateService,
-            IStoreSettingsService storeSettingsService
+            IStoreSettingsService storeSettingsService,
+            IOrderService orderService,
+            IPaymentService paymentService,
+            IInventoryReservationService inventoryReservationService
             )
         {
           
@@ -101,6 +107,9 @@ namespace pramukhraj.Extensions
             _PricingService = new Lazy<IPricingService>(() => pricingService);
             _ShiprocketRateService = new Lazy<IShiprocketRateService>(() => shiprocketRateService);
             _StoreSettingsService = new Lazy<IStoreSettingsService>(() => storeSettingsService);
+            _OrderService = new Lazy<IOrderService>(() => orderService);
+            _PaymentService = new Lazy<IPaymentService>(() => paymentService);
+            _InventoryReservationService = new Lazy<IInventoryReservationService>(() => inventoryReservationService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -126,6 +135,9 @@ namespace pramukhraj.Extensions
         public IPricingService PricingService => _PricingService.Value;
         public IShiprocketRateService ShiprocketRateService => _ShiprocketRateService.Value;
         public IStoreSettingsService StoreSettingsService => _StoreSettingsService.Value;
+        public IOrderService OrderService => _OrderService.Value;
+        public IPaymentService PaymentService => _PaymentService.Value;
+        public IInventoryReservationService InventoryReservationService => _InventoryReservationService.Value;
       
     }
 }

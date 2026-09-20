@@ -30,6 +30,11 @@ public sealed class AdminNotificationService(
             return null;
         }
 
+        var deduplicationKey = string.IsNullOrWhiteSpace(request.DeduplicationKey)
+            ? $"{request.Type.Trim().ToLowerInvariant()}:{request.EntityId ?? Guid.NewGuid().ToString("N")}" : request.DeduplicationKey.Trim();
+        var existing = await db.AdminNotifications.AsNoTracking().FirstOrDefaultAsync(x => x.DeduplicationKey == deduplicationKey, cancellationToken);
+        if (existing is not null) return ToResponse(existing, null);
+
         var notification = new AdminNotification
         {
             Id = Guid.NewGuid(),
@@ -41,9 +46,16 @@ public sealed class AdminNotificationService(
             EntityId = NullIfWhiteSpace(request.EntityId),
             ActionUrl = NullIfWhiteSpace(request.ActionUrl),
             MetadataJson = NullIfWhiteSpace(request.MetadataJson),
+            DeduplicationKey = deduplicationKey,
+            ExpiresOn = request.ExpiresOn,
             CreatedOn = DateTime.UtcNow,
-            Recipients = adminIds.Select(adminId => new AdminNotificationRecipient { AdminId = adminId }).ToList()
+            Recipients = adminIds.Select(adminId => new AdminNotificationRecipient { Id = Guid.NewGuid(), AdminId = adminId }).ToList()
         };
+
+        // PostgreSQL assigns this atomically from AdminNotificationSequence.
+        // SQLite is used by the test suite and has no sequence support.
+        if (!db.Database.IsNpgsql())
+            notification.SequenceNumber = (await db.AdminNotifications.MaxAsync(x => (long?)x.SequenceNumber, cancellationToken) ?? 0L) + 1L;
 
         db.AdminNotifications.Add(notification);
         await db.SaveChangesAsync(cancellationToken);
@@ -65,9 +77,9 @@ public sealed class AdminNotificationService(
     {
         pageNumber = Math.Max(1, pageNumber);
         pageSize = Math.Clamp(pageSize, 1, 100);
-        var query = db.AdminNotificationRecipients.AsNoTracking().Where(item => item.AdminId == adminId);
-        var unacknowledgedCount = await query.CountAsync(item => item.AcknowledgedOn == null, cancellationToken);
-        if (onlyUnacknowledged) query = query.Where(item => item.AcknowledgedOn == null);
+        var query = db.AdminNotificationRecipients.AsNoTracking().Where(item => item.AdminId == adminId && item.DismissedOn == null && (item.Notification.ExpiresOn == null || item.Notification.ExpiresOn > DateTime.UtcNow));
+        var unacknowledgedCount = await query.CountAsync(item => item.ReadOn == null, cancellationToken);
+        if (onlyUnacknowledged) query = query.Where(item => item.ReadOn == null);
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query.OrderByDescending(item => item.Notification.CreatedOn)
             .Skip((pageNumber - 1) * pageSize)
@@ -83,7 +95,7 @@ public sealed class AdminNotificationService(
                 item.Notification.ActionUrl,
                 item.Notification.MetadataJson,
                 item.Notification.CreatedOn,
-                item.AcknowledgedOn))
+                item.ReadOn, item.Notification.SequenceNumber, item.DismissedOn))
             .ToListAsync(cancellationToken);
         return new AdminNotificationListResponse(items, pageNumber, pageSize, totalCount, unacknowledgedCount);
     }
@@ -91,15 +103,30 @@ public sealed class AdminNotificationService(
     public async Task<bool> AcknowledgeAsync(string adminId, Guid notificationId, CancellationToken cancellationToken = default)
     {
         var updated = await db.AdminNotificationRecipients
-            .Where(item => item.AdminId == adminId && item.NotificationId == notificationId && item.AcknowledgedOn == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.AcknowledgedOn, DateTime.UtcNow), cancellationToken);
+            .Where(item => item.AdminId == adminId && item.NotificationId == notificationId && item.ReadOn == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.ReadOn, DateTime.UtcNow), cancellationToken);
         return updated > 0;
     }
 
     public Task<int> AcknowledgeAllAsync(string adminId, CancellationToken cancellationToken = default) =>
         db.AdminNotificationRecipients
-            .Where(item => item.AdminId == adminId && item.AcknowledgedOn == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.AcknowledgedOn, DateTime.UtcNow), cancellationToken);
+            .Where(item => item.AdminId == adminId && item.ReadOn == null && item.DismissedOn == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.ReadOn, DateTime.UtcNow), cancellationToken);
+
+    public Task<int> GetUnreadCountAsync(string adminId, CancellationToken cancellationToken = default) =>
+        db.AdminNotificationRecipients.CountAsync(x => x.AdminId == adminId && x.ReadOn == null && x.DismissedOn == null &&
+            (x.Notification.ExpiresOn == null || x.Notification.ExpiresOn > DateTime.UtcNow), cancellationToken);
+
+    public async Task<bool> DismissAsync(string adminId, Guid notificationId, CancellationToken cancellationToken = default) =>
+        await db.AdminNotificationRecipients.Where(x => x.AdminId == adminId && x.NotificationId == notificationId && x.DismissedOn == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.DismissedOn, DateTime.UtcNow).SetProperty(x => x.ReadOn, x => x.ReadOn ?? DateTime.UtcNow), cancellationToken) > 0;
+
+    public Task<IReadOnlyList<AdminNotificationResponse>> ReplayAsync(string adminId, long afterSequenceNumber, int limit, CancellationToken cancellationToken = default) =>
+        db.AdminNotificationRecipients.AsNoTracking().Where(x => x.AdminId == adminId && x.DismissedOn == null && x.Notification.SequenceNumber > afterSequenceNumber)
+            .OrderBy(x => x.Notification.SequenceNumber).Take(Math.Clamp(limit, 1, 200))
+            .Select(x => new AdminNotificationResponse(x.Notification.Id, x.Notification.Type, x.Notification.Severity, x.Notification.Title,
+                x.Notification.Message, x.Notification.EntityType, x.Notification.EntityId, x.Notification.ActionUrl, x.Notification.MetadataJson,
+                x.Notification.CreatedOn, x.ReadOn, x.Notification.SequenceNumber, x.DismissedOn)).ToListAsync(cancellationToken).ContinueWith<IReadOnlyList<AdminNotificationResponse>>(x => x.Result, cancellationToken);
 
     public async Task PublishAsync(AdminNotificationResponse notification, CancellationToken cancellationToken = default)
     {
@@ -115,7 +142,7 @@ public sealed class AdminNotificationService(
 
     private static AdminNotificationResponse ToResponse(AdminNotification item, DateTime? acknowledgedOn) =>
         new(item.Id, item.Type, item.Severity, item.Title, item.Message, item.EntityType, item.EntityId,
-            item.ActionUrl, item.MetadataJson, item.CreatedOn, acknowledgedOn);
+            item.ActionUrl, item.MetadataJson, item.CreatedOn, acknowledgedOn, item.SequenceNumber);
 
     private static void Validate(CreateAdminNotification request)
     {

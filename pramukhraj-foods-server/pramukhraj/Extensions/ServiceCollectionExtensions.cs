@@ -66,6 +66,12 @@ namespace pramukhraj.Extensions
             services.AddScoped<IApplicationBackgroundTask, RemoveExpiredOtpChallengesTask>();
             services.AddScoped<IApplicationBackgroundTask, CleanExpiredRefreshTokensTask>();
             services.AddScoped<IApplicationBackgroundTask, CleanExpiredAdminRefreshTokensTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpireCheckoutSessionsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpirePendingPaymentOrdersTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpireInventoryReservationsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ReconcilePendingRazorpayPaymentsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ProcessPaymentOutboxTask>();
+            services.AddScoped<IApplicationBackgroundTask, CleanupAdminNotificationsTask>();
             services.AddHostedService<ApplicationBackgroundService>();
 
             // Configure JwtSettings
@@ -152,7 +158,7 @@ namespace pramukhraj.Extensions
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomerAuthorizationResultHandler>();
 
             // CORS - enterprise default policy
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173" };
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173", "https://bufing-orbit-productivity-divisions.trycloudflare.com" };
             services.AddCors(options =>
             {
                 options.AddPolicy("EnterpriseCorsPolicy", policy =>
@@ -245,6 +251,13 @@ namespace pramukhraj.Extensions
                         PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                         AutoReplenishment = true
                     }));
+                options.AddPolicy("razorpay-webhook", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
             });
 
             // caching setup
@@ -285,6 +298,13 @@ namespace pramukhraj.Extensions
             });
             services.AddScoped<ICheckoutService, CheckoutService>();
             services.AddScoped<IStoreSettingsService, StoreSettingsService>();
+            services.AddScoped<IInventoryReservationService, InventoryReservationService>();
+            services.AddHttpClient<IPaymentService, RazorpayPaymentService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.razorpay.com/v1/");
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+            services.AddScoped<IOrderService, OrderService>();
             // Register token service
             services.AddScoped<IServiceManager, ServiceManager>();
 
@@ -320,6 +340,7 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<DTOs.Customer.PatchAdminCustomerRequest>, Validators.Customer.PatchAdminCustomerRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<SmtpProviderCredentials>, Validators.ProviderCredentials.SmtpProviderCredentialsValidator>();
             services.AddTransient<FluentValidation.IValidator<ShiprocketProviderCredentials>, Validators.ProviderCredentials.ShiprocketProviderCredentialsValidator>();
+            services.AddTransient<FluentValidation.IValidator<RazorpayProviderCredentials>, Validators.ProviderCredentials.RazorpayProviderCredentialsValidator>();
             services.AddTransient<FluentValidation.IValidator<EmailTemplateWriteRequest>, Validators.EmailTemplates.EmailTemplateWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<AddCartItemRequest>, Validators.Cart.AddCartItemRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateCartItemQuantityRequest>, Validators.Cart.UpdateCartItemQuantityRequestValidator>();
@@ -334,6 +355,8 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<UpdateCheckoutAddressRequest>, Validators.Checkout.UpdateCheckoutAddressRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<ApplyCheckoutCouponRequest>, Validators.Checkout.ApplyCheckoutCouponRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<StoreSettingsWriteRequest>, Validators.Settings.StoreSettingsWriteRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Order.PlaceOrderRequest>, Validators.Order.PlaceOrderRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Order.VerifyRazorpayPaymentRequest>, Validators.Order.VerifyRazorpayPaymentRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

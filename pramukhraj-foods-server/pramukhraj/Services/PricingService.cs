@@ -15,12 +15,16 @@ public sealed class PricingService : IPricingService
         var discountedGoods = Money(subtotal - couponDiscount);
         var taxRate = Math.Clamp(request.TaxRatePercent, 0m, 100m);
         var taxableAmount = discountedGoods;
-        var taxAmount = Money(taxableAmount * taxRate / 100m);
+        var productTaxAmount = Money(taxableAmount * taxRate / 100m);
         var customerShipping = Money(Math.Max(0, request.CustomerShippingAmount));
         var providerShipping = Money(Math.Max(0, request.ProviderShippingCost));
+        var paymentServiceTaxRate = Math.Clamp(request.PaymentServiceTaxRatePercent, 0m, 100m);
+        var amountBeforePaymentServiceTax = Money(discountedGoods + productTaxAmount + customerShipping);
+        var paymentServiceTaxAmount = Money(amountBeforePaymentServiceTax * paymentServiceTaxRate / 100m);
+        var taxAmount = Money(productTaxAmount + paymentServiceTaxAmount);
         return new CheckoutPricingResponse(
-            mrpTotal, subtotal, itemDiscount, couponDiscount, taxableAmount, taxAmount,
-            customerShipping, providerShipping, Money(discountedGoods + taxAmount + customerShipping), "INR", false, taxRate);
+            mrpTotal, subtotal, itemDiscount, couponDiscount, taxableAmount, productTaxAmount, paymentServiceTaxAmount, taxAmount,
+            customerShipping, providerShipping, Money(amountBeforePaymentServiceTax + paymentServiceTaxAmount), "INR", false, taxRate, paymentServiceTaxRate);
     }
 
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

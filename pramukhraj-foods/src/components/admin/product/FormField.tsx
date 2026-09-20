@@ -57,8 +57,8 @@ export function ToggleField({ label, description, checked, onCheckedChange, disa
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-ink/10 bg-ivory-dim px-4 py-3">
       <div>
-        <p className="text-sm font-medium text-ink">{label}</p>
-        {description && <p className="text-xs text-ink-soft">{description}</p>}
+        <p className="text-sm! font-medium text-ink">{label}</p>
+        {description && <p className="text-xs! text-ink-soft">{description}</p>}
       </div>
       <Switch.Root
         checked={checked}

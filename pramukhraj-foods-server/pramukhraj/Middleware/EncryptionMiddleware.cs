@@ -32,7 +32,8 @@ namespace pramukhraj.Middleware
 
             // SSE must remain an unbuffered text stream. Authentication and
             // authorization still run for this narrowly scoped admin endpoint.
-            if (path.Equals("/api/admin/notifications/stream", StringComparison.OrdinalIgnoreCase))
+            if (path.Equals("/api/admin/notifications/stream", StringComparison.OrdinalIgnoreCase) ||
+                path.Equals("/api/webhooks/razorpay", StringComparison.OrdinalIgnoreCase))
             {
                 await _next(context);
                 return;

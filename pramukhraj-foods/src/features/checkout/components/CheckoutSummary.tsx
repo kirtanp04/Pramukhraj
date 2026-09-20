@@ -20,9 +20,12 @@ export function CheckoutSummary({
   const images = useCheckoutImages(session.items);
   const p = session.pricing;
   const taxRatePercent = finiteOrZero(p.taxRatePercent);
+  const paymentServiceTaxRatePercent = finiteOrZero(p.paymentServiceTaxRatePercent);
+  const productTaxAmount = finiteOrZero(p.productTaxAmount);
+  const paymentServiceTaxAmount = finiteOrZero(p.paymentServiceTaxAmount);
   const taxAmount = finiteOrZero(p.taxAmount);
   return (
-    <aside className="h-fit rounded-[1.75rem] border border-ink/10 bg-ivory-dim p-5 lg:sticky lg:top-24">
+    <aside className="h-fit rounded-[1.75rem] border border-ink/10 bg-ivory-dim p-5 lg:sticky lg:top-40">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl!">Order summary</h2>
         <Link to="/cart" className="text-xs! font-semibold text-oxblood">
@@ -66,7 +69,7 @@ export function CheckoutSummary({
         <Row label="Product savings" value={-p.itemDiscountAmount} accent info="Savings already included in current product selling prices compared with MRP." />
         <Row label="Coupon" value={-p.couponDiscountAmount} accent info="The discount applied by your active coupon. It is deducted once from the eligible item value." />
         <Row label="Prepaid shipping" value={p.customerShippingAmount} info="The live prepaid delivery charge for the selected PIN code and best-rated serviceable courier." />
-        <Row label={`Tax (${taxRatePercent}%, excluded)`} value={taxAmount} subdued info={`Tax is calculated at ${taxRatePercent}% on the discounted merchandise value and added once to your payable total.`} />
+        <Row label="Tax" value={taxAmount} subdued info={`Product tax: ${taxRatePercent}% = ${formatINR(productTaxAmount)}. Payment service tax: ${paymentServiceTaxRatePercent}% = ${formatINR(paymentServiceTaxAmount)}. Example using current values: ${formatINR(productTaxAmount)} + ${formatINR(paymentServiceTaxAmount)} = ${formatINR(taxAmount)}.`} />
       </div>
       <div className="mt-4 flex justify-between border-t border-ink/10 pt-4 text-base! font-semibold">
         <span className="flex items-center gap-1">Total <SummaryInfo label="Total payable" description="The final amount payable after product savings and coupon discount, plus excluded tax and any prepaid shipping charge." value={p.grandTotal} /></span>
@@ -75,8 +78,8 @@ export function CheckoutSummary({
         </span>
       </div>
       <p className="mt-2 text-[11px]! leading-5 text-ink-soft">
-         Tax is excluded
-        from product prices and added once at checkout.
+        Product tax and any configured payment service tax are excluded from
+        product prices and added once at checkout.
       </p>
     </aside>
   );

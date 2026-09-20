@@ -28,5 +28,8 @@ namespace pramukhraj.Interfaces
         IPricingService PricingService { get; }
         IShiprocketRateService ShiprocketRateService { get; }
         IStoreSettingsService StoreSettingsService { get; }
+        IOrderService OrderService { get; }
+        IPaymentService PaymentService { get; }
+        IInventoryReservationService InventoryReservationService { get; }
     }
 }

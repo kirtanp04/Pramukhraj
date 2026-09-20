@@ -52,6 +52,8 @@ describe('razorpayCredentialsSchema', () => {
       apiKey: ' rzp_test_123 ',
       keySecret: ' key-secret ',
       webhookSecret: ' webhook-secret ',
+      isUpiPaymentEnabled: true,
+      isCardPaymentEnabled: false,
     })
 
     expect(result.success).toBe(true)
@@ -67,6 +69,13 @@ describe('razorpayCredentialsSchema', () => {
       [field]: '   ',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('requires UPI or card payments to be enabled', () => {
+    expect(razorpayCredentialsSchema.safeParse({
+      apiKey: 'rzp_test_123', keySecret: 'key-secret', webhookSecret: 'webhook-secret',
+      isUpiPaymentEnabled: false, isCardPaymentEnabled: false,
+    }).success).toBe(false)
   })
 })
 

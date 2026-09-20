@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using pramukhraj.Common;
 using pramukhraj.DTOs.Checkout;
+using pramukhraj.DTOs.Order;
 using pramukhraj.Interfaces;
 
 namespace pramukhraj.Controllers;
@@ -16,6 +17,13 @@ namespace pramukhraj.Controllers;
 [EnableRateLimiting("customer-checkout")]
 public sealed class CustomerCheckoutController(IServiceManager serviceManager) : ControllerBase
 {
+    [HttpPost("place-order")]
+    public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest request, [FromHeader(Name = "Idempotency-Key")] string idempotencyKey, CancellationToken cancellationToken)
+    {
+        var response = await serviceManager.OrderService.PlaceAsync(request, idempotencyKey, cancellationToken);
+        return StatusCode(response.StatusCode, response);
+    }
+
     [HttpPost("sessions")]
     public async Task<IActionResult> Initialize([FromBody] InitializeCheckoutRequest request, CancellationToken cancellationToken)
     {

@@ -25,6 +25,11 @@ export const razorpayCredentialsSchema = z.object({
   apiKey: requiredCredential('API key'),
   keySecret: requiredCredential('Key secret'),
   webhookSecret: requiredCredential('Webhook secret'),
+  isUpiPaymentEnabled: z.boolean(),
+  isCardPaymentEnabled: z.boolean(),
+}).refine(value => value.isUpiPaymentEnabled || value.isCardPaymentEnabled, {
+  message: 'Enable at least one payment method: UPI or card.',
+  path: ['isUpiPaymentEnabled'],
 })
 
 export type RazorpayCredentialsFormValues = z.infer<typeof razorpayCredentialsSchema>
@@ -33,6 +38,8 @@ export const DEFAULT_RAZORPAY_CREDENTIALS: RazorpayCredentialsFormValues = {
   apiKey: '',
   keySecret: '',
   webhookSecret: '',
+  isUpiPaymentEnabled: true,
+  isCardPaymentEnabled: true,
 }
 
 export const shiprocketCredentialsSchema = z.object({

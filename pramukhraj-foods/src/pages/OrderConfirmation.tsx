@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCircle2, Package, Home } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 export function OrderConfirmation() {
-  const orderId = `PRJ${Math.floor(100000 + Math.random() * 900000)}`
+  const state = useLocation().state as { orderNumber?: string; storeName?: string } | null
+  if (!state?.orderNumber) return <Navigate to="/account/orders" replace />
 
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center px-4 py-24 text-center">
@@ -15,12 +16,12 @@ export function OrderConfirmation() {
       >
         <CheckCircle2 size={64} className="text-green-600" />
       </motion.div>
-      <h1 className="mt-6 font-display text-3xl">Order Placed Successfully!</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Thank you for shopping with PramukhRaj Foods. Your order <span className="font-mono text-ink">#{orderId}</span> has been confirmed.
+      <h1 className="mt-6 font-display text-3xl!">Order placed successfully!</h1>
+      <p className="mt-2 text-sm! text-ink-soft">
+        Thank you for shopping with {state.storeName || 'our store'}. Your order <span className="font-mono text-ink">#{state.orderNumber}</span> has been confirmed.
       </p>
-      <div className="mt-6 flex items-center gap-2 rounded-full bg-ivory-dim px-4 py-2 text-sm text-ink-soft">
-        <Package size={16} /> Estimated delivery: 3-5 business days
+      <div className="mt-6 flex items-center gap-2 rounded-full bg-ivory-dim px-4 py-2 text-sm! text-ink-soft">
+        <Package size={16} /> Tracking details will appear after shipment creation.
       </div>
       <div className="mt-8 flex gap-3">
         <Button asChild><Link to="/account/orders">Track Order</Link></Button>

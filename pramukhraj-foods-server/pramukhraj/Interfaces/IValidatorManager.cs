@@ -9,6 +9,7 @@ using pramukhraj.DTOs.Customer;
 using pramukhraj.DTOs.EmailTemplates;
 using pramukhraj.DTOs.Checkout;
 using pramukhraj.DTOs.Settings;
+using pramukhraj.DTOs.Order;
 using static pramukhraj.DTOs.Product.ProductCategoryRequestResponse;
 using static pramukhraj.DTOs.Product.ProductInventoryRequestResponse;
 using static pramukhraj.DTOs.Product.CustomerProductListRequestResponse;
@@ -41,6 +42,7 @@ public interface IValidatorManager
     IValidator<PatchAdminCustomerRequest> PatchAdminCustomerRequest { get; }
     IValidator<SmtpProviderCredentials> SmtpProviderCredentials { get; }
     IValidator<ShiprocketProviderCredentials> ShiprocketProviderCredentials { get; }
+    IValidator<RazorpayProviderCredentials> RazorpayProviderCredentials { get; }
     IValidator<EmailTemplateWriteRequest> EmailTemplateWriteRequest { get; }
     IValidator<VerifyContactCodeRequest> VerifyContactCodeRequest { get; }
     IValidator<UpdateCustomerEmailRequest> UpdateCustomerEmailRequest { get; }
@@ -49,4 +51,6 @@ public interface IValidatorManager
     IValidator<UpdateCheckoutAddressRequest> UpdateCheckoutAddressRequest { get; }
     IValidator<ApplyCheckoutCouponRequest> ApplyCheckoutCouponRequest { get; }
     IValidator<StoreSettingsWriteRequest> StoreSettingsWriteRequest { get; }
+    IValidator<PlaceOrderRequest> PlaceOrderRequest { get; }
+    IValidator<VerifyRazorpayPaymentRequest> VerifyRazorpayPaymentRequest { get; }
 }

@@ -16,7 +16,9 @@ export const adminNotificationsApi = {
     return apiPost<{ count: number }>(ApiPath.admin.notifications.acknowledgeAll)
   },
   async stream(onNotification: (notification: AdminNotification) => void, signal: AbortSignal, onConnected?: () => void) {
-    const response = await fetch(apiClient.getUri({ url: ApiPath.admin.notifications.stream }), {
+    const lastSequence = Number(sessionStorage.getItem('admin-notification-sequence') ?? '0')
+    const streamUrl = lastSequence > 0 ? `${ApiPath.admin.notifications.stream}?afterSequenceNumber=${lastSequence}` : ApiPath.admin.notifications.stream
+    const response = await fetch(apiClient.getUri({ url: streamUrl }), {
       method: 'GET',
       headers: {
         Accept: 'text/event-stream',
@@ -43,8 +45,13 @@ export const adminNotificationsApi = {
         const block = buffer.slice(0, boundary)
         buffer = buffer.slice(boundary + 2)
         const event = block.split('\n').find(line => line.startsWith('event:'))?.slice(6).trim()
+        const id = Number(block.split('\n').find(line => line.startsWith('id:'))?.slice(3).trim() ?? '0')
         const data = block.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')
-        if (event === 'notification' && data) onNotification(JSON.parse(data) as AdminNotification)
+        if (event === 'admin-notification' && data) {
+          const notification = JSON.parse(data) as AdminNotification
+          if (Number.isFinite(id) && id > 0) sessionStorage.setItem('admin-notification-sequence', String(id))
+          onNotification(notification)
+        }
         boundary = buffer.indexOf('\n\n')
       }
     }

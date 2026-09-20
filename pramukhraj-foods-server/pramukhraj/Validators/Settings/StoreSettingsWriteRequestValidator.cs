@@ -16,6 +16,8 @@ public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<Store
         RuleFor(x => x.StoreAddress).NotEmpty().MaximumLength(1000);
         RuleFor(x => x.TaxRatePercent).InclusiveBetween(0m, 100m)
             .WithMessage("Tax rate must be between 0 and 100 percent.");
+        RuleFor(x => x.PaymentServiceTaxRatePercent).InclusiveBetween(0m, 100m)
+            .WithMessage("Payment service tax rate must be between 0 and 100 percent.");
         RuleFor(x => x.FreeShippingMinimumAmount).InclusiveBetween(0m, 10_000_000m)
             .WithMessage("Free shipping minimum must be between 0 and 10,000,000.");
         RuleFor(x => x.ConcurrencyStamp).MaximumLength(64);

@@ -341,6 +341,12 @@ public sealed class ProviderCredentialsService : IProviderCredentialService
                 if (settings is null) return "Shiprocket credentials are required.";
                 result = await _validatorManager.ShiprocketProviderCredentials.ValidateAsync(settings, cancellationToken);
             }
+            else if (StringComparer.OrdinalIgnoreCase.Equals(providerKey, Entities.ProviderCredentials.ProviderKey.Razorpay))
+            {
+                var settings = credentials.Deserialize<RazorpayProviderCredentials>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                if (settings is null) return "Razorpay credentials are required.";
+                result = await _validatorManager.RazorpayProviderCredentials.ValidateAsync(settings, cancellationToken);
+            }
             if (result is null) return null;
             return result.IsValid
                 ? null

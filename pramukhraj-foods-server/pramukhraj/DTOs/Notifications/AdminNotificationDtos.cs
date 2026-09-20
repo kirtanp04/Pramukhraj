@@ -8,7 +8,9 @@ public sealed record CreateAdminNotification(
     string? EntityType = null,
     string? EntityId = null,
     string? ActionUrl = null,
-    string? MetadataJson = null);
+    string? MetadataJson = null,
+    string? DeduplicationKey = null,
+    DateTime? ExpiresOn = null);
 
 public sealed record AdminNotificationResponse(
     Guid Id,
@@ -21,7 +23,9 @@ public sealed record AdminNotificationResponse(
     string? ActionUrl,
     string? MetadataJson,
     DateTime CreatedOn,
-    DateTime? AcknowledgedOn);
+    DateTime? AcknowledgedOn,
+    long SequenceNumber = 0,
+    DateTime? DismissedOn = null);
 
 public sealed record AdminNotificationListResponse(
     IReadOnlyList<AdminNotificationResponse> Items,

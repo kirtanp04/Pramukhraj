@@ -21,7 +21,7 @@ public sealed class StoreSettingsService(
     private const int SettingsId = 1;
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly StoreSettingsData Defaults = new("", "", 0m, "", "Store", 0m);
+    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m);
 
     public async Task<ApiResponse<StoreSettingsResponse>> GetAdminAsync(CancellationToken cancellationToken = default)
     {
@@ -56,7 +56,7 @@ public sealed class StoreSettingsService(
 
             var data = new StoreSettingsData(
                 request.SupportEmail.Trim().ToLowerInvariant(), NormalizePhone(request.SupportPhoneNumber),
-                Money(request.TaxRatePercent), request.StoreAddress.Trim(), request.StoreName.Trim(),
+                Money(request.TaxRatePercent ?? 0m), Money(request.PaymentServiceTaxRatePercent ?? 0m), request.StoreAddress.Trim(), request.StoreName.Trim(),
                 Money(request.FreeShippingMinimumAmount));
             var now = DateTime.UtcNow;
             if (entity is null)
@@ -113,7 +113,8 @@ public sealed class StoreSettingsService(
             return new StoreSettingsData(
                 value.SupportEmail?.Trim() ?? string.Empty,
                 value.SupportPhoneNumber?.Trim() ?? string.Empty,
-                Math.Clamp(value.TaxRatePercent, 0m, 100m),
+                Math.Clamp(value.TaxRatePercent ?? 0m, 0m, 100m),
+                Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 100m),
                 value.StoreAddress?.Trim() ?? string.Empty,
                 string.IsNullOrWhiteSpace(value.StoreName) ? Defaults.StoreName : value.StoreName.Trim(),
                 Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m));
@@ -126,7 +127,7 @@ public sealed class StoreSettingsService(
     }
 
     private static StoreSettingsResponse ToResponse(StoreSettingsData data, StoreSettings? entity) => new(
-        data.SupportEmail, data.SupportPhoneNumber, data.TaxRatePercent, data.StoreAddress,
+        data.SupportEmail, data.SupportPhoneNumber, data.TaxRatePercent ?? 0m, data.PaymentServiceTaxRatePercent ?? 0m, data.StoreAddress,
         data.StoreName, data.FreeShippingMinimumAmount, entity?.UpdatedOn, entity?.ConcurrencyStamp);
     private static string NormalizePhone(string value) => new(value.Where(x => char.IsDigit(x) || x == '+').ToArray());
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

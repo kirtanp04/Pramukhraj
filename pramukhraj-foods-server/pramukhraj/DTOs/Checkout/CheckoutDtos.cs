@@ -40,13 +40,16 @@ public sealed record CheckoutPricingResponse(
     decimal ItemDiscountAmount,
     decimal CouponDiscountAmount,
     decimal TaxableAmount,
+    decimal ProductTaxAmount,
+    decimal PaymentServiceTaxAmount,
     decimal TaxAmount,
     decimal CustomerShippingAmount,
     decimal ProviderShippingCost,
     decimal GrandTotal,
     string Currency,
     bool TaxIncluded,
-    decimal TaxRatePercent);
+    decimal TaxRatePercent,
+    decimal PaymentServiceTaxRatePercent);
 
 public sealed record CheckoutSessionResponse(
     Guid CheckoutSessionId,
@@ -70,7 +73,8 @@ public sealed record PricingCalculationRequest(
     decimal CouponDiscount,
     decimal CustomerShippingAmount,
     decimal ProviderShippingCost,
-    decimal TaxRatePercent);
+    decimal TaxRatePercent,
+    decimal PaymentServiceTaxRatePercent);
 
 public sealed record ShippingRateRequest(string DeliveryPostalCode, decimal WeightKg, decimal DeclaredValue);
 public sealed record ShippingRateResult(

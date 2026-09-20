@@ -46,7 +46,8 @@ public sealed class CheckoutService(
             var customerShipping = IsFreeShipping(settings.FreeShippingMinimumAmount, CartSubtotal(cart!), 0, false)
                 ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
-                cart!.Lines.Select(ToPricingLine).ToArray(), 0, customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent));
+                cart!.Lines.Select(ToPricingLine).ToArray(), 0, customerShipping, quote?.Rate ?? 0,
+                settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
             var now = DateTime.UtcNow;
             var session = new CheckoutSession
             {
@@ -95,7 +96,7 @@ public sealed class CheckoutService(
             context.Session.CouponDiscountAmount, freeShippingCoupon) ? 0 : quote?.Rate ?? 0;
         var pricing = pricingService.Calculate(new PricingCalculationRequest(
             cart!.Lines.Select(ToPricingLine).ToArray(), context.Session!.CouponDiscountAmount,
-            customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent));
+            customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
         if (!AmountsMatch(context.Session, pricing))
             return ApiResponse<CheckoutSessionResponse>.Fail("Cart prices changed. Refresh checkout to continue.", 409);
         return ApiResponse<CheckoutSessionResponse>.Ok(
@@ -171,7 +172,7 @@ public sealed class CheckoutService(
                 coupon?.Discount ?? 0, coupon?.FreeShipping == true) ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
                 cart!.Lines.Select(ToPricingLine).ToArray(), coupon?.Discount ?? 0,
-                customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent));
+                customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
             session.CartId = cart.Id;
             session.CartVersion = cart.Version;
             session.ShippingAddressId = addresses.Shipping?.Id;
@@ -368,6 +369,8 @@ public sealed class CheckoutService(
         session.CustomerShippingAmount = pricing.CustomerShippingAmount;
         session.ProviderShippingCost = pricing.ProviderShippingCost;
         session.TaxAmount = pricing.TaxAmount;
+        session.ProductTaxAmount = pricing.ProductTaxAmount;
+        session.PaymentServiceTaxAmount = pricing.PaymentServiceTaxAmount;
         session.GrandTotal = pricing.GrandTotal;
         session.Currency = pricing.Currency;
         session.SelectedCourierId = quote?.CourierCompanyId;
@@ -420,7 +423,9 @@ public sealed class CheckoutService(
     private static bool AmountsMatch(CheckoutSession session, CheckoutPricingResponse pricing) =>
         session.Subtotal == pricing.Subtotal && session.ItemDiscountAmount == pricing.ItemDiscountAmount &&
         session.CouponDiscountAmount == pricing.CouponDiscountAmount && session.CustomerShippingAmount == pricing.CustomerShippingAmount &&
-        session.ProviderShippingCost == pricing.ProviderShippingCost && session.TaxAmount == pricing.TaxAmount && session.GrandTotal == pricing.GrandTotal;
+        session.ProviderShippingCost == pricing.ProviderShippingCost && session.TaxAmount == pricing.TaxAmount &&
+        session.ProductTaxAmount == pricing.ProductTaxAmount && session.PaymentServiceTaxAmount == pricing.PaymentServiceTaxAmount &&
+        session.GrandTotal == pricing.GrandTotal;
     private static PricingLine ToPricingLine(CheckoutLine x) => new(x.ProductId, x.CategoryId, x.UnitPrice, x.UnitMrp, x.Quantity);
     private static int? CustomerEstimateMinDays(ShippingRateResult? quote) => AddEstimateDays(quote?.EstimatedDeliveryDays, 2);
     private static int? CustomerEstimateMaxDays(ShippingRateResult? quote) => AddEstimateDays(quote?.EstimatedDeliveryDays, 3);

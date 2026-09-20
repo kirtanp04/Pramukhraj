@@ -16,6 +16,8 @@ export interface RazorpayCredentials {
   apiKey: string
   keySecret: string
   webhookSecret: string
+  isUpiPaymentEnabled: boolean
+  isCardPaymentEnabled: boolean
 }
 
 export interface ShiprocketCredentials {

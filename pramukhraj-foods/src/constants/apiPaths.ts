@@ -55,6 +55,12 @@ const CustomerApiPaths = {
     address: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/address`,
     coupon: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/coupon`,
     refresh: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/refresh`,
+    placeOrder: "customer/checkout/place-order",
+  },
+  payments: {
+    verify: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/verify`,
+    retry: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/retry`,
+    status: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment-status`,
   },
 };
 

@@ -14,6 +14,7 @@ public sealed class CustomerAddressService(
     AppDbContext db,
     CustomerClaimsHelper claimsHelper,
     IValidatorManager validatorManager,
+    IStoreSettingsService storeSettingsService,
     ILogger<CustomerAddressService> logger) : ICustomerAddressService
 {
     public async Task<ApiResponse<IReadOnlyList<CustomerAddressResponse>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -236,22 +237,28 @@ public sealed class CustomerAddressService(
                     .SetProperty(x => x.ConcurrencyStamp, Guid.NewGuid().ToString("N")), cancellationToken);
         }
 
-        await db.CheckoutSessions
+        var affectedSessions = await db.CheckoutSessions
             .Where(x => x.CustomerId == customerId && x.ConsumedOn == null && x.ExpiresOn > now &&
                 x.ShippingAddressId == addressId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.ShippingAddressId, x => addressRemoved ? null : x.ShippingAddressId)
-                .SetProperty(x => x.BillingAddressId, x => addressRemoved && x.BillingAddressId == addressId ? null : x.BillingAddressId)
-                .SetProperty(x => x.GrandTotal, x => x.GrandTotal - x.CustomerShippingAmount)
-                .SetProperty(x => x.CustomerShippingAmount, 0m)
-                .SetProperty(x => x.ProviderShippingCost, 0m)
-                .SetProperty(x => x.SelectedCourierId, (int?)null)
-                .SetProperty(x => x.SelectedCourierName, (string?)null)
-                .SetProperty(x => x.EstimatedDeliveryOn, (DateTime?)null)
-                .SetProperty(x => x.ShippingQuoteExpiresOn, (DateTime?)null)
-                .SetProperty(x => x.ShippingQuoteJson, (string?)null)
-                .SetProperty(x => x.UpdatedOn, now)
-                .SetProperty(x => x.ConcurrencyStamp, Guid.NewGuid().ToString("N")), cancellationToken);
+            .ToListAsync(cancellationToken);
+        if (affectedSessions.Count == 0) return;
+        var settings = await storeSettingsService.GetCurrentAsync(cancellationToken);
+        var paymentServiceRate = Math.Clamp(settings.PaymentServiceTaxRatePercent ?? 0m, 0m, 100m);
+        foreach (var session in affectedSessions)
+        {
+            if (addressRemoved) session.ShippingAddressId = null;
+            if (addressRemoved && session.BillingAddressId == addressId) session.BillingAddressId = null;
+            session.CustomerShippingAmount = 0m;
+            session.ProviderShippingCost = 0m;
+            var discountedGoods = Math.Max(0m, session.Subtotal - session.CouponDiscountAmount);
+            session.PaymentServiceTaxAmount = Math.Round((discountedGoods + session.ProductTaxAmount) * paymentServiceRate / 100m, 2, MidpointRounding.AwayFromZero);
+            session.TaxAmount = session.ProductTaxAmount + session.PaymentServiceTaxAmount;
+            session.GrandTotal = discountedGoods + session.TaxAmount;
+            session.SelectedCourierId = null; session.SelectedCourierName = null; session.EstimatedDeliveryOn = null;
+            session.ShippingQuoteExpiresOn = null; session.ShippingQuoteJson = null;
+            session.UpdatedOn = now; session.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+        }
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<ApiResponse<Guid>> GetCustomerIdAsync(CancellationToken cancellationToken)

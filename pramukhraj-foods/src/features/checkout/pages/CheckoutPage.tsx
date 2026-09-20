@@ -1,25 +1,38 @@
 import {
   AlertTriangle,
-  CheckCircle2,
   LoaderCircle,
   LockKeyhole,
 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
+import { StorageKey } from "@/constants/StorageKeys";
+import { getApiErrorMessage } from "@/lib/apiClient";
+import { useCartStore } from "@/store/cartStore";
 import { AddressManager } from "@/features/customer-addresses/components/AddressManager";
 import type { CustomerAddress } from "@/features/customer-addresses/types/address.types";
 import { useCheckout } from "../hooks/useCheckout";
 import { CheckoutSkeleton } from "../components/CheckoutSkeleton";
 import { CheckoutSummary } from "../components/CheckoutSummary";
 import { ShippingQuoteCard } from "../components/ShippingQuoteCard";
+import { paymentApi } from "../api/payment.api";
+import { openRazorpay } from "../services/razorpay.service";
+
+const PAYMENT_REQUEST_KEY = "checkout-payment-request";
+const PENDING_ORDER_KEY = "checkout-pending-order";
 
 export function CheckoutPage() {
   const checkout = useCheckout();
+  const navigate = useNavigate();
+  const loadCart = useCartStore(state => state.loadCart);
   const [billingSame, setBillingSame] = useState(true);
   const [readyMessage, setReadyMessage] = useState("");
+  const [isPaying, setIsPaying] = useState(false);
+  const pendingOrder = readStoredPendingOrder();
 
   if (checkout.isLoading && !checkout.session) return <CheckoutSkeleton />;
+  if (!checkout.session && pendingOrder)
+    return <PendingPaymentRecovery order={pendingOrder} onCompleted={completePayment} />;
   if (!checkout.session)
     return (
       <main className="mx-auto max-w-xl px-4 py-20 text-center">
@@ -111,16 +124,44 @@ export function CheckoutPage() {
   };
   const continuePayment = async () => {
     setReadyMessage("");
+    if (isPaying) return;
+    setIsPaying(true);
     try {
-      const refreshed = await checkout.refresh();
-      if (refreshed?.isReadyForPayment)
-        setReadyMessage(
-          "Checkout is verified and ready. Payment will be enabled in the next implementation phase."
-        );
-    } catch {
-      /* Store exposes the safe error message. */
+      let order = readPendingOrder(session.checkoutSessionId);
+      if (order) {
+        const status = await paymentApi.status(order.orderId);
+        if (status?.isPaid) {
+          completePayment(order.orderNumber, order.storeName);
+          return;
+        }
+        if (!status?.canRetry) throw new Error("This payment window has ended. Please return to your cart.");
+      } else {
+        const refreshed = await checkout.refresh();
+        if (!refreshed?.isReadyForPayment) throw new Error("Checkout needs attention before payment.");
+        const placed = await paymentApi.placeOrder(refreshed.checkoutSessionId, getPaymentRequestKey(refreshed.checkoutSessionId));
+        if (!placed) throw new Error("The order could not be created.");
+        order = { orderId: placed.orderId, orderNumber: placed.orderNumber, storeName: placed.payment?.storeName ?? "" };
+        sessionStorage.setItem(PENDING_ORDER_KEY, JSON.stringify({ checkoutSessionId: session.checkoutSessionId, ...order }));
+      }
+      const payment = await paymentApi.retry(order.orderId);
+      if (!payment) throw new Error(order.paymentError || "Payment checkout is temporarily unavailable.");
+      if (!order.storeName) order.storeName = payment.storeName;
+      const verified = await paymentApi.verify(order.orderId, await openRazorpay(payment));
+      if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
+      completePayment(order.orderNumber, payment.storeName);
+    } catch (error) {
+      setReadyMessage(getApiErrorMessage(error));
+    } finally {
+      setIsPaying(false);
     }
   };
+  function completePayment(orderNumber: string, storeName: string) {
+    sessionStorage.removeItem(PAYMENT_REQUEST_KEY);
+    sessionStorage.removeItem(PENDING_ORDER_KEY);
+    sessionStorage.removeItem(StorageKey.CheckoutSessionId);
+    void loadCart();
+    navigate("/order-confirmation", { replace: true, state: { orderNumber, storeName } });
+  }
   const refreshShippingRate = async () => {
     setReadyMessage("");
     try {
@@ -226,29 +267,29 @@ export function CheckoutPage() {
               <div>
                 <h2 className="font-display text-xl!">Continue securely</h2>
                 <p className="mt-1 text-sm! leading-6 text-ivory/70">
-                  This phase stops before order creation or payment. Continuing
-                  performs a final stock, price, coupon, and shipping refresh.
+                  We verify stock, price, coupon, and shipping once more before
+                  opening Razorpay's secure payment checkout.
                 </p>
               </div>
             </div>
             <Button
               className="mt-5 w-full sm:w-auto"
               variant="secondary"
-              disabled={checkout.isMutating || quoteExpired || !session.isReadyForPayment}
+              disabled={checkout.isMutating || isPaying || quoteExpired || !session.isReadyForPayment}
               onClick={() => void continuePayment()}
             >
-              {checkout.isMutating ? (
+              {checkout.isMutating || isPaying ? (
                 <>
                   <LoaderCircle size={17} className="animate-spin" />
-                  Refreshing…
+                  {isPaying ? "Starting secure payment…" : "Refreshing…"}
                 </>
               ) : (
                 "Continue to payment"
               )}
             </Button>
             {readyMessage && (
-              <p className="mt-4 flex gap-2 text-sm! text-green-200">
-                <CheckCircle2 size={17} className="shrink-0" />
+              <p role="alert" className="mt-4 flex gap-2 text-sm! text-amber-100">
+                <AlertTriangle size={17} className="shrink-0" />
                 {readyMessage}
               </p>
             )}
@@ -271,8 +312,92 @@ export function CheckoutPage() {
   );
 }
 
+function PendingPaymentRecovery({
+  order,
+  onCompleted,
+}: {
+  order: PendingOrder;
+  onCompleted: (orderNumber: string, storeName: string) => void;
+}) {
+  const [isPaying, setIsPaying] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const resumePayment = async () => {
+    if (isPaying) return;
+    setMessage("");
+    setIsPaying(true);
+    try {
+      const status = await paymentApi.status(order.orderId);
+      if (status?.isPaid) {
+        onCompleted(order.orderNumber, order.storeName);
+        return;
+      }
+      if (!status?.canRetry)
+        throw new Error("This payment window has ended. Please check your orders before placing another order.");
+      const payment = await paymentApi.retry(order.orderId);
+      if (!payment) throw new Error("Payment checkout is temporarily unavailable.");
+      const verified = await paymentApi.verify(order.orderId, await openRazorpay(payment));
+      if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
+      onCompleted(order.orderNumber, payment.storeName);
+    } catch (error) {
+      setMessage(getApiErrorMessage(error));
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  return (
+    <main className="mx-auto max-w-xl px-4 py-20 text-center">
+      <LockKeyhole className="mx-auto text-oxblood" />
+      <h1 className="mt-4 font-display text-2xl! text-ink">Your payment is waiting</h1>
+      <p className="mt-2 text-sm! text-ink-soft">
+        Order {order.orderNumber} is reserved. Resume the secure payment whenever you are ready.
+      </p>
+      <div className="mt-6 flex justify-center">
+        <Button disabled={isPaying} onClick={() => void resumePayment()}>
+          {isPaying ? <><LoaderCircle size={17} className="animate-spin" /> Opening payment…</> : "Resume payment"}
+        </Button>
+      </div>
+      {message && (
+        <p role="alert" className="mx-auto mt-4 flex max-w-md items-start gap-2 text-left text-sm! text-oxblood">
+          <AlertTriangle size={17} className="mt-0.5 shrink-0" />
+          {message}
+        </p>
+      )}
+    </main>
+  );
+}
+
 function hasExpired(value: string | null | undefined) {
   if (!value) return false;
   const expiresAt = Date.parse(value);
   return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+}
+
+function getPaymentRequestKey(checkoutSessionId: string) {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(PAYMENT_REQUEST_KEY) ?? "null") as { checkoutSessionId?: string; key?: string } | null;
+    if (value?.checkoutSessionId === checkoutSessionId && value.key) return value.key;
+  } catch { /* Stored request state is invalid; create a fresh key. */ }
+  const key = crypto.randomUUID();
+  sessionStorage.setItem(PAYMENT_REQUEST_KEY, JSON.stringify({ checkoutSessionId, key }));
+  return key;
+}
+
+type PendingOrder = { checkoutSessionId: string; orderId: string; orderNumber: string; storeName: string; paymentError?: string | null };
+
+function readStoredPendingOrder(): PendingOrder | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(PENDING_ORDER_KEY) ?? "null") as Partial<PendingOrder> | null;
+    return value?.checkoutSessionId && value.orderId && value.orderNumber
+      ? { checkoutSessionId: value.checkoutSessionId, orderId: value.orderId, orderNumber: value.orderNumber, storeName: value.storeName ?? "", paymentError: value.paymentError }
+      : null;
+  } catch { return null; }
+}
+
+function readPendingOrder(checkoutSessionId: string): Omit<PendingOrder, "checkoutSessionId"> | null {
+  const value = readStoredPendingOrder();
+  return value?.checkoutSessionId === checkoutSessionId
+    ? { orderId: value.orderId, orderNumber: value.orderNumber, storeName: value.storeName, paymentError: value.paymentError }
+    : null;
 }
