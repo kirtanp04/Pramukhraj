@@ -46,6 +46,7 @@ public sealed class Order
     public ICollection<OrderItem> Items { get; set; } = [];
     public ICollection<OrderAddress> Addresses { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
+    public ICollection<Shipment.Shipment> Shipments { get; set; } = [];
 }
 
 public sealed class OrderItem

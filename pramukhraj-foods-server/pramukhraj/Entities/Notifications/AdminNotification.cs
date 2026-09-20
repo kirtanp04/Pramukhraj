@@ -63,6 +63,22 @@ public static class AdminNotificationTypes
     public const string PaymentExpired = "PAYMENT_EXPIRED";
     public const string PaymentVerificationFailed = "PAYMENT_VERIFICATION_FAILED";
     public const string PaymentReconciliationRequired = "PAYMENT_RECONCILIATION_REQUIRED";
+    public const string ShipmentCreationSucceeded = "SHIPMENT_CREATION_SUCCEEDED";
+    public const string ShipmentCreationFailed = "SHIPMENT_CREATION_FAILED";
+    public const string CourierAssigned = "COURIER_ASSIGNED";
+    public const string AwbAssigned = "AWB_ASSIGNED";
+    public const string AwbAssignmentFailed = "AWB_ASSIGNMENT_FAILED";
+    public const string PickupScheduled = "PICKUP_SCHEDULED";
+    public const string PickupSchedulingFailed = "PICKUP_SCHEDULING_FAILED";
+    public const string ShipmentPickedUp = "SHIPMENT_PICKED_UP";
+    public const string ShipmentInTransit = "SHIPMENT_IN_TRANSIT";
+    public const string ShipmentOutForDelivery = "SHIPMENT_OUT_FOR_DELIVERY";
+    public const string ShipmentDelivered = "SHIPMENT_DELIVERED";
+    public const string ShipmentDeliveryFailed = "SHIPMENT_DELIVERY_FAILED";
+    public const string ShipmentDelayed = "SHIPMENT_DELAYED";
+    public const string RtoInitiated = "RTO_INITIATED";
+    public const string RtoDelivered = "RTO_DELIVERED";
+    public const string ShiprocketWebhookFailed = "SHIPROCKET_WEBHOOK_FAILED";
 }
 
 public static class NotificationSeverities

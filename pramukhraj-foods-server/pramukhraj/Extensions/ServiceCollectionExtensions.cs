@@ -258,6 +258,13 @@ namespace pramukhraj.Extensions
                         PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
                         AutoReplenishment = true
                     }));
+                options.AddPolicy("shiprocket-webhook", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
             });
 
             // caching setup
@@ -305,7 +312,12 @@ namespace pramukhraj.Extensions
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
             services.AddScoped<IOrderService, OrderService>();
-            // Register token service
+            services.AddHttpClient<IShiprocketFulfillmentService, ShiprocketFulfillmentService>(client =>
+            {
+                client.BaseAddress = new Uri("https://apiv2.shiprocket.in/v1/external/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            services.AddScoped<ICustomerOrderService, CustomerOrderService>();
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;

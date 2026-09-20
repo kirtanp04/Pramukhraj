@@ -50,6 +50,10 @@ const AccountOrders = lazyNamed(
   () => import("@/pages/account/AccountOrders"),
   "AccountOrders"
 );
+const CustomerOrderDetailPage = lazyNamed(
+  () => import("@/features/orders/pages/CustomerOrderDetailPage"),
+  "CustomerOrderDetailPage"
+);
 const AccountWishlist = lazyNamed(
   () => import("@/pages/account/AccountWishlist"),
   "AccountWishlist"
@@ -271,6 +275,7 @@ export function AppRoutes() {
           children: [
             { index: true, element: lazyElement(AccountDashboard) },
             { path: "orders", element: lazyElement(AccountOrders) },
+            { path: "orders/:orderId", element: lazyElement(CustomerOrderDetailPage) },
             { path: "wishlist", element: lazyElement(AccountWishlist) },
             { path: "addresses", element: lazyElement(AccountAddresses) },
             {

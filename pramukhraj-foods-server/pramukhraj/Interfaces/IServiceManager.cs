@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using pramukhraj.Entities;
 
 namespace pramukhraj.Interfaces
@@ -31,5 +31,7 @@ namespace pramukhraj.Interfaces
         IOrderService OrderService { get; }
         IPaymentService PaymentService { get; }
         IInventoryReservationService InventoryReservationService { get; }
+        IShiprocketFulfillmentService ShiprocketFulfillmentService { get; }
+        ICustomerOrderService CustomerOrderService { get; }
     }
 }

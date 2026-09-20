@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using pramukhraj.Configurations;
@@ -43,6 +43,8 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IOrderService> _OrderService;
         private readonly Lazy<IPaymentService> _PaymentService;
         private readonly Lazy<IInventoryReservationService> _InventoryReservationService;
+        private readonly Lazy<IShiprocketFulfillmentService> _ShiprocketFulfillmentService;
+        private readonly Lazy<ICustomerOrderService> _CustomerOrderService;
 
       
         public ServiceManager(
@@ -71,7 +73,9 @@ namespace pramukhraj.Extensions
             IStoreSettingsService storeSettingsService,
             IOrderService orderService,
             IPaymentService paymentService,
-            IInventoryReservationService inventoryReservationService
+            IInventoryReservationService inventoryReservationService,
+            IShiprocketFulfillmentService shiprocketFulfillmentService,
+            ICustomerOrderService customerOrderService
             )
         {
           
@@ -110,6 +114,8 @@ namespace pramukhraj.Extensions
             _OrderService = new Lazy<IOrderService>(() => orderService);
             _PaymentService = new Lazy<IPaymentService>(() => paymentService);
             _InventoryReservationService = new Lazy<IInventoryReservationService>(() => inventoryReservationService);
+            _ShiprocketFulfillmentService = new Lazy<IShiprocketFulfillmentService>(() => shiprocketFulfillmentService);
+            _CustomerOrderService = new Lazy<ICustomerOrderService>(() => customerOrderService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -138,6 +144,8 @@ namespace pramukhraj.Extensions
         public IOrderService OrderService => _OrderService.Value;
         public IPaymentService PaymentService => _PaymentService.Value;
         public IInventoryReservationService InventoryReservationService => _InventoryReservationService.Value;
+        public IShiprocketFulfillmentService ShiprocketFulfillmentService => _ShiprocketFulfillmentService.Value;
+        public ICustomerOrderService CustomerOrderService => _CustomerOrderService.Value;
       
     }
 }

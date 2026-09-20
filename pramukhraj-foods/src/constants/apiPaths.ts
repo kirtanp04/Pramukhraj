@@ -64,6 +64,18 @@ const CustomerApiPaths = {
     summary: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/summary`,
     cancel: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/cancel`,
   },
+  orders: {
+    list: (params?: { page?: number; pageSize?: number; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.append("page", params.page.toString());
+      if (params?.pageSize) q.append("pageSize", params.pageSize.toString());
+      if (params?.status && params.status !== "all") q.append("status", params.status);
+      const qs = q.toString();
+      return `customer/orders${qs ? `?${qs}` : ""}`;
+    },
+    detail: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}`,
+    tracking: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/tracking`,
+  },
 };
 
 const AdminApiPaths = {

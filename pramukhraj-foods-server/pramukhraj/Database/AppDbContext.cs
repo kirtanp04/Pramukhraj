@@ -13,6 +13,7 @@ using pramukhraj.Entities.EmailTemplates;
 using pramukhraj.Entities.Checkout;
 using pramukhraj.Entities.Settings;
 using pramukhraj.Entities.Order;
+using pramukhraj.Entities.Shipment;
 
 namespace pramukhraj.Database
 {
@@ -61,6 +62,8 @@ namespace pramukhraj.Database
         public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
         public DbSet<WebhookInboxEvent> WebhookInboxEvents => Set<WebhookInboxEvent>();
         public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+        public DbSet<Shipment> Shipments => Set<Shipment>();
+        public DbSet<ShipmentActivity> ShipmentActivities => Set<ShipmentActivity>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
