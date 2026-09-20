@@ -34,4 +34,19 @@ public sealed class CustomerPaymentsController(IServiceManager services) : Contr
         var response = await services.PaymentService.VerifyAsync(orderId, request, token);
         return StatusCode(response.StatusCode, response);
     }
+
+    [HttpGet("summary")]
+    [HttpGet("pending-summary")]
+    public async Task<IActionResult> PendingSummary(Guid orderId, CancellationToken token)
+    {
+        var response = await services.PaymentService.GetPendingSummaryAsync(orderId, token);
+        return StatusCode(response.StatusCode, response);
+    }
+
+    [HttpPost("cancel")]
+    public async Task<IActionResult> Cancel(Guid orderId, CancellationToken token)
+    {
+        var response = await services.PaymentService.CancelPendingAsync(orderId, token);
+        return StatusCode(response.StatusCode, response);
+    }
 }

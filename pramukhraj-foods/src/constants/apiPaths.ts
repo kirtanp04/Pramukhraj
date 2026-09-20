@@ -61,6 +61,8 @@ const CustomerApiPaths = {
     verify: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/verify`,
     retry: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/retry`,
     status: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment-status`,
+    summary: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/summary`,
+    cancel: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/cancel`,
   },
 };
 

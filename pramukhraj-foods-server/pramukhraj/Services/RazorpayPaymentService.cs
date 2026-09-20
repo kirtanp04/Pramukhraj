@@ -8,6 +8,7 @@ using pramukhraj.Database;
 using pramukhraj.DTOs.Notifications;
 using pramukhraj.DTOs.Order;
 using pramukhraj.DTOs.ProviderCredentials;
+using pramukhraj.Entities.Cart;
 using pramukhraj.Entities.Coupon;
 using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Order;
@@ -133,6 +134,178 @@ public sealed class RazorpayPaymentService(
                 x.Status == PaymentStatus.Paid, x.Order.Status == OrderStatus.PendingPayment && x.ExpiresOn > DateTime.UtcNow, x.ExpiresOn))
             .SingleOrDefaultAsync(cancellationToken);
         return data is null ? ApiResponse<PaymentStatusResponse>.Fail("Order was not found.", 404) : ApiResponse<PaymentStatusResponse>.Ok(data);
+    }
+
+    public async Task<ApiResponse<PendingOrderSummaryResponse>> GetPendingSummaryAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var claims = claimsHelper.GetCustomer();
+        if (!claims.Success || claims.Data is null) return ApiResponse<PendingOrderSummaryResponse>.Fail(claims.Message, claims.StatusCode);
+
+        var order = await db.Orders.AsNoTracking()
+            .Include(x => x.Items)
+            .Include(x => x.Addresses)
+            .Include(x => x.Payments)
+            .Where(x => x.Id == orderId && x.CustomerId == claims.Data.CustomerId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (order is null) return ApiResponse<PendingOrderSummaryResponse>.Fail("Order was not found.", 404);
+
+        var latestPayment = order.Payments.OrderByDescending(p => p.CreatedOn).FirstOrDefault();
+        var paymentStatus = latestPayment?.Status.ToString() ?? PaymentStatus.Pending.ToString();
+        var isPaid = latestPayment?.Status == PaymentStatus.Paid;
+        var canRetry = order.Status == OrderStatus.PendingPayment && order.PaymentExpiresOn > DateTime.UtcNow && !isPaid;
+
+        var shippingAddress = order.Addresses.FirstOrDefault(a => a.Type == "Shipping");
+        var billingAddress = order.Addresses.FirstOrDefault(a => a.Type == "Billing");
+
+        var shippingDto = shippingAddress is null ? null : new PendingOrderAddressResponse(
+            shippingAddress.Type,
+            shippingAddress.RecipientName,
+            shippingAddress.MobileNumber,
+            shippingAddress.Email,
+            shippingAddress.AddressLine1,
+            shippingAddress.AddressLine2,
+            shippingAddress.Landmark,
+            shippingAddress.City,
+            shippingAddress.State,
+            shippingAddress.PostalCode,
+            shippingAddress.Country);
+
+        var billingDto = billingAddress is null ? null : new PendingOrderAddressResponse(
+            billingAddress.Type,
+            billingAddress.RecipientName,
+            billingAddress.MobileNumber,
+            billingAddress.Email,
+            billingAddress.AddressLine1,
+            billingAddress.AddressLine2,
+            billingAddress.Landmark,
+            billingAddress.City,
+            billingAddress.State,
+            billingAddress.PostalCode,
+            billingAddress.Country);
+
+        var itemsDto = order.Items.Select(i => new PendingOrderItemResponse(
+            i.ProductId,
+            i.ProductVariantId,
+            i.ProductName,
+            i.ProductSlug,
+            i.VariantName,
+            i.Sku,
+            i.Quantity,
+            i.UnitPrice,
+            i.UnitMrp,
+            i.LineTotal,
+            i.Weight,
+            i.WeightUnit)).ToList();
+
+        var settings = await settingsService.GetCurrentAsync(cancellationToken);
+
+        var response = new PendingOrderSummaryResponse(
+            order.Id,
+            order.OrderNumber,
+            order.Status.ToString(),
+            paymentStatus,
+            order.PaymentExpiresOn,
+            order.Subtotal,
+            order.ItemDiscountAmount,
+            order.CouponDiscountAmount,
+            order.ShippingAmount,
+            order.TaxAmount,
+            order.ProductTaxAmount,
+            order.PaymentServiceTaxAmount,
+            order.ProductTaxRatePercent,
+            order.PaymentServiceTaxRatePercent,
+            order.GrandTotal,
+            order.Currency,
+            order.CouponCode,
+            order.SelectedCourierName,
+            order.EstimatedDeliveryOn,
+            settings.StoreName,
+            shippingDto,
+            billingDto,
+            itemsDto,
+            canRetry,
+            isPaid);
+
+        return ApiResponse<PendingOrderSummaryResponse>.Ok(response);
+    }
+
+    public async Task<ApiResponse<CancelPendingOrderResponse>> CancelPendingAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var claims = claimsHelper.GetCustomer();
+        if (!claims.Success || claims.Data is null) return ApiResponse<CancelPendingOrderResponse>.Fail(claims.Message, claims.StatusCode);
+
+        var order = await db.Orders
+            .Include(x => x.Payments)
+            .SingleOrDefaultAsync(x => x.Id == orderId && x.CustomerId == claims.Data.CustomerId, cancellationToken);
+
+        if (order is null) return ApiResponse<CancelPendingOrderResponse>.Fail("Order was not found.", 404);
+
+        var payment = order.Payments.OrderByDescending(p => p.CreatedOn).FirstOrDefault();
+        if (order.Status != OrderStatus.PendingPayment || (payment is not null && payment.Status == PaymentStatus.Paid))
+            return ApiResponse<CancelPendingOrderResponse>.Fail("This order cannot be cancelled because it is not awaiting payment.", 409);
+
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+
+            var reservations = await db.InventoryReservations
+                .Where(x => x.OrderId == orderId && x.Status == InventoryReservationStatus.Reserved)
+                .ToListAsync(cancellationToken);
+
+            foreach (var reservation in reservations)
+            {
+                await db.ProductVariants.Where(x => x.Id == reservation.ProductVariantId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.StockQuantity, x => x.StockQuantity + reservation.Quantity), cancellationToken);
+                reservation.Status = InventoryReservationStatus.Released;
+                reservation.ReleasedOn = now;
+            }
+
+            await db.CouponUsages.Where(x => x.OrderId == orderId && x.Status == CouponEnums.CouponUsageStatus.Reserved)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, CouponEnums.CouponUsageStatus.Released)
+                    .SetProperty(x => x.ReleasedOn, now).SetProperty(x => x.ReleaseReason, "Cancelled by customer"), cancellationToken);
+
+            order.Status = OrderStatus.Cancelled;
+            order.UpdatedOn = now;
+            if (payment is not null)
+            {
+                payment.Status = PaymentStatus.Failed;
+                payment.LastError = "Cancelled by customer.";
+                payment.UpdatedOn = now;
+                db.PaymentTransactions.Add(Transaction(payment.Id, "CustomerCancellation", payment.ProviderPaymentId, "Cancelled", null));
+            }
+
+            db.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                OrderId = orderId,
+                Status = OrderStatus.Cancelled,
+                Note = "Order reservation cancelled by customer.",
+                CreatedOn = now
+            });
+
+            var checkoutSession = await db.CheckoutSessions.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == order.CheckoutSessionId, cancellationToken);
+            if (checkoutSession is not null)
+            {
+                var cart = await db.Carts.SingleOrDefaultAsync(x => x.Id == checkoutSession.CartId && x.CustomerId == claims.Data.CustomerId, cancellationToken);
+                if (cart is not null && cart.Status == CartStatus.Converted)
+                {
+                    cart.Status = CartStatus.Active;
+                    cart.ConvertedToOrderOn = null;
+                    cart.Version++;
+                    cart.UpdatedOn = now;
+                }
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        });
+
+        return ApiResponse<CancelPendingOrderResponse>.Ok(
+            new CancelPendingOrderResponse(order.Id, order.OrderNumber, OrderStatus.Cancelled.ToString(), "Order reservation was cancelled and your cart has been restored."));
     }
 
     public async Task<int> ProcessWebhookAsync(string body, string signature, CancellationToken cancellationToken = default)
@@ -266,6 +439,21 @@ public sealed class RazorpayPaymentService(
                     .SetProperty(x => x.ReleasedOn, now).SetProperty(x => x.ReleaseReason, reason), token);
             db.OrderStatusHistories.Add(new() { Id = Guid.NewGuid(), OrderId = payment.OrderId, Status = orderStatus, Note = reason, CreatedOn = now });
             db.PaymentTransactions.Add(Transaction(payment.Id, "FinalStatus", payment.ProviderPaymentId, paymentStatus.ToString(), null));
+
+            var checkoutSession = await db.CheckoutSessions.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == payment.Order.CheckoutSessionId, token);
+            if (checkoutSession is not null)
+            {
+                var cart = await db.Carts.SingleOrDefaultAsync(x => x.Id == checkoutSession.CartId && x.CustomerId == payment.Order.CustomerId, token);
+                if (cart is not null && cart.Status == CartStatus.Converted)
+                {
+                    cart.Status = CartStatus.Active;
+                    cart.ConvertedToOrderOn = null;
+                    cart.Version++;
+                    cart.UpdatedOn = now;
+                }
+            }
+
             await db.SaveChangesAsync(token);
             var notificationType = paymentStatus == PaymentStatus.Expired ? AdminNotificationTypes.PaymentExpired : AdminNotificationTypes.PaymentFailed;
             var notification = await notifications.CreateAsync(new CreateAdminNotification(notificationType, NotificationSeverities.Error,

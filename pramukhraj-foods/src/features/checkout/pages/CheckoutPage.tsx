@@ -1,13 +1,20 @@
 import {
   AlertTriangle,
+  ArrowLeft,
+  Clock,
   LoaderCircle,
   LockKeyhole,
+  MapPin,
+  ShieldCheck,
+  Truck,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { StorageKey } from "@/constants/StorageKeys";
 import { getApiErrorMessage } from "@/lib/apiClient";
+import { formatINR } from "@/lib/utils";
+import { loadCustomerProductImage } from "@/services/customerProductImageLoader";
 import { useCartStore } from "@/store/cartStore";
 import { AddressManager } from "@/features/customer-addresses/components/AddressManager";
 import type { CustomerAddress } from "@/features/customer-addresses/types/address.types";
@@ -17,6 +24,7 @@ import { CheckoutSummary } from "../components/CheckoutSummary";
 import { ShippingQuoteCard } from "../components/ShippingQuoteCard";
 import { paymentApi } from "../api/payment.api";
 import { openRazorpay } from "../services/razorpay.service";
+import type { PendingOrderSummary } from "../types/payment.types";
 
 const PAYMENT_REQUEST_KEY = "checkout-payment-request";
 const PENDING_ORDER_KEY = "checkout-pending-order";
@@ -319,11 +327,61 @@ function PendingPaymentRecovery({
   order: PendingOrder;
   onCompleted: (orderNumber: string, storeName: string) => void;
 }) {
+  const navigate = useNavigate();
+  const loadCart = useCartStore(state => state.loadCart);
+  const [summary, setSummary] = useState<PendingOrderSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [message, setMessage] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [images, setImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    const fetchSummary = async () => {
+      setIsLoading(true);
+      try {
+        const data = await paymentApi.summary(order.orderId);
+        if (!active) return;
+        if (data?.isPaid) {
+          onCompleted(data.orderNumber, data.storeName);
+          return;
+        }
+        setSummary(data);
+        if (data?.items?.length) {
+          void Promise.all(
+            data.items.map(async item => [item.productId, await loadCustomerProductImage(item.productId)] as const)
+          ).then(entries => {
+            if (active) setImages(Object.fromEntries(entries));
+          });
+        }
+      } catch (err) {
+        if (active) setMessage(getApiErrorMessage(err));
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+    void fetchSummary();
+    return () => {
+      active = false;
+    };
+  }, [order.orderId]);
+
+  useEffect(() => {
+    if (!summary?.paymentExpiresOn) return;
+    const updateCountdown = () => {
+      const expires = Date.parse(summary.paymentExpiresOn);
+      const diffSeconds = Math.max(0, Math.floor((expires - Date.now()) / 1000));
+      setRemainingSeconds(diffSeconds);
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [summary?.paymentExpiresOn]);
 
   const resumePayment = async () => {
-    if (isPaying) return;
+    if (isPaying || isCancelling) return;
     setMessage("");
     setIsPaying(true);
     try {
@@ -332,8 +390,8 @@ function PendingPaymentRecovery({
         onCompleted(order.orderNumber, order.storeName);
         return;
       }
-      if (!status?.canRetry)
-        throw new Error("This payment window has ended. Please check your orders before placing another order.");
+      if (!status?.canRetry || remainingSeconds === 0)
+        throw new Error("This payment window has ended. Please check your cart to start again.");
       const payment = await paymentApi.retry(order.orderId);
       if (!payment) throw new Error("Payment checkout is temporarily unavailable.");
       const verified = await paymentApi.verify(order.orderId, await openRazorpay(payment));
@@ -346,24 +404,262 @@ function PendingPaymentRecovery({
     }
   };
 
-  return (
-    <main className="mx-auto max-w-xl px-4 py-20 text-center">
-      <LockKeyhole className="mx-auto text-oxblood" />
-      <h1 className="mt-4 font-display text-2xl! text-ink">Your payment is waiting</h1>
-      <p className="mt-2 text-sm! text-ink-soft">
-        Order {order.orderNumber} is reserved. Resume the secure payment whenever you are ready.
-      </p>
-      <div className="mt-6 flex justify-center">
-        <Button disabled={isPaying} onClick={() => void resumePayment()}>
-          {isPaying ? <><LoaderCircle size={17} className="animate-spin" /> Opening payment…</> : "Resume payment"}
-        </Button>
-      </div>
-      {message && (
-        <p role="alert" className="mx-auto mt-4 flex max-w-md items-start gap-2 text-left text-sm! text-oxblood">
-          <AlertTriangle size={17} className="mt-0.5 shrink-0" />
-          {message}
+  const cancelOrder = async () => {
+    if (isPaying || isCancelling) return;
+    setMessage("");
+    setIsCancelling(true);
+    try {
+      await paymentApi.cancel(order.orderId);
+      sessionStorage.removeItem(PAYMENT_REQUEST_KEY);
+      sessionStorage.removeItem(PENDING_ORDER_KEY);
+      sessionStorage.removeItem(StorageKey.CheckoutSessionId);
+      await loadCart();
+      navigate("/cart", { replace: true });
+    } catch (error) {
+      setMessage(getApiErrorMessage(error));
+      setIsCancelling(false);
+    }
+  };
+
+  const clearAndReturnToCart = async () => {
+    sessionStorage.removeItem(PAYMENT_REQUEST_KEY);
+    sessionStorage.removeItem(PENDING_ORDER_KEY);
+    sessionStorage.removeItem(StorageKey.CheckoutSessionId);
+    await loadCart();
+    navigate("/cart", { replace: true });
+  };
+
+  if (isLoading) {
+    return <CheckoutSkeleton />;
+  }
+
+  const isExpired = remainingSeconds === 0 || (!summary?.canRetry && !summary?.isPaid);
+
+  if (isExpired || !summary) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-20 text-center">
+        <AlertTriangle className="mx-auto text-oxblood" size={36} />
+        <h1 className="mt-4 font-display text-2xl! text-ink">Payment window ended</h1>
+        <p className="mt-2 text-sm! text-ink-soft">
+          The 20-minute reservation for order {order.orderNumber} has ended and reserved stock has been released.
         </p>
+        <div className="mt-6 flex justify-center">
+          <Button onClick={() => void clearAndReturnToCart()}>
+            Return to cart
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  const minutes = Math.floor((remainingSeconds ?? 0) / 60);
+  const seconds = (remainingSeconds ?? 0) % 60;
+  const timerFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:py-12 md:px-6">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-oxblood/10 px-3 py-1 text-xs! font-semibold uppercase tracking-wider text-oxblood">
+            Order Reserved
+          </span>
+          <span className="font-mono text-xs! text-ink-soft">
+            {summary.orderNumber}
+          </span>
+        </div>
+        <h1 className="mt-2 font-display text-3xl! text-ink sm:text-4xl!">
+          Complete payment
+        </h1>
+        <p className="mt-2 text-sm! text-ink-soft">
+          Your order items and prices are reserved. Complete your payment before the timer ends.
+        </p>
+      </div>
+
+      <div className="mt-6 flex items-center justify-between rounded-2xl border border-oxblood/20 bg-oxblood/5 p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-oxblood text-ivory">
+            <Clock size={20} />
+          </div>
+          <div>
+            <p className="text-sm! font-medium text-ink">Time remaining to pay</p>
+            <p className="text-xs! text-ink-soft">After this, items will be released back to inventory</p>
+          </div>
+        </div>
+        <span className="font-mono text-xl! font-bold text-oxblood sm:text-2xl!">
+          {timerFormatted}
+        </span>
+      </div>
+
+      {message && (
+        <div role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-oxblood/20 bg-oxblood/10 p-4 text-sm! text-oxblood">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <span>{message}</span>
+        </div>
       )}
+
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+        {/* Left Column: Details */}
+        <div className="space-y-6 lg:col-span-7">
+          {/* Delivery Address Card */}
+          {summary.shippingAddress && (
+            <div className="rounded-2xl border border-ink/10 bg-ivory-dim p-5">
+              <div className="flex items-center gap-2 text-ink">
+                <MapPin size={18} className="text-oxblood" />
+                <h2 className="font-display text-lg! font-medium">Delivery address</h2>
+              </div>
+              <div className="mt-3 text-sm! leading-relaxed text-ink-soft">
+                <p className="font-medium text-ink">{summary.shippingAddress.recipientName}</p>
+                <p>{summary.shippingAddress.addressLine1}</p>
+                {summary.shippingAddress.addressLine2 && <p>{summary.shippingAddress.addressLine2}</p>}
+                <p>{summary.shippingAddress.city}, {summary.shippingAddress.state} - {summary.shippingAddress.postalCode}</p>
+                <p className="mt-1 font-mono text-xs! text-ink">Phone: {summary.shippingAddress.mobileNumber}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Courier & Delivery Estimate */}
+          {summary.selectedCourierName && (
+            <div className="rounded-2xl border border-ink/10 bg-ivory-dim p-5">
+              <div className="flex items-center gap-2 text-ink">
+                <Truck size={18} className="text-oxblood" />
+                <h2 className="font-display text-lg! font-medium">Shipping & delivery</h2>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm!">
+                <div>
+                  <p className="font-medium text-ink">{summary.selectedCourierName}</p>
+                  <p className="text-xs! text-ink-soft">Prepaid priority delivery</p>
+                </div>
+                {summary.estimatedDeliveryOn && (
+                  <span className="rounded-lg bg-tan/40 px-2.5 py-1 text-xs! font-medium text-ink">
+                    Est. delivery by {new Date(summary.estimatedDeliveryOn).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Reserved Items Card */}
+          <div className="rounded-2xl border border-ink/10 bg-ivory-dim p-5">
+            <h2 className="font-display text-lg! font-medium text-ink">
+              Reserved items ({summary.items.length})
+            </h2>
+            <div className="mt-4 divide-y divide-ink/5">
+              {summary.items.map(item => (
+                <div key={item.productVariantId} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-tan">
+                    <img
+                      src={images[item.productId] || "/favicon.ico"}
+                      alt={item.productName}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm! font-medium text-ink">{item.productName}</p>
+                    <p className="text-xs! text-ink-soft">
+                      {item.variantName} · Qty {item.quantity}
+                    </p>
+                  </div>
+                  <span className="font-mono text-sm! font-medium text-ink">
+                    {formatINR(item.lineTotal)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-2">
+            <Button
+              className="w-full py-6 text-base!"
+              disabled={isPaying || isCancelling || remainingSeconds === 0}
+              onClick={() => void resumePayment()}
+            >
+              {isPaying ? (
+                <>
+                  <LoaderCircle size={18} className="animate-spin" />
+                  Opening payment…
+                </>
+              ) : (
+                <>
+                  <LockKeyhole size={18} />
+                  Pay now ({formatINR(summary.grandTotal)})
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={isPaying || isCancelling}
+              onClick={() => void cancelOrder()}
+            >
+              {isCancelling ? (
+                <>
+                  <LoaderCircle size={16} className="animate-spin" />
+                  Cancelling and restoring cart…
+                </>
+              ) : (
+                <>
+                  <ArrowLeft size={16} />
+                  Cancel reservation & return to cart
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Right Column: Order Summary */}
+        <div className="lg:col-span-5">
+          <aside className="rounded-[1.75rem] border border-ink/10 bg-ivory-dim p-5 lg:sticky lg:top-40">
+            <h2 className="font-display text-xl! text-ink">Order summary</h2>
+
+            <div className="mt-5 space-y-2.5 border-t border-ink/10 pt-4 text-sm!">
+              <div className="flex justify-between text-ink-soft">
+                <span>Subtotal</span>
+                <span className="font-mono text-ink">{formatINR(summary.subtotal)}</span>
+              </div>
+              {summary.itemDiscountAmount > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>Product savings</span>
+                  <span className="font-mono">−{formatINR(summary.itemDiscountAmount)}</span>
+                </div>
+              )}
+              {summary.couponDiscountAmount > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span className="flex items-center gap-1.5">
+                    Coupon discount
+                    {summary.couponCode && (
+                      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px]! font-semibold uppercase text-green-800">
+                        {summary.couponCode}
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-mono">−{formatINR(summary.couponDiscountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-ink-soft">
+                <span>Prepaid delivery</span>
+                <span className="font-mono text-ink">
+                  {summary.customerShippingAmount === 0 ? "Free" : formatINR(summary.customerShippingAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between text-ink-soft">
+                <span>Tax</span>
+                <span className="font-mono text-ink">{formatINR(summary.taxAmount)}</span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-between border-t border-ink/10 pt-4 text-base! font-semibold">
+              <span className="text-ink">Total payable</span>
+              <span className="font-mono text-xl! text-oxblood">{formatINR(summary.grandTotal)}</span>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 rounded-xl bg-tan/20 p-3 text-xs! text-ink-soft">
+              <ShieldCheck size={18} className="shrink-0 text-oxblood" />
+              <span>100% secure payment encrypted by {summary.storeName || "Razorpay"}.</span>
+            </div>
+          </aside>
+        </div>
+      </div>
     </main>
   );
 }
