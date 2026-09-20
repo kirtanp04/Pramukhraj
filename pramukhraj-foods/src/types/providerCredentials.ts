@@ -25,6 +25,7 @@ export interface ShiprocketCredentials {
   password: string
   webhookSecret: string
   pickupPostalCode: string
+  pickupLocation?: string
   minimumChargeableWeightKg: number
 }
 

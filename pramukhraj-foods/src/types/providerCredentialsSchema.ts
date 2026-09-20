@@ -47,6 +47,7 @@ export const shiprocketCredentialsSchema = z.object({
   password: requiredCredential('Password'),
   webhookSecret: requiredCredential('Webhook secret'),
   pickupPostalCode: z.string().trim().regex(/^[1-9]\d{5}$/, 'Enter a valid 6-digit Indian pickup PIN code.'),
+  pickupLocation: z.string().trim().max(100, 'Pickup location cannot exceed 100 characters.').optional().or(z.literal('')),
   minimumChargeableWeightKg: z.number({ error: 'Minimum chargeable weight is required.' })
     .min(0.1, 'Minimum chargeable weight must be at least 0.1 kg.')
     .max(100, 'Minimum chargeable weight cannot exceed 100 kg.'),
@@ -59,6 +60,7 @@ export const DEFAULT_SHIPROCKET_CREDENTIALS: ShiprocketCredentialsFormValues = {
   password: '',
   webhookSecret: '',
   pickupPostalCode: '388001',
+  pickupLocation: '',
   minimumChargeableWeightKg: 0.5,
 }
 

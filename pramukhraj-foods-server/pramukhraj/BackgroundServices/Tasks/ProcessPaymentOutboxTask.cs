@@ -44,9 +44,9 @@ public sealed class ProcessPaymentOutboxTask(AppDbContext db, IServiceManager se
             }
             catch (Exception exception)
             {
-                failed++; message.Status = OutboxStatus.Failed; message.LastError = "Delivery failed.";
+                failed++; message.Status = OutboxStatus.Failed; message.LastError = exception.Message;
                 message.NextAttemptOn = DateTime.UtcNow.AddMinutes(Math.Min(60, Math.Pow(2, Math.Min(message.AttemptCount, 5))));
-                logger.LogError(exception, "Outbox message {MessageId} failed.", message.Id);
+                logger.LogError(exception, "Outbox message {MessageId} failed: {ErrorMessage}", message.Id, exception.Message);
             }
             await db.SaveChangesAsync(cancellationToken);
         }

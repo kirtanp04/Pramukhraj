@@ -118,6 +118,9 @@ export function ShiprocketCredentialsPage() {
           <FormField label="Pickup PIN Code" htmlFor="shiprocket-pickup-postal-code" error={errors.pickupPostalCode?.message} hint="Example: 388001. Used as the shipment origin for serviceability and rates." required>
             <input id="shiprocket-pickup-postal-code" type="text" inputMode="numeric" autoComplete="postal-code" maxLength={6} placeholder="388001" disabled={isBusy} {...register('pickupPostalCode')} className={inputCls(!!errors.pickupPostalCode)} />
           </FormField>
+          <FormField label="Pickup Location Nickname" htmlFor="shiprocket-pickup-location" error={errors.pickupLocation?.message} hint="Nickname of your pickup location in Shiprocket, e.g. 'Pramukhraj store'. Leave blank to auto-detect.">
+            <input id="shiprocket-pickup-location" type="text" maxLength={100} placeholder="Pramukhraj store" disabled={isBusy} {...register('pickupLocation')} className={inputCls(!!errors.pickupLocation)} />
+          </FormField>
           <FormField label="Minimum Chargeable Weight (kg)" htmlFor="shiprocket-minimum-weight" error={errors.minimumChargeableWeightKg?.message} hint="Example: 0.5 kg. Packages below this value are rated at this minimum." required>
             <input id="shiprocket-minimum-weight" type="number" inputMode="decimal" min="0.1" max="100" step="0.1" placeholder="0.5" disabled={isBusy} {...register('minimumChargeableWeightKg', { valueAsNumber: true })} className={inputCls(!!errors.minimumChargeableWeightKg)} />
           </FormField>

@@ -32,11 +32,19 @@ public sealed class ShiprocketFulfillmentService(
 
     public async Task<bool> CreateShipmentAsync(Guid orderId, CancellationToken cancellationToken = default)
     {
-        var existing = await db.Shipments.AsNoTracking().FirstOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
+        var existing = await db.Shipments.FirstOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
         if (existing is not null)
         {
-            logger.LogInformation("Shipment already exists for order {OrderId}.", orderId);
-            return true;
+            if (existing.ProviderOrderId > 0 && existing.ProviderShipmentId > 0)
+            {
+                logger.LogInformation("Shipment already exists for order {OrderId} (ProviderShipmentId={ShipmentId}).", orderId, existing.ProviderShipmentId);
+                return true;
+            }
+
+            var activities = await db.ShipmentActivities.Where(a => a.ShipmentId == existing.Id).ToListAsync(cancellationToken);
+            db.ShipmentActivities.RemoveRange(activities);
+            db.Shipments.Remove(existing);
+            await db.SaveChangesAsync(cancellationToken);
         }
 
         var order = await db.Orders
@@ -66,66 +74,12 @@ public sealed class ShiprocketFulfillmentService(
         var billingAddress = order.Addresses.FirstOrDefault(a => a.Type == "Billing") ?? shippingAddress;
 
         var credentials = await GetCredentialsAsync(cancellationToken);
-        var pickupLocation = string.IsNullOrWhiteSpace(credentials.PickupPostalCode) ? "Primary" : credentials.PickupPostalCode.Trim();
+        var pickupLocation = await ResolvePickupLocationAsync(credentials, cancellationToken);
 
-        var (billingFirst, billingLast) = SplitName(billingAddress.RecipientName);
-        var (shippingFirst, shippingLast) = SplitName(shippingAddress.RecipientName);
+        var calculatedWeightKg = order.Items.Sum(i => ConvertWeightToKg(i.Weight, i.WeightUnit) * Math.Max(1, i.Quantity));
+        var totalWeight = Math.Max(0.05m, calculatedWeightKg);
 
-        var totalWeight = Math.Max(0.5m, order.Items.Sum(i => i.Weight > 0 ? (i.WeightUnit.Equals("g", StringComparison.OrdinalIgnoreCase) ? i.Weight / 1000m : i.Weight) * i.Quantity : 0.5m * i.Quantity));
-        if (credentials.MinimumChargeableWeightKg > 0 && totalWeight < credentials.MinimumChargeableWeightKg)
-        {
-            totalWeight = credentials.MinimumChargeableWeightKg;
-        }
-
-        var orderItems = order.Items.Select(item => new
-        {
-            name = item.ProductName,
-            sku = string.IsNullOrWhiteSpace(item.Sku) ? $"SKU-{item.ProductVariantId.ToString("N")[..6]}" : item.Sku,
-            units = item.Quantity,
-            selling_price = item.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture),
-            discount = item.DiscountAmount.ToString("0.00", CultureInfo.InvariantCulture),
-            tax = item.TaxAmount.ToString("0.00", CultureInfo.InvariantCulture),
-            hsn = item.HsnCode ?? string.Empty
-        }).ToList();
-
-        var requestBody = new
-        {
-            order_id = order.OrderNumber,
-            order_date = order.CreatedOn.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
-            pickup_location = pickupLocation,
-            channel_id = string.Empty,
-            comment = order.CustomerNote ?? "Standard prepaid fulfillment",
-            billing_customer_name = billingFirst,
-            billing_last_name = billingLast,
-            billing_address = billingAddress.AddressLine1,
-            billing_address_2 = billingAddress.AddressLine2 ?? string.Empty,
-            billing_city = billingAddress.City,
-            billing_pincode = billingAddress.PostalCode,
-            billing_state = billingAddress.State,
-            billing_country = string.IsNullOrWhiteSpace(billingAddress.Country) ? "India" : billingAddress.Country,
-            billing_email = billingAddress.Email ?? "orders@pramukhrajfoods.com",
-            billing_phone = billingAddress.MobileNumber,
-            shipping_is_billing = true,
-            shipping_customer_name = shippingFirst,
-            shipping_last_name = shippingLast,
-            shipping_address = shippingAddress.AddressLine1,
-            shipping_address_2 = shippingAddress.AddressLine2 ?? string.Empty,
-            shipping_city = shippingAddress.City,
-            shipping_pincode = shippingAddress.PostalCode,
-            shipping_country = string.IsNullOrWhiteSpace(shippingAddress.Country) ? "India" : shippingAddress.Country,
-            shipping_state = shippingAddress.State,
-            shipping_email = shippingAddress.Email ?? "orders@pramukhrajfoods.com",
-            shipping_phone = shippingAddress.MobileNumber,
-            order_items = orderItems,
-            payment_method = "Prepaid",
-            shipping_charges = order.ShippingAmount.ToString("0.00", CultureInfo.InvariantCulture),
-            total_discount = order.CouponDiscountAmount.ToString("0.00", CultureInfo.InvariantCulture),
-            sub_total = order.GrandTotal.ToString("0.00", CultureInfo.InvariantCulture),
-            length = 15,
-            breadth = 15,
-            height = 10,
-            weight = Math.Round(totalWeight, 3, MidpointRounding.AwayFromZero).ToString("0.###", CultureInfo.InvariantCulture)
-        };
+        var requestBody = BuildCreateOrderRequestBody(order, billingAddress, shippingAddress, pickupLocation, totalWeight);
 
         HttpResponseMessage response;
         try
@@ -143,25 +97,46 @@ public sealed class ShiprocketFulfillmentService(
         using (response)
         {
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning("Shiprocket create order returned status {StatusCode}: {Response}", (int)response.StatusCode, responseJson);
-                await RecordShipmentNotificationAsync(AdminNotificationTypes.ShipmentCreationFailed, NotificationSeverities.Warning,
-                    "Shipment order rejected", $"Shiprocket rejected order {order.OrderNumber} with status {(int)response.StatusCode}.", order.Id, cancellationToken);
-                throw new HttpRequestException($"Shiprocket rejected order creation: {response.StatusCode}", null, response.StatusCode);
-            }
-
             using var doc = JsonDocument.Parse(responseJson);
-            var root = doc.RootElement;
+            var root = doc.RootElement.Clone();
+
+            if (root.TryGetProperty("message", out var msgProp) &&
+                msgProp.GetString()?.Contains("Wrong Pickup location", StringComparison.OrdinalIgnoreCase) == true &&
+                root.TryGetProperty("data", out var dataObj) &&
+                dataObj.TryGetProperty("data", out var locArray) &&
+                locArray.ValueKind == JsonValueKind.Array)
+            {
+                var firstValidLoc = locArray.EnumerateArray()
+                    .Select(x => x.TryGetProperty("pickup_location", out var p) ? p.GetString() : null)
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+                if (!string.IsNullOrWhiteSpace(firstValidLoc) && !string.Equals(firstValidLoc, pickupLocation, StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogInformation("Retrying Shiprocket order creation with valid pickup location '{PickupLocation}'.", firstValidLoc);
+                    pickupLocation = firstValidLoc;
+                    await cache.SetAsync("provider:shiprocket:pickup-location", firstValidLoc, TimeSpan.FromDays(1), cancellationToken: cancellationToken);
+
+                    var retryRequestBody = BuildCreateOrderRequestBody(order, billingAddress, shippingAddress, pickupLocation, totalWeight);
+                    using var retryResponse = await SendAuthorizedAsync(HttpMethod.Post, "orders/create/adhoc", retryRequestBody, cancellationToken);
+                    responseJson = await retryResponse.Content.ReadAsStringAsync(cancellationToken);
+                    using var retryDoc = JsonDocument.Parse(responseJson);
+                    root = retryDoc.RootElement.Clone();
+                }
+            }
 
             long providerOrderId = 0;
             long providerShipmentId = 0;
-            if (root.TryGetProperty("order_id", out var orderIdProp)) providerOrderId = orderIdProp.GetInt64();
-            if (root.TryGetProperty("shipment_id", out var shipmentIdProp)) providerShipmentId = shipmentIdProp.GetInt64();
+            if (root.TryGetProperty("order_id", out var orderIdProp) && orderIdProp.TryGetInt64(out var oId)) providerOrderId = oId;
+            if (root.TryGetProperty("shipment_id", out var shipmentIdProp) && shipmentIdProp.TryGetInt64(out var sId)) providerShipmentId = sId;
 
-            if (providerShipmentId == 0)
+            if (providerOrderId <= 0 || providerShipmentId <= 0)
             {
-                logger.LogWarning("Shiprocket response did not contain shipment_id: {Json}", responseJson);
+                var errorMsg = root.TryGetProperty("message", out var m) ? m.GetString() : null;
+                if (string.IsNullOrWhiteSpace(errorMsg)) errorMsg = $"Shiprocket rejected order creation (HTTP {(int)response.StatusCode}).";
+                logger.LogError("Shiprocket order creation failed for order {OrderNumber}. Reason: {Reason}. Response: {Response}", order.OrderNumber, errorMsg, responseJson);
+                await RecordShipmentNotificationAsync(AdminNotificationTypes.ShipmentCreationFailed, NotificationSeverities.Error,
+                    "Shipment creation failed", $"Shiprocket could not create shipment for order {order.OrderNumber}: {errorMsg}", order.Id, cancellationToken);
+                throw new InvalidOperationException($"Shiprocket order creation failed: {errorMsg}");
             }
 
             var now = DateTime.UtcNow;
@@ -199,10 +174,7 @@ public sealed class ShiprocketFulfillmentService(
                 "Shipment created", $"Shipment for order {order.OrderNumber} was created with Shiprocket ID {providerShipmentId}.", order.Id, cancellationToken);
 
             // Step 2: Attempt Courier / AWB assignment
-            if (providerShipmentId > 0)
-            {
-                await TryAssignAwbAndPickupAsync(shipment, order, cancellationToken);
-            }
+            await TryAssignAwbAndPickupAsync(shipment, order, cancellationToken);
 
             return true;
         }
@@ -523,6 +495,120 @@ public sealed class ShiprocketFulfillmentService(
     private Task<ShiprocketProviderCredentials> GetCredentialsAsync(CancellationToken token) =>
         providerCredentialService.GetRequiredAsync<ShiprocketProviderCredentials>(ProviderKey.Shiprocket, token);
 
+    private async Task<string> ResolvePickupLocationAsync(ShiprocketProviderCredentials credentials, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(credentials.PickupLocation))
+        {
+            return credentials.PickupLocation.Trim();
+        }
+
+        var cached = await cache.GetAsync<string>("provider:shiprocket:pickup-location", cancellationToken);
+        if (!string.IsNullOrWhiteSpace(cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            using var response = await SendAuthorizedAsync(HttpMethod.Get, "settings/company/pickup", null, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("data", out var data) &&
+                    data.TryGetProperty("shipping_address", out var addresses) &&
+                    addresses.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var addr in addresses.EnumerateArray())
+                    {
+                        if (addr.TryGetProperty("pickup_location", out var locProp))
+                        {
+                            var loc = locProp.GetString();
+                            if (!string.IsNullOrWhiteSpace(loc))
+                            {
+                                await cache.SetAsync("provider:shiprocket:pickup-location", loc, TimeSpan.FromDays(1), cancellationToken: cancellationToken);
+                                return loc;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not fetch pickup locations from Shiprocket settings.");
+        }
+
+        return "Pramukhraj store";
+    }
+
+    private static object BuildCreateOrderRequestBody(Order order, OrderAddress billingAddress, OrderAddress shippingAddress, string pickupLocation, decimal totalWeight)
+    {
+        var (billingFirst, billingLast) = SplitName(billingAddress.RecipientName);
+        var (shippingFirst, shippingLast) = SplitName(shippingAddress.RecipientName);
+
+        var orderItems = order.Items.Select(item =>
+        {
+            var unitPrice = item.UnitPrice > 0 ? item.UnitPrice : item.UnitMrp;
+            var mrp = item.UnitMrp > unitPrice ? item.UnitMrp : unitPrice;
+            var itemDiscount = Math.Max(0, mrp - unitPrice);
+
+            return new
+            {
+                name = item.ProductName,
+                sku = string.IsNullOrWhiteSpace(item.Sku) ? $"SKU-{item.ProductVariantId.ToString("N")[..6]}" : item.Sku,
+                units = item.Quantity,
+                selling_price = mrp.ToString("0.00", CultureInfo.InvariantCulture),
+                discount = itemDiscount.ToString("0.00", CultureInfo.InvariantCulture),
+                tax = item.TaxPercentage.ToString("0.##", CultureInfo.InvariantCulture),
+                hsn = item.HsnCode ?? string.Empty
+            };
+        }).ToList();
+
+        // In Shiprocket: Order Total = sub_total + shipping_charges - total_discount.
+        // Therefore, sub_total must exclude shipping charges so shipping isn't added twice.
+        var subTotal = Math.Max(0, order.GrandTotal - order.ShippingAmount + order.CouponDiscountAmount);
+
+        return new
+        {
+            order_id = order.OrderNumber,
+            order_date = order.CreatedOn.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+            pickup_location = pickupLocation,
+            channel_id = string.Empty,
+            comment = order.CustomerNote ?? "Standard prepaid fulfillment",
+            billing_customer_name = billingFirst,
+            billing_last_name = billingLast,
+            billing_address = billingAddress.AddressLine1,
+            billing_address_2 = billingAddress.AddressLine2 ?? string.Empty,
+            billing_city = billingAddress.City,
+            billing_pincode = billingAddress.PostalCode,
+            billing_state = billingAddress.State,
+            billing_country = string.IsNullOrWhiteSpace(billingAddress.Country) ? "India" : billingAddress.Country,
+            billing_email = billingAddress.Email ?? "orders@pramukhrajfoods.com",
+            billing_phone = billingAddress.MobileNumber,
+            shipping_is_billing = true,
+            shipping_customer_name = shippingFirst,
+            shipping_last_name = shippingLast,
+            shipping_address = shippingAddress.AddressLine1,
+            shipping_address_2 = shippingAddress.AddressLine2 ?? string.Empty,
+            shipping_city = shippingAddress.City,
+            shipping_pincode = shippingAddress.PostalCode,
+            shipping_country = string.IsNullOrWhiteSpace(shippingAddress.Country) ? "India" : shippingAddress.Country,
+            shipping_state = shippingAddress.State,
+            shipping_email = shippingAddress.Email ?? "orders@pramukhrajfoods.com",
+            shipping_phone = shippingAddress.MobileNumber,
+            order_items = orderItems,
+            payment_method = "Prepaid",
+            shipping_charges = order.ShippingAmount.ToString("0.00", CultureInfo.InvariantCulture),
+            total_discount = order.CouponDiscountAmount.ToString("0.00", CultureInfo.InvariantCulture),
+            sub_total = subTotal.ToString("0.00", CultureInfo.InvariantCulture),
+            length = 15,
+            breadth = 15,
+            height = 10,
+            weight = Math.Round(totalWeight, 3, MidpointRounding.AwayFromZero).ToString("0.###", CultureInfo.InvariantCulture)
+        };
+    }
+
     private static (string First, string Last) SplitName(string fullName)
     {
         if (string.IsNullOrWhiteSpace(fullName)) return ("Customer", string.Empty);
@@ -531,6 +617,21 @@ public sealed class ShiprocketFulfillmentService(
         {
             1 => (parts[0], "."),
             _ => (parts[0], parts[1])
+        };
+    }
+
+    private static decimal ConvertWeightToKg(decimal weight, string? unit)
+    {
+        if (weight <= 0) return 0.2m;
+        var normalized = unit?.Trim().ToLowerInvariant() ?? string.Empty;
+
+        return normalized switch
+        {
+            "kg" or "kgs" or "kilogram" or "kilograms" => weight,
+            "g" or "gm" or "gms" or "gram" or "grams" => weight / 1000m,
+            "ml" when normalized == "ml" => weight / 1000m,
+            "ltr" or "liter" or "litre" => weight,
+            _ => weight >= 5m ? weight / 1000m : weight
         };
     }
 }
