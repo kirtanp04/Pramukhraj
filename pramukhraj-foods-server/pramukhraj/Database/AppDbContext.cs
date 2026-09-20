@@ -10,6 +10,10 @@ using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Review; // Ensure this namespace covers your new models
 using pramukhraj.Entities.EmailTemplates;
+using pramukhraj.Entities.Checkout;
+using pramukhraj.Entities.Settings;
+using pramukhraj.Entities.Order;
+using pramukhraj.Entities.Shipment;
 
 namespace pramukhraj.Database
 {
@@ -46,6 +50,20 @@ namespace pramukhraj.Database
         public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
         public DbSet<AdminNotificationRecipient> AdminNotificationRecipients => Set<AdminNotificationRecipient>();
         public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+        public DbSet<CustomerEmailVerificationChallenge> CustomerEmailVerificationChallenges => Set<CustomerEmailVerificationChallenge>();
+        public DbSet<CheckoutSession> CheckoutSessions => Set<CheckoutSession>();
+        public DbSet<StoreSettings> StoreSettings => Set<StoreSettings>();
+        public DbSet<Order> Orders => Set<Order>();
+        public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+        public DbSet<OrderAddress> OrderAddresses => Set<OrderAddress>();
+        public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+        public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+        public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
+        public DbSet<WebhookInboxEvent> WebhookInboxEvents => Set<WebhookInboxEvent>();
+        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+        public DbSet<Shipment> Shipments => Set<Shipment>();
+        public DbSet<ShipmentActivity> ShipmentActivities => Set<ShipmentActivity>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -77,15 +95,25 @@ namespace pramukhraj.Database
                 entity.Property(item => item.EntityType).HasMaxLength(100);
                 entity.Property(item => item.EntityId).HasMaxLength(100);
                 entity.Property(item => item.ActionUrl).HasMaxLength(500);
+                if (Database.IsNpgsql())
+                    entity.Property(item => item.SequenceNumber).HasDefaultValueSql("nextval('\"AdminNotificationSequence\"')").ValueGeneratedOnAdd();
+                else
+                    entity.Property(item => item.SequenceNumber).ValueGeneratedNever();
+                entity.Property(item => item.DeduplicationKey).HasMaxLength(250).IsRequired();
+                entity.HasIndex(item => item.SequenceNumber).IsUnique();
+                entity.HasIndex(item => item.DeduplicationKey).IsUnique();
                 entity.HasIndex(item => item.CreatedOn);
                 entity.HasIndex(item => new { item.Type, item.CreatedOn });
             });
 
             builder.Entity<AdminNotificationRecipient>(entity =>
             {
-                entity.HasKey(item => new { item.NotificationId, item.AdminId });
+                entity.ToTable("AdminNotificationStates");
+                entity.HasKey(item => item.Id);
+                entity.Property(item => item.Id).HasDefaultValueSql("gen_random_uuid()");
                 entity.Property(item => item.AdminId).HasMaxLength(450).IsRequired();
-                entity.HasIndex(item => new { item.AdminId, item.AcknowledgedOn, item.NotificationId });
+                entity.HasIndex(item => new { item.NotificationId, item.AdminId }).IsUnique();
+                entity.HasIndex(item => new { item.AdminId, item.ReadOn, item.DismissedOn, item.NotificationId });
                 entity.HasOne(item => item.Notification).WithMany(item => item.Recipients)
                     .HasForeignKey(item => item.NotificationId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.AdminId)
@@ -159,6 +187,84 @@ namespace pramukhraj.Database
             builder.Entity<CustomerOtpChallenge>()
                 .HasOne(x => x.Customer).WithMany()
                 .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<CustomerEmailVerificationChallenge>(b =>
+            {
+                b.HasOne(x => x.Customer).WithMany(x => x.EmailVerificationChallenges)
+                    .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Cascade);
+            });
+            if (Database.IsNpgsql()) builder.HasSequence<long>("AdminNotificationSequence");
+
+            builder.Entity<CustomerAddresses>(b =>
+            {
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasIndex(x => x.CustomerId).IsUnique()
+                    .HasFilter("\"IsActive\" AND \"IsDefaultShipping\"")
+                    .HasDatabaseName("IX_CustomerAddresses_DefaultShipping");
+                b.HasIndex(x => x.CustomerId).IsUnique()
+                    .HasFilter("\"IsActive\" AND \"IsDefaultBilling\"")
+                    .HasDatabaseName("IX_CustomerAddresses_DefaultBilling");
+            });
+
+            builder.Entity<CheckoutSession>(b =>
+            {
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<Cart>().WithMany().HasForeignKey(x => x.CartId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<CustomerAddresses>().WithMany().HasForeignKey(x => x.ShippingAddressId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<CustomerAddresses>().WithMany().HasForeignKey(x => x.BillingAddressId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<Coupon>().WithMany().HasForeignKey(x => x.CouponId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<StoreSettings>(b =>
+            {
+                b.Property(x => x.Id).ValueGeneratedNever();
+                b.Property(x => x.SettingsJson).HasColumnType("jsonb").IsRequired();
+                b.Property(x => x.ConcurrencyStamp).HasMaxLength(64).IsConcurrencyToken();
+                b.ToTable("StoreSettings", table => table.HasCheckConstraint("CK_StoreSettings_SingleRow", "\"Id\" = 1"));
+            });
+
+            builder.Entity<Order>(b =>
+            {
+                b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<CheckoutSession>().WithMany().HasForeignKey(x => x.CheckoutSessionId).OnDelete(DeleteBehavior.Restrict);
+                b.HasMany(x => x.Items).WithOne(x => x.Order).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+                b.HasMany(x => x.Addresses).WithOne(x => x.Order).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+                b.HasMany(x => x.Payments).WithOne(x => x.Order).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+            });
+            builder.Entity<OrderStatusHistory>(b =>
+            {
+                b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+                b.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(x => new { x.OrderId, x.CreatedOn });
+            });
+            builder.Entity<Payment>(b =>
+            {
+                b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+                b.Property(x => x.ConcurrencyStamp).IsConcurrencyToken();
+                b.HasIndex(x => x.OrderId);
+            });
+            builder.Entity<PaymentTransaction>(b =>
+            {
+                b.Property(x => x.SafePayloadJson).HasColumnType("jsonb");
+                b.HasOne<Payment>().WithMany().HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(x => new { x.PaymentId, x.CreatedOn });
+            });
+            builder.Entity<InventoryReservation>(b =>
+            {
+                b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+                b.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne<ProductVariant>().WithMany().HasForeignKey(x => x.ProductVariantId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(x => new { x.Status, x.ExpiresOn });
+            });
+            builder.Entity<WebhookInboxEvent>(b => b.Property(x => x.PayloadJson).HasColumnType("jsonb"));
+            builder.Entity<OutboxMessage>(b =>
+            {
+                b.Property(x => x.PayloadJson).HasColumnType("jsonb");
+                b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+            });
 
             // --- Product Category Configurations ---
             builder.Entity<ProductCategory>(b =>

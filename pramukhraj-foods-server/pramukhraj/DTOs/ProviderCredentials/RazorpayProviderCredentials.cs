@@ -5,4 +5,6 @@ public sealed class RazorpayProviderCredentials
     public string ApiKey { get; set; } = string.Empty;
     public string KeySecret { get; set; } = string.Empty;
     public string WebhookSecret { get; set; } = string.Empty;
+    public bool IsUpiPaymentEnabled { get; set; } = true;
+    public bool IsCardPaymentEnabled { get; set; } = true;
 }

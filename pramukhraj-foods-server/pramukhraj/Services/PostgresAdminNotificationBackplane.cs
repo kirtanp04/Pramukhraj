@@ -116,7 +116,9 @@ public sealed class PostgresAdminNotificationBackplane(
                         item.Notification.ActionUrl,
                         item.Notification.MetadataJson,
                         item.Notification.CreatedOn,
-                        item.AcknowledgedOn)
+                        item.ReadOn,
+                        item.Notification.SequenceNumber,
+                        item.DismissedOn)
                 })
                 .ToListAsync(cancellationToken);
 

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { CreditCard, KeyRound, LoaderCircle, Save, ShieldCheck } from 'lucide-react'
 import { ProviderCredentialFormSkeleton } from '@/components/admin/provider-credentials/ProviderCredentialFormSkeleton'
 import { EntityFormError } from '@/components/admin/EntityFormError'
-import { FormField, inputCls } from '@/components/admin/product/FormField'
+import { FormField, inputCls, ToggleField } from '@/components/admin/product/FormField'
 import { Button } from '@/components/ui/Button'
 import { MessageDialog } from '@/components/ui/MessageDialog'
 import { useRazorpayCredentials } from '@/hooks/provider-credentials/useRazorpayCredentials'
@@ -28,6 +28,8 @@ export function RazorpayCredentialsPage() {
     register,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors, isDirty, isSubmitting },
   } = form
   const isBusy = isSaving || isSubmitting
@@ -42,6 +44,8 @@ export function RazorpayCredentialsPage() {
       apiKey: data.credentials.apiKey ?? '',
       keySecret: data.credentials.keySecret ?? '',
       webhookSecret: data.credentials.webhookSecret ?? '',
+      isUpiPaymentEnabled: data.credentials.isUpiPaymentEnabled ?? true,
+      isCardPaymentEnabled: data.credentials.isCardPaymentEnabled ?? true,
     }))
   }, [data, reset])
 
@@ -146,9 +150,33 @@ export function RazorpayCredentialsPage() {
             />
           </FormField>
         </div>
+
+        <div className="border-t border-ink/10 p-4 sm:p-6">
+          <div className="mb-4">
+            <h3 className="font-display text-lg! text-ink">Accepted payment methods</h3>
+            <p className="mt-1 text-xs! text-ink-soft">Enable at least one method. Customers will only see the enabled methods in Razorpay Checkout.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ToggleField
+              label="UPI payments"
+              description="Allow UPI apps and UPI QR payments."
+              checked={watch('isUpiPaymentEnabled')}
+              onCheckedChange={value => setValue('isUpiPaymentEnabled', value, { shouldDirty: true, shouldValidate: true })}
+              disabled={isBusy}
+            />
+            <ToggleField
+              label="Card payments"
+              description="Allow supported debit and credit cards."
+              checked={watch('isCardPaymentEnabled')}
+              onCheckedChange={value => setValue('isCardPaymentEnabled', value, { shouldDirty: true, shouldValidate: true })}
+              disabled={isBusy}
+            />
+          </div>
+          {errors.isUpiPaymentEnabled && <p className="mt-3 text-[11px]! font-medium text-oxblood" role="alert">{errors.isUpiPaymentEnabled.message}</p>}
+        </div>
       </section>
 
-      <aside className="flex items-start gap-3 rounded-card border border-teal/15 bg-teal/5 p-4 text-sm text-ink-soft">
+      <aside className="flex items-start gap-3 rounded-card border border-teal/15 bg-teal/5 p-4 text-sm! text-ink-soft">
         <ShieldCheck size={19} className="mt-0.5 shrink-0 text-teal" aria-hidden />
         <div>
           <p className="font-medium text-ink">Credential security</p>

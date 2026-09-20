@@ -80,5 +80,9 @@ public sealed class TwilioCustomerOtpSenderTests
             string providerKey,
             UpdateProviderCredentialRequest request,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<TCredential> GetRequiredAsync<TCredential>(
+            string providerKey,
+            CancellationToken cancellationToken = default) where TCredential : class => throw new NotSupportedException();
     }
 }

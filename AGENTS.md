@@ -9,3 +9,4 @@
 - Keep a clean, consistent folder and file structure. Place each feature, service, interface, validator, DTO, hook, component, and test in the existing matching project area; use focused files and clear, consistent names.
 - Build UI with the established application theme, design tokens, colors, typography, spacing, and reusable components. Do not introduce visually inconsistent one-off styling.
 - Make every UI change responsive and usable across mobile, tablet, and desktop, with accessible controls, readable layouts, appropriate loading/error/empty states, and smooth interactions.
+- Ensure the store name is dynamic across all customer touchpoints. Avoid hardcoding 'Pramukhraj Foods' anywhere in the application. Fetch the store name directly from the database configuration/settings for all orders, transactional emails, OTP SMS/templates, PDF invoices, and user-facing UI components.

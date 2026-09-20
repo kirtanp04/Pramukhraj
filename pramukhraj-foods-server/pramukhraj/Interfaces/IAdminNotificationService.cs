@@ -9,6 +9,9 @@ public interface IAdminNotificationService
     Task<AdminNotificationListResponse> GetForAdminAsync(string adminId, int pageNumber, int pageSize, bool onlyUnacknowledged, CancellationToken cancellationToken = default);
     Task<bool> AcknowledgeAsync(string adminId, Guid notificationId, CancellationToken cancellationToken = default);
     Task<int> AcknowledgeAllAsync(string adminId, CancellationToken cancellationToken = default);
+    Task<int> GetUnreadCountAsync(string adminId, CancellationToken cancellationToken = default);
+    Task<bool> DismissAsync(string adminId, Guid notificationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AdminNotificationResponse>> ReplayAsync(string adminId, long afterSequenceNumber, int limit, CancellationToken cancellationToken = default);
     Task PublishAsync(AdminNotificationResponse notification, CancellationToken cancellationToken = default);
     AdminNotificationSubscription Subscribe(string adminId);
 }

@@ -10,6 +10,8 @@ export interface AdminNotification {
   metadataJson: string | null
   createdOn: string
   acknowledgedOn: string | null
+  sequenceNumber: number
+  dismissedOn: string | null
 }
 
 export interface AdminNotificationList {

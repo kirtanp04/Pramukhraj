@@ -85,16 +85,19 @@ public sealed class CustomerAuthController(
         db.CustomerOtpChallenges.Add(challenge);
         await db.SaveChangesAsync(cancellationToken);
 
-        //try
-        //{
-        //    await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
-        //}
-        //catch
-        //{
-        //    db.CustomerOtpChallenges.Remove(challenge);
-        //    await db.SaveChangesAsync(cancellationToken);
-        //    throw;
-        //}
+        try
+        {
+            //await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Customer authentication OTP delivery failed.");
+            db.CustomerOtpChallenges.Remove(challenge);
+            await db.SaveChangesAsync(cancellationToken);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Mobile verification is temporarily unavailable. Please try again.", 503));
+        }
 
         return Ok(ApiResponse<SendCustomerOtpResponse>.Ok(
             new(challenge.Id, _otp.ExpirationMinutes * 60, _otp.ResendCooldownSeconds),
@@ -148,6 +151,7 @@ public sealed class CustomerAuthController(
                     Id = Guid.NewGuid(),
                     MobileNumber = mobile,
                     IsMobileVerified = true,
+                    MobileVerifiedOn = now,
                     FullName = string.Empty,
                     IsProfileCompleted = false,
                     IsActive = true,
@@ -163,6 +167,7 @@ public sealed class CustomerAuthController(
                 if (!CanSignIn(customer))
                     return (IActionResult)Unauthorized(ApiResponse<object>.Fail("This account is unavailable. Please contact support.", 401));
                 customer.IsMobileVerified = true;
+                customer.MobileVerifiedOn ??= now;
                 customer.LastLoginOn = now;
                 customer.UpdatedOn = now;
             }
@@ -228,6 +233,7 @@ public sealed class CustomerAuthController(
         var email = NullIfWhiteSpace(request.Email)?.ToLowerInvariant();
         var normalizedEmail = email?.ToUpperInvariant();
         var shouldSendWelcomeEmail = !customer.IsProfileCompleted && email is not null;
+        var emailChanged = !string.Equals(customer.NormalizedEmail, normalizedEmail, StringComparison.Ordinal);
         if (normalizedEmail is not null && await db.Customers.AnyAsync(
                 x => x.Id != customer.Id && x.NormalizedEmail == normalizedEmail, cancellationToken))
             return Conflict(ApiResponse<object>.Fail("Email is already in use.", 409));
@@ -235,6 +241,11 @@ public sealed class CustomerAuthController(
         customer.FullName = request.FullName.Trim();
         customer.Email = email;
         customer.NormalizedEmail = normalizedEmail;
+        if (emailChanged)
+        {
+            customer.IsEmailVerified = false;
+            customer.EmailVerifiedOn = null;
+        }
         customer.City = NullIfWhiteSpace(request.City);
         customer.State = NullIfWhiteSpace(request.State);
         customer.PostalCode = NullIfWhiteSpace(request.PostalCode);
@@ -333,6 +344,7 @@ public sealed class CustomerAuthController(
         CustomerId = x.Id.ToString(), MobileNumber = x.MobileNumber, FullName = x.FullName,
         Email = x.Email, City = x.City, State = x.State, PostalCode = x.PostalCode,
         IsMobileVerified = x.IsMobileVerified, IsProfileCompleted = x.IsProfileCompleted,
+        IsEmailVerified = x.IsEmailVerified,
         MarketingConsent = x.MarketingConsent
     };
 

@@ -10,6 +10,7 @@ namespace pramukhraj.DTOs.Auth
         public string? State { get; set; }
         public string? PostalCode { get; set; }
         public bool IsMobileVerified { get; set; }
+        public bool IsEmailVerified { get; set; }
         public bool IsProfileCompleted { get; set; }
         public bool MarketingConsent { get; set; }
     }

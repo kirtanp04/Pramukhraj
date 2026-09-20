@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace pramukhraj.Common;
 
-public sealed record CustomerClaims(Guid CustomerId, string? Name, string? MobileNumber);
+public sealed record CustomerClaims(Guid CustomerId, string? Name, string? MobileNumber, string? TokenVersion);
 
 public sealed class CustomerClaimsHelper(IHttpContextAccessor httpContextAccessor)
 {
@@ -18,6 +18,7 @@ public sealed class CustomerClaimsHelper(IHttpContextAccessor httpContextAccesso
 
         var name = user.FindFirst(ClaimTypes.Name)?.Value;
         var mobile = user.FindFirst(ClaimTypes.MobilePhone)?.Value;
-        return ApiResponse<CustomerClaims>.Ok(new CustomerClaims(customerId, name, mobile));
+        return ApiResponse<CustomerClaims>.Ok(new CustomerClaims(
+            customerId, name, mobile, user.FindFirst("token_version")?.Value));
     }
 }

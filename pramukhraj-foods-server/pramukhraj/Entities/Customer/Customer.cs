@@ -22,6 +22,8 @@ namespace pramukhraj.Entities.Customer
 
         public bool IsMobileVerified { get; set; }
 
+        public DateTime? MobileVerifiedOn { get; set; }
+
         [Required]
         [MaxLength(120)]
         public string FullName { get; set; } = string.Empty;
@@ -34,6 +36,8 @@ namespace pramukhraj.Entities.Customer
         public string? NormalizedEmail { get; set; }
 
         public bool IsEmailVerified { get; set; }
+
+        public DateTime? EmailVerifiedOn { get; set; }
 
         [MaxLength(100)]
         public string? City { get; set; }
@@ -83,6 +87,8 @@ namespace pramukhraj.Entities.Customer
         public ICollection<CustomerRefreshTokens> RefreshTokens { get; set; } = [];
 
         public ICollection<CustomerAddresses> Addresses { get; set; } = [];
+
+        public ICollection<CustomerEmailVerificationChallenge> EmailVerificationChallenges { get; set; } = [];
 
         public ICollection<Cart.Cart> Carts { get; set; } = [];
     }

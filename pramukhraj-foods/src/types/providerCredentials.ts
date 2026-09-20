@@ -16,12 +16,17 @@ export interface RazorpayCredentials {
   apiKey: string
   keySecret: string
   webhookSecret: string
+  isUpiPaymentEnabled: boolean
+  isCardPaymentEnabled: boolean
 }
 
 export interface ShiprocketCredentials {
   email: string
   password: string
   webhookSecret: string
+  pickupPostalCode: string
+  pickupLocation?: string
+  minimumChargeableWeightKg: number
 }
 
 export interface SmtpCredentials {

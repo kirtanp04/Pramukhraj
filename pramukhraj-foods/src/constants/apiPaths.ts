@@ -35,6 +35,48 @@ const CustomerApiPaths = {
       `customer/cart/items/${encodeURIComponent(id)}/variant`,
     merge: "customer/cart/merge",
   },
+  verification: {
+    status: "customer/account/verification/status",
+    requestMobile: "customer/account/verification/mobile/request",
+    verifyMobile: "customer/account/verification/mobile/verify",
+    updateEmail: "customer/account/verification/email",
+    requestEmail: "customer/account/verification/email/request",
+    verifyEmail: "customer/account/verification/email/verify",
+  },
+  addresses: {
+    list: "customer/addresses",
+    byId: (id: string) => `customer/addresses/${encodeURIComponent(id)}`,
+    defaultShipping: (id: string) => `customer/addresses/${encodeURIComponent(id)}/default-shipping`,
+    defaultBilling: (id: string) => `customer/addresses/${encodeURIComponent(id)}/default-billing`,
+  },
+  checkout: {
+    sessions: "customer/checkout/sessions",
+    session: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}`,
+    address: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/address`,
+    coupon: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/coupon`,
+    refresh: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/refresh`,
+    placeOrder: "customer/checkout/place-order",
+  },
+  payments: {
+    verify: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/verify`,
+    retry: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment/retry`,
+    status: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/payment-status`,
+    summary: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/summary`,
+    cancel: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/cancel`,
+  },
+  orders: {
+    list: (params?: { page?: number; pageSize?: number; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.append("page", params.page.toString());
+      if (params?.pageSize) q.append("pageSize", params.pageSize.toString());
+      if (params?.status && params.status !== "all") q.append("status", params.status);
+      const qs = q.toString();
+      return `customer/orders${qs ? `?${qs}` : ""}`;
+    },
+    detail: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}`,
+    tracking: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/tracking`,
+    trackPublic: (query: string) => `orders/track?query=${encodeURIComponent(query)}`,
+  },
 };
 
 const AdminApiPaths = {
@@ -148,6 +190,10 @@ const AdminApiPaths = {
     },
     details: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
     patch: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
+  },
+  settings: {
+    get: "admin/settings",
+    update: "admin/settings",
   },
 };
 

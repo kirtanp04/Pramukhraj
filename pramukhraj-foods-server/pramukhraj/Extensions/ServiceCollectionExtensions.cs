@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using pramukhraj.BackgroundServices;
 using pramukhraj.BackgroundServices.Tasks;
 using pramukhraj.Configurations;
@@ -20,6 +22,10 @@ using pramukhraj.Common;
 using pramukhraj.Entities;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
+using pramukhraj.Authorization;
+using pramukhraj.DTOs.Checkout;
+using pramukhraj.DTOs.Customer;
+using pramukhraj.DTOs.Settings;
 using System.Text;
 using System.Net;
 using System.Threading.RateLimiting;
@@ -60,6 +66,12 @@ namespace pramukhraj.Extensions
             services.AddScoped<IApplicationBackgroundTask, RemoveExpiredOtpChallengesTask>();
             services.AddScoped<IApplicationBackgroundTask, CleanExpiredRefreshTokensTask>();
             services.AddScoped<IApplicationBackgroundTask, CleanExpiredAdminRefreshTokensTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpireCheckoutSessionsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpirePendingPaymentOrdersTask>();
+            services.AddScoped<IApplicationBackgroundTask, ExpireInventoryReservationsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ReconcilePendingRazorpayPaymentsTask>();
+            services.AddScoped<IApplicationBackgroundTask, ProcessPaymentOutboxTask>();
+            services.AddScoped<IApplicationBackgroundTask, CleanupAdminNotificationsTask>();
             services.AddHostedService<ApplicationBackgroundService>();
 
             // Configure JwtSettings
@@ -108,12 +120,13 @@ namespace pramukhraj.Extensions
 
             // Authentication - JWT Bearer
             var key = Encoding.UTF8.GetBytes(jwtSettings.Secret ?? string.Empty);
-            services.AddAuthentication(options =>
+            var authentication = services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
+            });
+
+            void ConfigureCustomerJwt(JwtBearerOptions options)
             {
                 options.RequireHttpsMetadata = true;
                 options.SaveToken = true;
@@ -128,13 +141,24 @@ namespace pramukhraj.Extensions
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
-            });
+            }
 
-            // Authorization (no role-based policies)
-            services.AddAuthorization();
+            authentication.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, ConfigureCustomerJwt);
+            authentication.AddJwtBearer(CustomerAuthenticationDefaults.AuthenticationScheme, ConfigureCustomerJwt);
+
+            services.AddAuthorization(options => options.AddPolicy(
+                CustomerAuthenticationDefaults.VerifiedCustomerPolicy,
+                policy =>
+                {
+                    policy.AddAuthenticationSchemes(CustomerAuthenticationDefaults.AuthenticationScheme);
+                    policy.RequireAuthenticatedUser();
+                    policy.AddRequirements(new VerifiedCustomerRequirement());
+                }));
+            services.AddScoped<IAuthorizationHandler, VerifiedCustomerAuthorizationHandler>();
+            services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomerAuthorizationResultHandler>();
 
             // CORS - enterprise default policy
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173" };
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173", "https://bufing-orbit-productivity-divisions.trycloudflare.com" };
             services.AddCors(options =>
             {
                 options.AddPolicy("EnterpriseCorsPolicy", policy =>
@@ -203,6 +227,44 @@ namespace pramukhraj.Extensions
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                     }));
+                options.AddPolicy("customer-verification-send", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("customer-verification-verify", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 15, Window = TimeSpan.FromMinutes(10), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("customer-checkout", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("razorpay-webhook", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+                options.AddPolicy("shiprocket-webhook", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
             });
 
             // caching setup
@@ -233,7 +295,29 @@ namespace pramukhraj.Extensions
             services.AddHostedService(provider => provider.GetRequiredService<PostgresAdminNotificationBackplane>());
             services.AddScoped<IAdminNotificationService, AdminNotificationService>();
             services.AddScoped<ICustomerOtpSender, TwilioCustomerOtpSender>();
-            // Register token service
+            services.AddScoped<ICustomerVerificationService, CustomerVerificationService>();
+            services.AddScoped<ICustomerAddressService, CustomerAddressService>();
+            services.AddScoped<IPricingService, PricingService>();
+            services.AddHttpClient<IShiprocketRateService, ShiprocketRateService>(client =>
+            {
+                client.BaseAddress = new Uri("https://apiv2.shiprocket.in/v1/external/");
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+            services.AddScoped<ICheckoutService, CheckoutService>();
+            services.AddScoped<IStoreSettingsService, StoreSettingsService>();
+            services.AddScoped<IInventoryReservationService, InventoryReservationService>();
+            services.AddHttpClient<IPaymentService, RazorpayPaymentService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.razorpay.com/v1/");
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+            services.AddScoped<IOrderService, OrderService>();
+            services.AddHttpClient<IShiprocketFulfillmentService, ShiprocketFulfillmentService>(client =>
+            {
+                client.BaseAddress = new Uri("https://apiv2.shiprocket.in/v1/external/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            services.AddScoped<ICustomerOrderService, CustomerOrderService>();
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;
@@ -267,6 +351,8 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<DTOs.Customer.AdminCustomerListRequest>, Validators.Customer.AdminCustomerListRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<DTOs.Customer.PatchAdminCustomerRequest>, Validators.Customer.PatchAdminCustomerRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<SmtpProviderCredentials>, Validators.ProviderCredentials.SmtpProviderCredentialsValidator>();
+            services.AddTransient<FluentValidation.IValidator<ShiprocketProviderCredentials>, Validators.ProviderCredentials.ShiprocketProviderCredentialsValidator>();
+            services.AddTransient<FluentValidation.IValidator<RazorpayProviderCredentials>, Validators.ProviderCredentials.RazorpayProviderCredentialsValidator>();
             services.AddTransient<FluentValidation.IValidator<EmailTemplateWriteRequest>, Validators.EmailTemplates.EmailTemplateWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<AddCartItemRequest>, Validators.Cart.AddCartItemRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<UpdateCartItemQuantityRequest>, Validators.Cart.UpdateCartItemQuantityRequestValidator>();
@@ -274,6 +360,15 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<UpdateCartItemSelectionRequest>, Validators.Cart.UpdateCartItemSelectionRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<ResolveGuestCartRequest>, Validators.Cart.ResolveGuestCartRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<MergeGuestCartRequest>, Validators.Cart.MergeGuestCartRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<VerifyContactCodeRequest>, Validators.Customer.VerifyContactCodeRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCustomerEmailRequest>, Validators.Customer.UpdateCustomerEmailRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<CustomerAddressWriteRequest>, Validators.Customer.CustomerAddressWriteRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<InitializeCheckoutRequest>, Validators.Checkout.InitializeCheckoutRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<UpdateCheckoutAddressRequest>, Validators.Checkout.UpdateCheckoutAddressRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<ApplyCheckoutCouponRequest>, Validators.Checkout.ApplyCheckoutCouponRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<StoreSettingsWriteRequest>, Validators.Settings.StoreSettingsWriteRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Order.PlaceOrderRequest>, Validators.Order.PlaceOrderRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Order.VerifyRazorpayPaymentRequest>, Validators.Order.VerifyRazorpayPaymentRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

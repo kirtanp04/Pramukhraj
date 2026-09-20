@@ -100,3 +100,4 @@ docker/pg-prod-data
 
 .vs
 .codex-build
+.AGENTS.md
