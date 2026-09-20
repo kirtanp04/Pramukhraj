@@ -28,7 +28,8 @@ export interface CustomerOrderListItem {
 }
 
 export interface CustomerOrderListResult {
-  orders: CustomerOrderListItem[];
+  items: CustomerOrderListItem[];
+  orders?: CustomerOrderListItem[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -60,8 +61,8 @@ export interface PendingOrderItem {
   quantity: number;
   unitPrice: number;
   unitMrp: number;
-  discountAmount: number;
-  taxAmount: number;
+  discountAmount?: number;
+  taxAmount?: number;
   lineTotal: number;
 }
 
@@ -128,6 +129,19 @@ export interface CustomerOrderTracking {
   shippedOn?: string | null;
   deliveredOn?: string | null;
   estimatedDeliveryOn?: string | null;
+  activities: ShipmentActivityItem[];
+}
+
+export interface PublicOrderTracking {
+  orderNumber: string;
+  orderStatus: string;
+  shipmentStatus?: string | null;
+  courierName?: string | null;
+  awbCode?: string | null;
+  trackingUrl?: string | null;
+  estimatedDeliveryOn?: string | null;
+  shippedOn?: string | null;
+  deliveredOn?: string | null;
   activities: ShipmentActivityItem[];
 }
 

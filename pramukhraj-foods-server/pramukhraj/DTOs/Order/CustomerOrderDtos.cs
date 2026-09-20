@@ -100,3 +100,15 @@ public sealed record CustomerOrderListResponse(
     int TotalCount,
     int TotalPages);
 
+public sealed record PublicOrderTrackingResponse(
+    string OrderNumber,
+    string OrderStatus,
+    string? ShipmentStatus,
+    string? CourierName,
+    string? AwbCode,
+    string? TrackingUrl,
+    DateTime? EstimatedDeliveryOn,
+    DateTime? ShippedOn,
+    DateTime? DeliveredOn,
+    IReadOnlyList<CustomerShipmentActivityResponse> Activities);
+

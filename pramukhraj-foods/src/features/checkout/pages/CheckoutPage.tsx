@@ -139,7 +139,7 @@ export function CheckoutPage() {
       if (order) {
         const status = await paymentApi.status(order.orderId);
         if (status?.isPaid) {
-          completePayment(order.orderNumber, order.storeName);
+          completePayment(order.orderNumber, order.storeName, order.orderId);
           return;
         }
         if (!status?.canRetry) throw new Error("This payment window has ended. Please return to your cart.");
@@ -156,19 +156,19 @@ export function CheckoutPage() {
       if (!order.storeName) order.storeName = payment.storeName;
       const verified = await paymentApi.verify(order.orderId, await openRazorpay(payment));
       if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
-      completePayment(order.orderNumber, payment.storeName);
+      completePayment(order.orderNumber, payment.storeName, order.orderId);
     } catch (error) {
       setReadyMessage(getApiErrorMessage(error));
     } finally {
       setIsPaying(false);
     }
   };
-  function completePayment(orderNumber: string, storeName: string) {
+  function completePayment(orderNumber: string, storeName: string, orderId?: string) {
     sessionStorage.removeItem(PAYMENT_REQUEST_KEY);
     sessionStorage.removeItem(PENDING_ORDER_KEY);
     sessionStorage.removeItem(StorageKey.CheckoutSessionId);
     void loadCart();
-    navigate("/order-confirmation", { replace: true, state: { orderNumber, storeName } });
+    navigate("/order-confirmation", { replace: true, state: { orderNumber, storeName, orderId } });
   }
   const refreshShippingRate = async () => {
     setReadyMessage("");
@@ -325,7 +325,7 @@ function PendingPaymentRecovery({
   onCompleted,
 }: {
   order: PendingOrder;
-  onCompleted: (orderNumber: string, storeName: string) => void;
+  onCompleted: (orderNumber: string, storeName: string, orderId?: string) => void;
 }) {
   const navigate = useNavigate();
   const loadCart = useCartStore(state => state.loadCart);
@@ -345,7 +345,7 @@ function PendingPaymentRecovery({
         const data = await paymentApi.summary(order.orderId);
         if (!active) return;
         if (data?.isPaid) {
-          onCompleted(data.orderNumber, data.storeName);
+          onCompleted(data.orderNumber, data.storeName, order.orderId);
           return;
         }
         setSummary(data);
@@ -387,7 +387,7 @@ function PendingPaymentRecovery({
     try {
       const status = await paymentApi.status(order.orderId);
       if (status?.isPaid) {
-        onCompleted(order.orderNumber, order.storeName);
+        onCompleted(order.orderNumber, order.storeName, order.orderId);
         return;
       }
       if (!status?.canRetry || remainingSeconds === 0)
@@ -396,7 +396,7 @@ function PendingPaymentRecovery({
       if (!payment) throw new Error("Payment checkout is temporarily unavailable.");
       const verified = await paymentApi.verify(order.orderId, await openRazorpay(payment));
       if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
-      onCompleted(order.orderNumber, payment.storeName);
+      onCompleted(order.orderNumber, payment.storeName, order.orderId);
     } catch (error) {
       setMessage(getApiErrorMessage(error));
     } finally {

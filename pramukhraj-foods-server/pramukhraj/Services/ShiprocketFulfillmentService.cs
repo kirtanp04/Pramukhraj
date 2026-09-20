@@ -375,6 +375,14 @@ public sealed class ShiprocketFulfillmentService(
 
                 if (newStatus == ShipmentStatus.Delivered) shipment.DeliveredOn = DateTime.UtcNow;
                 if (newStatus == ShipmentStatus.InTransit && shipment.ShippedOn is null) shipment.ShippedOn = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(awb) && string.IsNullOrWhiteSpace(shipment.AwbCode))
+                {
+                    shipment.AwbCode = awb;
+                    if (string.IsNullOrWhiteSpace(shipment.TrackingUrl))
+                    {
+                        shipment.TrackingUrl = $"https://shiprocket.co/tracking/{awb}";
+                    }
+                }
 
                 db.ShipmentActivities.Add(new ShipmentActivity
                 {

@@ -87,7 +87,7 @@ public sealed class CustomerAuthController(
 
         try
         {
-            await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
+            //await serviceManager.CustomerOtpService.SendAsync(mobile, code, _otp.ExpirationMinutes, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)

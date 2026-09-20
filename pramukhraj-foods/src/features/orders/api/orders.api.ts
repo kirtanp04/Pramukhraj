@@ -4,6 +4,7 @@ import type {
   CustomerOrderDetail,
   CustomerOrderListResult,
   CustomerOrderTracking,
+  PublicOrderTracking,
 } from "../types/order.types";
 
 export const ordersApi = {
@@ -13,5 +14,7 @@ export const ordersApi = {
     apiGet<CustomerOrderDetail>(ApiPath.customer.orders.detail(orderId)),
   getTracking: (orderId: string) =>
     apiGet<CustomerOrderTracking>(ApiPath.customer.orders.tracking(orderId)),
+  trackPublic: (query: string) =>
+    apiGet<PublicOrderTracking>(ApiPath.customer.orders.trackPublic(query)),
 };
 

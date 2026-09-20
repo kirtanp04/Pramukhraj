@@ -18,7 +18,7 @@ export function useCustomerOrders(initialStatus = "all", initialPage = 1, pageSi
     try {
       const response = await ordersApi.list({ page, pageSize, status });
       if (response) {
-        setOrders(response.orders ?? []);
+        setOrders(response.items ?? response.orders ?? []);
         setTotalPages(response.totalPages ?? 1);
         setTotalCount(response.totalCount ?? 0);
       }

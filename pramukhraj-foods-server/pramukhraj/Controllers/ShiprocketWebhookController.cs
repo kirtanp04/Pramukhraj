@@ -7,7 +7,7 @@ namespace pramukhraj.Controllers;
 
 [ApiController]
 [AllowAnonymous]
-[Route("api/webhooks/shiprocket")]
+[Route("api/webhooks/shipping")]
 [EnableRateLimiting("shiprocket-webhook")]
 public sealed class ShiprocketWebhookController(IServiceManager services, ILogger<ShiprocketWebhookController> logger) : ControllerBase
 {

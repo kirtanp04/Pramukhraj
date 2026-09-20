@@ -75,6 +75,7 @@ const CustomerApiPaths = {
     },
     detail: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}`,
     tracking: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/tracking`,
+    trackPublic: (query: string) => `orders/track?query=${encodeURIComponent(query)}`,
   },
 };
 
