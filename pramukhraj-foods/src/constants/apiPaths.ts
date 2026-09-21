@@ -191,6 +191,31 @@ const AdminApiPaths = {
     details: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
     patch: (id: string) => `admin/customers/${encodeURIComponent(id)}`,
   },
+  orders: {
+    list: (query: {
+      pageNumber: number
+      pageSize: number
+      search?: string
+      status?: string
+      paymentStatus?: string
+      shipmentStatus?: string
+      sortBy?: string
+      sortDirection?: string
+    }) => {
+      const params = new URLSearchParams({
+        pageNumber: String(query.pageNumber),
+        pageSize: String(query.pageSize),
+      })
+      if (query.search) params.set('search', query.search)
+      if (query.status && query.status !== 'ALL') params.set('status', query.status)
+      if (query.paymentStatus && query.paymentStatus !== 'ALL') params.set('paymentStatus', query.paymentStatus)
+      if (query.shipmentStatus && query.shipmentStatus !== 'ALL') params.set('shipmentStatus', query.shipmentStatus)
+      if (query.sortBy) params.set('sortBy', query.sortBy)
+      if (query.sortDirection) params.set('sortDirection', query.sortDirection)
+      return `admin/orders?${params.toString()}`
+    },
+    details: (id: string) => `admin/orders/${encodeURIComponent(id)}`,
+  },
   settings: {
     get: "admin/settings",
     update: "admin/settings",

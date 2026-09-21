@@ -1,11 +1,15 @@
 using Microsoft.EntityFrameworkCore;
+using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.Entities.Order;
 using pramukhraj.Interfaces;
 
 namespace pramukhraj.Services;
 
-public sealed class InventoryReservationService(AppDbContext db, ILogger<InventoryReservationService> logger)
+public sealed class InventoryReservationService(
+    AppDbContext db,
+    ICacheService cache,
+    ILogger<InventoryReservationService> logger)
     : IInventoryReservationService
 {
     public async Task CompleteAsync(Guid orderId, CancellationToken cancellationToken = default)
@@ -32,6 +36,10 @@ public sealed class InventoryReservationService(AppDbContext db, ILogger<Invento
         }
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Inventory reservations released - stock restored");
+        cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Inventory reservations released - stock restored");
+
         logger.LogInformation("Released inventory for order {OrderId}. Reason={Reason}", orderId, reason);
         return true;
     }

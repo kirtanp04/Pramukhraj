@@ -25,6 +25,7 @@ public sealed class RazorpayPaymentService(
     IProviderCredentialService credentialsService,
     IStoreSettingsService settingsService,
     IAdminNotificationService notifications,
+    ICacheService cache,
     ILogger<RazorpayPaymentService> logger) : IPaymentService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -302,6 +303,11 @@ public sealed class RazorpayPaymentService(
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+
+            cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order pending payment cancelled - stock restored");
+            cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order pending payment cancelled - stock restored");
+            if (order.CouponId.HasValue)
+                cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order pending payment cancelled - coupon released");
         });
 
         return ApiResponse<CancelPendingOrderResponse>.Ok(
@@ -408,6 +414,11 @@ public sealed class RazorpayPaymentService(
             if (notification is not null) db.OutboxMessages.Add(NotificationOutbox(notification.Id, now));
             await db.SaveChangesAsync(token);
             await transaction.CommitAsync(token);
+
+            cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order payment confirmed - stock finalized");
+            cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order payment confirmed - stock finalized");
+            if (payment.Order.CouponId.HasValue)
+                cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order payment confirmed - coupon redeemed");
         });
     }
 
@@ -461,6 +472,11 @@ public sealed class RazorpayPaymentService(
             if (notification is not null) db.OutboxMessages.Add(NotificationOutbox(notification.Id, now));
             await db.SaveChangesAsync(token);
             await transaction.CommitAsync(token);
+
+            cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order payment released - stock restored");
+            cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order payment released - stock restored");
+            if (payment.Order.CouponId.HasValue)
+                cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order payment released - coupon released");
         });
     }
 

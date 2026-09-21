@@ -45,6 +45,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IInventoryReservationService> _InventoryReservationService;
         private readonly Lazy<IShiprocketFulfillmentService> _ShiprocketFulfillmentService;
         private readonly Lazy<ICustomerOrderService> _CustomerOrderService;
+        private readonly Lazy<IAdminOrderService> _AdminOrderService;
 
       
         public ServiceManager(
@@ -75,7 +76,8 @@ namespace pramukhraj.Extensions
             IPaymentService paymentService,
             IInventoryReservationService inventoryReservationService,
             IShiprocketFulfillmentService shiprocketFulfillmentService,
-            ICustomerOrderService customerOrderService
+            ICustomerOrderService customerOrderService,
+            IAdminOrderService adminOrderService
             )
         {
           
@@ -116,6 +118,7 @@ namespace pramukhraj.Extensions
             _InventoryReservationService = new Lazy<IInventoryReservationService>(() => inventoryReservationService);
             _ShiprocketFulfillmentService = new Lazy<IShiprocketFulfillmentService>(() => shiprocketFulfillmentService);
             _CustomerOrderService = new Lazy<ICustomerOrderService>(() => customerOrderService);
+            _AdminOrderService = new Lazy<IAdminOrderService>(() => adminOrderService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -146,6 +149,7 @@ namespace pramukhraj.Extensions
         public IInventoryReservationService InventoryReservationService => _InventoryReservationService.Value;
         public IShiprocketFulfillmentService ShiprocketFulfillmentService => _ShiprocketFulfillmentService.Value;
         public ICustomerOrderService CustomerOrderService => _CustomerOrderService.Value;
+        public IAdminOrderService AdminOrderService => _AdminOrderService.Value;
       
     }
 }
