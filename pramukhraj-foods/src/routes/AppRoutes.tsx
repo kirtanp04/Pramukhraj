@@ -172,8 +172,12 @@ const AdminReturns = lazyNamed(
   "AdminReturns"
 );
 const AdminPayments = lazyNamed(
-  () => import("@/pages/admin/AdminPayments"),
+  () => import("@/pages/admin/payment/AdminPayments"),
   "AdminPayments"
+);
+const AdminPaymentDetailPage = lazyNamed(
+  () => import("@/pages/admin/payment/AdminPaymentDetailPage"),
+  "AdminPaymentDetailPage"
 );
 const AdminShipping = lazyNamed(
   () => import("@/pages/admin/AdminShipping"),
@@ -370,6 +374,7 @@ export function AppRoutes() {
             { path: "sales", element: lazyElement(AdminSales) },
             { path: "returns", element: lazyElement(AdminReturns) },
             { path: "payments", element: lazyElement(AdminPayments) },
+            { path: "payments/:paymentId", element: lazyElement(AdminPaymentDetailPage) },
             { path: "shipping", element: lazyElement(AdminShipping) },
             { path: "notifications", element: lazyElement(AdminNotifications) },
             { path: "cms", element: lazyElement(AdminCMS) },
