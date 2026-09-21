@@ -153,7 +153,7 @@ export function AdminShipmentDetailPage() {
               href={shipment.trackingUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-surface-card px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ink/5 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-ivory px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ivory-dim transition-colors"
             >
               <Truck size={13} />
               <span>Track Online</span>
@@ -179,7 +179,7 @@ export function AdminShipmentDetailPage() {
               href={shipment.manifestUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-surface-card px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ink/5 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-ivory px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ivory-dim transition-colors"
             >
               <FileText size={13} />
               <span>Manifest</span>
@@ -210,7 +210,7 @@ export function AdminShipmentDetailPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <Truck size={14} className="text-turmeric-deep" />
             <span>Courier Service</span>
@@ -223,7 +223,7 @@ export function AdminShipmentDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
               <Hash size={14} />
@@ -252,7 +252,7 @@ export function AdminShipmentDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <FileText size={14} />
             <span>Shipping Cost</span>
@@ -265,7 +265,7 @@ export function AdminShipmentDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <Calendar size={14} />
             <span>Estimated Delivery</span>
@@ -288,7 +288,7 @@ export function AdminShipmentDetailPage() {
         {/* Left Column (Milestones & Line Items) */}
         <div className="space-y-6 lg:col-span-2">
           {/* Tracking Milestone Scans */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-4">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-ink/5 pb-3">
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-teal" />
@@ -310,7 +310,7 @@ export function AdminShipmentDetailPage() {
             </div>
 
             {shipment.activities.length === 0 ? (
-              <div className="py-8 text-center">
+              <div className="rounded-xl border border-dashed border-ink/15 bg-ivory py-8 text-center">
                 <Truck size={32} className="mx-auto text-ink-soft/40" />
                 <p className="mt-2 text-xs! text-ink-soft font-medium">
                   No checkpoint scans reported by carrier yet.
@@ -320,18 +320,18 @@ export function AdminShipmentDetailPage() {
                 </p>
               </div>
             ) : (
-              <div className="relative pl-6 space-y-6 border-l-2 border-ink/10 mt-2">
+              <div className="relative pl-6 space-y-4 border-l-2 border-ink/10 mt-2">
                 {shipment.activities.map((act, index) => {
                   const isLatest = index === 0
                   return (
                     <div key={act.id} className="relative group">
                       <div
-                        className={`absolute -left-[31px] top-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface-card ${
+                        className={`absolute -left-[31px] top-3 h-3.5 w-3.5 rounded-full border-2 border-ivory-dim ${
                           isLatest ? 'bg-teal ring-4 ring-teal/20' : 'bg-ink/30'
                         }`}
                       />
-                      <div className="flex flex-col gap-1">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <div className="rounded-lg bg-ivory p-3 border border-ink/5 space-y-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span
                             className={`text-xs! font-bold ${
                               isLatest ? 'text-teal' : 'text-ink'
@@ -366,7 +366,7 @@ export function AdminShipmentDetailPage() {
           </div>
 
           {/* Package Line Items */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-4">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-ink/5 pb-3">
               <div className="flex items-center gap-2">
                 <Package size={16} className="text-turmeric-deep" />
@@ -392,7 +392,7 @@ export function AdminShipmentDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-ink/5">
                   {shipment.order.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-ink/2">
+                    <tr key={item.id} className="hover:bg-ivory/50 transition-colors">
                       <td className="py-2.5 pr-2">
                         <div className="font-medium text-ink">{item.productName}</div>
                         <div className="flex items-center gap-2 text-[11px]! text-ink-soft">
@@ -424,7 +424,7 @@ export function AdminShipmentDetailPage() {
         {/* Right Column (Addresses, Financials, Audit) */}
         <div className="space-y-6">
           {/* Destination & Recipient Card */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
             <h3 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink border-b border-ink/5 pb-2.5">
               <MapPin size={14} className="text-ink-soft" />
               <span>Recipient & Delivery Address</span>
@@ -445,7 +445,7 @@ export function AdminShipmentDetailPage() {
                 )}
               </div>
               {shipment.order.shippingAddress && (
-                <div className="mt-2 rounded-lg bg-ink/2 p-3 text-ink-soft leading-relaxed">
+                <div className="mt-2 rounded-xl bg-ivory p-3.5 border border-ink/5 text-ink-soft leading-relaxed">
                   <p className="text-ink font-medium">{shipment.order.shippingAddress.addressLine1}</p>
                   {shipment.order.shippingAddress.addressLine2 && (
                     <p>{shipment.order.shippingAddress.addressLine2}</p>
@@ -464,7 +464,7 @@ export function AdminShipmentDetailPage() {
           </div>
 
           {/* Linked Order Financials */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
             <div className="flex items-center justify-between border-b border-ink/5 pb-2.5">
               <h3 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink">
                 <Package size={14} className="text-ink-soft" />
@@ -513,7 +513,7 @@ export function AdminShipmentDetailPage() {
           </div>
 
           {/* Fulfillment & Provider Audit */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
             <h3 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink border-b border-ink/5 pb-2.5">
               <Calendar size={14} className="text-ink-soft" />
               <span>Carrier & Dispatch Audit</span>

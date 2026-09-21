@@ -198,7 +198,7 @@ export function AdminPaymentDetailPage() {
 
       {/* Metric 4-Card Overview */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <CreditCard size={14} />
             <span>Amount Paid</span>
@@ -211,7 +211,7 @@ export function AdminPaymentDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <CheckCircle2 size={14} />
             <span>Gateway ID</span>
@@ -232,7 +232,7 @@ export function AdminPaymentDetailPage() {
           <div className="mt-0.5 text-[11px]! text-ink-soft">Razorpay Payment ID</div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <Package size={14} />
             <span>Linked Order</span>
@@ -248,7 +248,7 @@ export function AdminPaymentDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-ink/10 bg-surface-card p-4">
+        <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-4">
           <div className="flex items-center gap-1.5 text-xs! font-semibold text-ink-soft">
             <Clock size={14} />
             <span>Captured Time</span>
@@ -267,7 +267,7 @@ export function AdminPaymentDetailPage() {
         {/* Left Column (Transactions Audit & Order Items) */}
         <div className="space-y-6 lg:col-span-2">
           {/* Gateway Transactions Audit Table */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-4">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-base! font-bold text-ink flex items-center gap-2">
                 <FileText size={16} className="text-teal" />
@@ -276,7 +276,7 @@ export function AdminPaymentDetailPage() {
             </div>
 
             {payment.transactions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-ink/15 p-6 text-center text-xs! text-ink-soft">
+              <div className="rounded-xl border border-dashed border-ink/15 bg-ivory p-6 text-center text-xs! text-ink-soft">
                 No intermediate transaction logs recorded for this payment.
               </div>
             ) : (
@@ -318,7 +318,7 @@ export function AdminPaymentDetailPage() {
           </div>
 
           {/* Linked Order Items */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-4">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-base! font-bold text-ink flex items-center gap-2">
                 <Package size={16} className="text-teal" />
@@ -398,7 +398,7 @@ export function AdminPaymentDetailPage() {
         {/* Right Column (Customer, Identifiers & Address Cards) */}
         <div className="space-y-6">
           {/* Customer Profile Card */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
             <h2 className="font-display text-sm! font-bold text-ink flex items-center gap-2">
               <User size={15} className="text-teal" />
               Customer Details
@@ -422,13 +422,13 @@ export function AdminPaymentDetailPage() {
           </div>
 
           {/* Payment Identifiers & Audit Metas */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+          <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
             <h2 className="font-display text-sm! font-bold text-ink flex items-center gap-2">
               <CreditCard size={15} className="text-teal" />
               Payment Identifiers
             </h2>
             <div className="space-y-2.5 text-xs!">
-              <div className="flex items-center justify-between rounded-lg bg-ivory p-2 border border-ink/5">
+              <div className="flex items-center justify-between rounded-xl bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Razorpay Order ID</span>
                 <div className="flex items-center gap-1.5 font-mono text-[11px]! font-medium text-ink">
                   <span>{payment.providerOrderId || '—'}</span>
@@ -445,7 +445,7 @@ export function AdminPaymentDetailPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-ivory p-2 border border-ink/5">
+              <div className="flex items-center justify-between rounded-xl bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Razorpay Payment ID</span>
                 <div className="flex items-center gap-1.5 font-mono text-[11px]! font-medium text-ink">
                   <span>{payment.providerPaymentId || '—'}</span>
@@ -462,7 +462,7 @@ export function AdminPaymentDetailPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-ivory p-2 border border-ink/5">
+              <div className="flex items-center justify-between rounded-xl bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Idempotency Key</span>
                 <div className="flex items-center gap-1.5 font-mono text-[11px]! font-medium text-ink truncate max-w-44">
                   <span className="truncate">{payment.idempotencyKey}</span>
@@ -487,12 +487,12 @@ export function AdminPaymentDetailPage() {
 
           {/* Shipping Address */}
           {order.shippingAddress && (
-            <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-2">
+            <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-2">
               <h2 className="font-display text-sm! font-bold text-ink flex items-center gap-2">
                 <MapPin size={15} className="text-teal" />
                 Shipping Destination
               </h2>
-              <div className="text-xs! text-ink-soft space-y-0.5">
+              <div className="rounded-xl bg-ivory p-3.5 border border-ink/5 text-xs! text-ink-soft space-y-0.5">
                 <div className="font-semibold text-ink">{order.shippingAddress.recipientName}</div>
                 <div>{order.shippingAddress.mobileNumber}</div>
                 <div>{order.shippingAddress.addressLine1}</div>
@@ -507,7 +507,7 @@ export function AdminPaymentDetailPage() {
 
           {/* Shipment Preview (if fulfilled) */}
           {payment.shipment && (
-            <div className="rounded-xl border border-ink/10 bg-surface-card p-5 space-y-3">
+            <div className="rounded-2xl bg-ivory-dim border border-ink/10 p-5 space-y-3">
               <h2 className="font-display text-sm! font-bold text-ink flex items-center gap-2">
                 <Truck size={15} className="text-teal" />
                 Shipment Information

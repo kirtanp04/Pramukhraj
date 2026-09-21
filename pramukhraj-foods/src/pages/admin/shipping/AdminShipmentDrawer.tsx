@@ -153,7 +153,7 @@ export function AdminShipmentDrawer({
       {shipment && !loading && !error && (
         <div className="space-y-6 pb-6">
           {/* Header Card */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-5">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs! font-medium text-ink-soft">AWB Tracking Code</span>
@@ -199,7 +199,7 @@ export function AdminShipmentDrawer({
                   href={shipment.trackingUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ink/5 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-ivory px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ivory-dim transition-colors"
                 >
                   <span>Track Online</span>
                   <ExternalLink size={12} />
@@ -210,7 +210,7 @@ export function AdminShipmentDrawer({
                   href={shipment.labelUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ink/5 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-ivory px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ivory-dim transition-colors"
                 >
                   <FileText size={12} />
                   <span>Shipping Label</span>
@@ -221,7 +221,7 @@ export function AdminShipmentDrawer({
                   href={shipment.manifestUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ink/5 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-ivory px-3 py-1.5 text-xs! font-medium text-ink hover:bg-ivory-dim transition-colors"
                 >
                   <FileText size={12} />
                   <span>Manifest</span>
@@ -238,7 +238,7 @@ export function AdminShipmentDrawer({
           </div>
 
           {/* Key Milestones & Dates */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <h4 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink">
               <Calendar size={13} className="text-ink-soft" />
               <span>Key Shipping Milestones</span>
@@ -276,7 +276,7 @@ export function AdminShipmentDrawer({
           </div>
 
           {/* Linked Order Snapshot */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink">
                 <Package size={13} className="text-ink-soft" />
@@ -315,7 +315,7 @@ export function AdminShipmentDrawer({
               {shipment.order.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-ink/7 p-2 text-xs!"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-ivory p-2 border border-ink/5 text-xs!"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-ink">{item.productName}</p>
@@ -323,14 +323,14 @@ export function AdminShipmentDrawer({
                       {item.variantName} ({item.weight} {item.weightUnit}) × {item.quantity}
                     </p>
                   </div>
-                  <span className="shrink-0 font-medium text-ink">{formatINR(item.lineTotal)}</span>
+                  <span className="shrink-0 font-medium text-ink font-mono">{formatINR(item.lineTotal)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Customer & Destination */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <h4 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink">
               <MapPin size={13} className="text-ink-soft" />
               <span>Destination & Recipient</span>
@@ -351,8 +351,8 @@ export function AdminShipmentDrawer({
                   ` • ${shipment.order.shippingAddress?.email || shipment.customer.email}`}
               </p>
               {shipment.order.shippingAddress && (
-                <div className="rounded-lg bg-ink/7 p-2.5 text-ink-soft">
-                  <p className="text-ink">{shipment.order.shippingAddress.addressLine1}</p>
+                <div className="rounded-lg bg-ivory p-2.5 border border-ink/5 text-ink-soft">
+                  <p className="text-ink font-medium">{shipment.order.shippingAddress.addressLine1}</p>
                   {shipment.order.shippingAddress.addressLine2 && (
                     <p>{shipment.order.shippingAddress.addressLine2}</p>
                   )}
@@ -366,7 +366,7 @@ export function AdminShipmentDrawer({
           </div>
 
           {/* Activity / Scan Stream */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="flex items-center gap-2 text-xs! font-bold uppercase tracking-wider text-ink">
                 <Clock size={13} className="text-ink-soft" />
@@ -379,24 +379,26 @@ export function AdminShipmentDrawer({
                 No tracking scans recorded yet. Live updates will populate here upon carrier hub scans.
               </p>
             ) : (
-              <div className="relative pl-4 space-y-4 border-l-2 border-ink/10">
+              <div className="relative pl-4 space-y-3 border-l-2 border-ink/10">
                 {shipment.activities.map((act) => (
                   <div key={act.id} className="relative group">
-                    <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface-card bg-teal" />
-                    <p className="text-xs! font-medium text-ink">{act.activity}</p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px]! text-ink-soft">
-                      <span>{formatDateTime(act.date)}</span>
-                      {act.location && (
-                        <>
-                          <span>•</span>
-                          <span>{act.location}</span>
-                        </>
-                      )}
-                      {act.status && (
-                        <span className="rounded bg-ink/5 px-1.5 py-0.2 text-[10px]! font-medium text-ink">
-                          {act.status}
-                        </span>
-                      )}
+                    <div className="absolute -left-[21px] top-2 h-2.5 w-2.5 rounded-full border-2 border-ivory-dim bg-teal" />
+                    <div className="rounded-lg bg-ivory p-2.5 border border-ink/5 space-y-0.5">
+                      <p className="text-xs! font-medium text-ink">{act.activity}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]! text-ink-soft">
+                        <span>{formatDateTime(act.date)}</span>
+                        {act.location && (
+                          <>
+                            <span>•</span>
+                            <span>{act.location}</span>
+                          </>
+                        )}
+                        {act.status && (
+                          <span className="rounded bg-ink/5 px-1.5 py-0.2 text-[10px]! font-medium text-ink">
+                            {act.status}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

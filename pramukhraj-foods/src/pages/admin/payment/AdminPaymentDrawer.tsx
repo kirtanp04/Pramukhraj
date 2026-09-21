@@ -157,7 +157,7 @@ export function AdminPaymentDrawer({
       {payment && !loading && !error && (
         <div className="space-y-6 pb-6">
           {/* Header Amount & Status Card */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-5">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs! font-semibold uppercase tracking-wider text-ink-soft">
@@ -190,13 +190,13 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Gateway & Provider Identifiers */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
               <CreditCard size={15} className="text-teal" />
               Gateway Credentials
             </h3>
             <div className="grid grid-cols-1 gap-2.5 text-xs!">
-              <div className="flex items-center justify-between rounded-lg bg-ink/7 p-2.5 border border-ink/5">
+              <div className="flex items-center justify-between rounded-lg bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Razorpay Payment ID</span>
                 <div className="flex items-center gap-1.5 font-mono font-medium text-ink">
                   <span>{payment.providerPaymentId || '—'}</span>
@@ -213,7 +213,7 @@ export function AdminPaymentDrawer({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-ink/7 p-2.5 border border-ink/5">
+              <div className="flex items-center justify-between rounded-lg bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Razorpay Order ID</span>
                 <div className="flex items-center gap-1.5 font-mono font-medium text-ink">
                   <span>{payment.providerOrderId || '—'}</span>
@@ -230,7 +230,7 @@ export function AdminPaymentDrawer({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg bg-ink/7 p-2.5 border border-ink/5">
+              <div className="flex items-center justify-between rounded-lg bg-ivory p-2.5 border border-ink/5">
                 <span className="text-ink-soft">Internal Payment ID</span>
                 <div className="flex items-center gap-1.5 font-mono text-[11px]! font-medium text-ink truncate max-w-56">
                   <span className="truncate">{payment.id}</span>
@@ -248,7 +248,7 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Linked Order Preview */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
                 <Package size={15} className="text-teal" />
@@ -263,7 +263,7 @@ export function AdminPaymentDrawer({
               </Link>
             </div>
 
-            <div className="flex bg-ink/7 items-center justify-between rounded-lg  p-3 border border-ink/5 text-xs!">
+            <div className="flex bg-ivory items-center justify-between rounded-lg p-3 border border-ink/5 text-xs!">
               <div>
                 <div className="font-semibold text-ink">Order #{payment.orderNumber}</div>
                 <div className="text-ink-soft">{payment.order.items.length} items • Grand Total: {formatINR(payment.order.grandTotal)}</div>
@@ -274,7 +274,7 @@ export function AdminPaymentDrawer({
             {payment.order.items.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 {payment.order.items.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between  text-xs! py-1 border-b border-ink/5 last:border-0">
+                  <div key={item.id} className="flex items-center justify-between text-xs! py-1 border-b border-ink/5 last:border-0">
                     <div className="truncate pr-2">
                       <span className="font-medium text-ink">{item.productName}</span>
                       <span className="text-ink-soft"> ({item.variantName}) × {item.quantity}</span>
@@ -292,12 +292,12 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Customer Card */}
-          <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-2">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-2">
             <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
               <User size={15} className="text-teal" />
               Customer Information
             </h3>
-            <div className="rounded-lg bg-ink/7 p-3 border border-ink/5 text-xs! space-y-1">
+            <div className="rounded-lg bg-ivory p-3 border border-ink/5 text-xs! space-y-1">
               <div className="font-semibold text-ink">{payment.customer.fullName}</div>
               <div className="text-ink-soft">Mobile: {payment.customer.mobileNumber}</div>
               {payment.customer.email && <div className="text-ink-soft">Email: {payment.customer.email}</div>}
@@ -312,13 +312,13 @@ export function AdminPaymentDrawer({
 
           {/* Gateway Transactions Audit History */}
           {payment.transactions.length > 0 && (
-            <div className="rounded-xl border bg-ivory-dim border-ink/10 bg-surface-card p-4 space-y-3">
+            <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
               <h3 className="font-display text-sm! font-bold text-ink">
                 Transaction Audit Logs ({payment.transactions.length})
               </h3>
               <div className="space-y-2">
                 {payment.transactions.map((tx) => (
-                  <div key={tx.id} className="rounded-lg bg-ink/7 p-2.5 border border-ink/5 text-xs! space-y-1">
+                  <div key={tx.id} className="rounded-lg bg-ivory p-2.5 border border-ink/5 text-xs! space-y-1">
                     <div className="flex items-center justify-between font-medium">
                       <span className="text-ink">{tx.type}</span>
                       <span className="text-teal font-semibold">{tx.status}</span>
