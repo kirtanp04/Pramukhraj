@@ -19,6 +19,7 @@ public sealed class OrderService(
     AppDbContext db, CustomerClaimsHelper claimsHelper, IValidatorManager validators,
     IPricingService pricingService, IStoreSettingsService settingsService,
     IPaymentService paymentService, IAdminNotificationService notifications,
+    ICacheService cache,
     ILogger<OrderService> logger) : IOrderService
 {
     private static readonly TimeSpan PaymentLifetime = TimeSpan.FromMinutes(20);
@@ -112,6 +113,11 @@ public sealed class OrderService(
                 if (notification is not null) db.OutboxMessages.Add(Outbox("BroadcastAdminNotification", notification.Id, now));
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
+                cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order placed - inventory stock deducted");
+                cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order placed - inventory stock deducted");
+                if (session.CouponId.HasValue)
+                    cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order placed - coupon usage recorded");
             });
 
             try
