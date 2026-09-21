@@ -179,9 +179,13 @@ const AdminPaymentDetailPage = lazyNamed(
   () => import("@/pages/admin/payment/AdminPaymentDetailPage"),
   "AdminPaymentDetailPage"
 );
-const AdminShipping = lazyNamed(
-  () => import("@/pages/admin/AdminShipping"),
-  "AdminShipping"
+const AdminShipments = lazyNamed(
+  () => import("@/pages/admin/shipping/AdminShipments"),
+  "AdminShipments"
+);
+const AdminShipmentDetailPage = lazyNamed(
+  () => import("@/pages/admin/shipping/AdminShipmentDetailPage"),
+  "AdminShipmentDetailPage"
 );
 const AdminNotifications = lazyNamed(
   () => import("@/pages/admin/AdminNotifications"),
@@ -375,7 +379,8 @@ export function AppRoutes() {
             { path: "returns", element: lazyElement(AdminReturns) },
             { path: "payments", element: lazyElement(AdminPayments) },
             { path: "payments/:paymentId", element: lazyElement(AdminPaymentDetailPage) },
-            { path: "shipping", element: lazyElement(AdminShipping) },
+            { path: "shipping", element: lazyElement(AdminShipments) },
+            { path: "shipping/:shipmentId", element: lazyElement(AdminShipmentDetailPage) },
             { path: "notifications", element: lazyElement(AdminNotifications) },
             { path: "cms", element: lazyElement(AdminCMS) },
             { path: "provider-credentials/twilio", element: lazyElement(TwilioCredentialsPage) },

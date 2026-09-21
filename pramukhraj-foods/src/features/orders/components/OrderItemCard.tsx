@@ -65,7 +65,7 @@ export function OrderItemCard({ item }: OrderItemCardProps) {
       <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-3 border-t border-ink/5 pt-2 sm:border-0 sm:pt-0">
         <span className="text-xs! text-ink-soft sm:hidden">Total:</span>
         <span className="font-mono font-semibold text-ink text-sm! sm:text-base!">
-          {formatINR(item.lineTotal)}
+          {formatINR(item.unitPrice * item.quantity)}
         </span>
       </div>
     </div>

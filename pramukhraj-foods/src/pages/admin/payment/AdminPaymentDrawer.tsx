@@ -157,7 +157,7 @@ export function AdminPaymentDrawer({
       {payment && !loading && !error && (
         <div className="space-y-6 pb-6">
           {/* Header Amount & Status Card */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-5">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs! font-semibold uppercase tracking-wider text-ink-soft">
@@ -190,7 +190,7 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Gateway & Provider Identifiers */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
               <CreditCard size={15} className="text-teal" />
               Gateway Credentials
@@ -248,7 +248,7 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Linked Order Preview */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-4 space-y-3">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
                 <Package size={15} className="text-teal" />
@@ -263,7 +263,7 @@ export function AdminPaymentDrawer({
               </Link>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg bg-ivory p-3 border border-ink/5 text-xs!">
+            <div className="flex bg-ivory items-center justify-between rounded-lg p-3 border border-ink/5 text-xs!">
               <div>
                 <div className="font-semibold text-ink">Order #{payment.orderNumber}</div>
                 <div className="text-ink-soft">{payment.order.items.length} items • Grand Total: {formatINR(payment.order.grandTotal)}</div>
@@ -292,7 +292,7 @@ export function AdminPaymentDrawer({
           </div>
 
           {/* Customer Card */}
-          <div className="rounded-xl border border-ink/10 bg-surface-card p-4 space-y-2">
+          <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-2">
             <h3 className="flex items-center gap-2 font-display text-sm! font-bold text-ink">
               <User size={15} className="text-teal" />
               Customer Information
@@ -312,7 +312,7 @@ export function AdminPaymentDrawer({
 
           {/* Gateway Transactions Audit History */}
           {payment.transactions.length > 0 && (
-            <div className="rounded-xl border border-ink/10 bg-surface-card p-4 space-y-3">
+            <div className="rounded-xl bg-ivory-dim border border-ink/10 p-4 space-y-3">
               <h3 className="font-display text-sm! font-bold text-ink">
                 Transaction Audit Logs ({payment.transactions.length})
               </h3>
