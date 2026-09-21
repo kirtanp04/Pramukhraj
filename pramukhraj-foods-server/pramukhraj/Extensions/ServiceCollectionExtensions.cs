@@ -318,6 +318,7 @@ namespace pramukhraj.Extensions
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
             services.AddScoped<ICustomerOrderService, CustomerOrderService>();
+            services.AddScoped<IAdminOrderService, AdminOrderService>();
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;

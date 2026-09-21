@@ -33,5 +33,6 @@ namespace pramukhraj.Interfaces
         IInventoryReservationService InventoryReservationService { get; }
         IShiprocketFulfillmentService ShiprocketFulfillmentService { get; }
         ICustomerOrderService CustomerOrderService { get; }
+        IAdminOrderService AdminOrderService { get; }
     }
 }
