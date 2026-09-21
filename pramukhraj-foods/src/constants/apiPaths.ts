@@ -237,6 +237,27 @@ const AdminApiPaths = {
     },
     details: (id: string) => `admin/payments/${encodeURIComponent(id)}`,
   },
+  shipments: {
+    list: (query: {
+      pageNumber: number
+      pageSize: number
+      search?: string
+      status?: string
+      sortBy?: string
+      sortDirection?: string
+    }) => {
+      const params = new URLSearchParams({
+        pageNumber: String(query.pageNumber),
+        pageSize: String(query.pageSize),
+      })
+      if (query.search) params.set('search', query.search)
+      if (query.status && query.status !== 'ALL') params.set('status', query.status)
+      if (query.sortBy) params.set('sortBy', query.sortBy)
+      if (query.sortDirection) params.set('sortDirection', query.sortDirection)
+      return `admin/shipments?${params.toString()}`
+    },
+    details: (id: string) => `admin/shipments/${encodeURIComponent(id)}`,
+  },
   settings: {
     get: "admin/settings",
     update: "admin/settings",

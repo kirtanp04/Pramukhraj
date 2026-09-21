@@ -320,6 +320,7 @@ namespace pramukhraj.Extensions
             services.AddScoped<ICustomerOrderService, CustomerOrderService>();
             services.AddScoped<IAdminOrderService, AdminOrderService>();
             services.AddScoped<IAdminPaymentService, AdminPaymentService>();
+            services.AddScoped<IAdminShipmentService, AdminShipmentService>();
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;
