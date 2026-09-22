@@ -171,7 +171,7 @@ public sealed class OrderService(
         var settings = await settingsService.GetCurrentAsync(token);
         var pricing = pricingService.Calculate(new PricingCalculationRequest(lines.Select(x => new PricingLine(x.ProductId, Guid.Empty, x.UnitPrice, x.UnitMrp, x.Quantity)).ToArray(),
             session.CouponDiscountAmount, session.CustomerShippingAmount, session.ProviderShippingCost,
-            settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+            0m, settings.PaymentServiceTaxRatePercent ?? 0m));
         if (pricing.Subtotal != session.Subtotal || pricing.ItemDiscountAmount != session.ItemDiscountAmount ||
             pricing.ProductTaxAmount != session.ProductTaxAmount || pricing.PaymentServiceTaxAmount != session.PaymentServiceTaxAmount ||
             pricing.TaxAmount != session.TaxAmount || pricing.GrandTotal != session.GrandTotal)

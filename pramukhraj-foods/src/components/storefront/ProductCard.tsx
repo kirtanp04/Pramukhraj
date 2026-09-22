@@ -80,6 +80,7 @@ export function ProductCard({ product, className, selectedStatus }: ProductCardP
           )}
           <span className="text-xs text-ink-soft">/ {product.weight}</span>
         </div>
+        <p className="text-[10px]! text-ink-soft/80">Incl. of all taxes</p>
         <LowStockNotice stock={product.stock} />
         <Button
           size="sm"

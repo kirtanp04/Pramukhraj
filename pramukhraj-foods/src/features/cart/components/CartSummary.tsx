@@ -21,6 +21,7 @@ export function CartSummary({ cart }: { cart: CartResponse }) {
           <span>Subtotal</span>
           <span>{formatINR(cart.subtotal)}</span>
         </div>
+        <p className="text-right text-[11px]! text-ink-soft">Inclusive of all taxes</p>
       </div>
       {cart.availabilityWarnings.length > 0 && (
         <p className="mt-3 text-xs! text-red-700">

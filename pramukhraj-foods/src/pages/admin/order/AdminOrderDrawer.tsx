@@ -324,9 +324,19 @@ export function AdminOrderDrawer({ orderId, open, onOpenChange }: AdminOrderDraw
                   {detail.shippingAmount > 0 ? formatINR(detail.shippingAmount) : 'Free'}
                 </span>
               </div>
+              {detail.paymentServiceTaxAmount > 0 && (
+                <div className="flex justify-between">
+                  <span>Payment Processing Fee</span>
+                  <span className="font-mono text-ink">
+                    {formatINR(detail.paymentServiceTaxAmount)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Tax (GST Breakdown)</span>
-                <span className="font-mono text-ink">{formatINR(detail.taxAmount)}</span>
+                <span>{detail.taxAmount > 0 ? 'Tax (GST)' : 'Taxes'}</span>
+                <span className="font-mono text-ink">
+                  {detail.taxAmount > 0 ? formatINR(detail.taxAmount) : 'None (0%)'}
+                </span>
               </div>
               <div className="border-t border-ink/10 pt-2 flex justify-between text-sm! font-bold text-ink">
                 <span>Grand Total</span>

@@ -126,7 +126,9 @@ function ProductItemRow({ item }: { item: AdminOrderDetailItem }) {
         )}
       </td>
       <td className="py-3 px-4 text-right font-mono text-xs! text-ink-soft">
-        {item.taxPercentage}% ({formatINR(item.taxAmount)})
+        {item.taxAmount > 0
+          ? `${item.taxPercentage}% (${formatINR(item.taxAmount)})`
+          : "Inclusive (0%)"}
       </td>
       <td className="py-3 px-4 text-right font-mono text-sm! font-bold text-oxblood">
         {formatINR(item.lineTotal)}
@@ -312,7 +314,7 @@ export function AdminOrderDetailPage() {
                     <th className="py-2.5 px-4">Item Details</th>
                     <th className="py-2.5 px-4 text-center">Qty</th>
                     <th className="py-2.5 px-4 text-right">Price</th>
-                    <th className="py-2.5 px-4 text-right">GST (Tax)</th>
+                    <th className="py-2.5 px-4 text-right">{order.taxAmount > 0 ? "GST (Tax)" : "Tax"}</th>
                     <th className="py-2.5 px-4 text-right">Line Total</th>
                   </tr>
                 </thead>
@@ -333,27 +335,50 @@ export function AdminOrderDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tax Details */}
-              <div className="space-y-2 rounded-xl bg-ivory p-3.5 border border-ink/5 text-xs! text-ink-soft">
-                <p className="font-semibold text-ink uppercase tracking-wider text-[11px]!">
-                  GST Breakdown
-                </p>
-                <div className="flex justify-between">
-                  <span>Product GST ({order.productTaxRatePercent}% avg)</span>
-                  <span className="font-mono text-ink">{formatINR(order.productTaxAmount)}</span>
-                </div>
-                {order.paymentServiceTaxAmount > 0 && (
+              {order.taxAmount > 0 ? (
+                <div className="space-y-2 rounded-xl bg-ivory p-3.5 border border-ink/5 text-xs! text-ink-soft">
+                  <p className="font-semibold text-ink uppercase tracking-wider text-[11px]!">
+                    GST Breakdown
+                  </p>
                   <div className="flex justify-between">
-                    <span>Payment Gateway GST ({order.paymentServiceTaxRatePercent}%)</span>
-                    <span className="font-mono text-ink">
-                      {formatINR(order.paymentServiceTaxAmount)}
-                    </span>
+                    <span>Product GST ({order.productTaxRatePercent}% avg)</span>
+                    <span className="font-mono text-ink">{formatINR(order.productTaxAmount)}</span>
                   </div>
-                )}
-                <div className="border-t border-ink/5 pt-1.5 flex justify-between font-semibold text-ink">
-                  <span>Total Tax Included</span>
-                  <span className="font-mono">{formatINR(order.taxAmount)}</span>
+                  {order.paymentServiceTaxAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span>Payment Processing Fee ({order.paymentServiceTaxRatePercent}%)</span>
+                      <span className="font-mono text-ink">
+                        {formatINR(order.paymentServiceTaxAmount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-ink/5 pt-1.5 flex justify-between font-semibold text-ink">
+                    <span>Total Tax Included</span>
+                    <span className="font-mono">{formatINR(order.taxAmount)}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2 rounded-xl bg-ivory p-3.5 border border-ink/5 text-xs! text-ink-soft">
+                  <p className="font-semibold text-ink uppercase tracking-wider text-[11px]!">
+                    Pricing Structure: All-Inclusive
+                  </p>
+                  <p className="text-[11px]! text-ink-soft leading-relaxed">
+                    No separate GST collected. Compliant with <strong>Section 32 of CGST Act</strong> (unregistered supplier). All product prices are inclusive of all taxes.
+                  </p>
+                  {order.paymentServiceTaxAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span>Payment Processing Fee ({order.paymentServiceTaxRatePercent}%)</span>
+                      <span className="font-mono text-ink">
+                        {formatINR(order.paymentServiceTaxAmount)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-ink/5 pt-1.5 flex justify-between font-medium text-emerald-700">
+                    <span>Tax Levied</span>
+                    <span className="font-mono">₹0.00 (All-Inclusive)</span>
+                  </div>
+                </div>
+              )}
 
               {/* Amount Math */}
               <div className="space-y-2.5 text-sm! text-ink-soft">
@@ -389,6 +414,15 @@ export function AdminOrderDetailPage() {
                     {order.shippingAmount > 0 ? formatINR(order.shippingAmount) : 'Free'}
                   </span>
                 </div>
+
+                {order.paymentServiceTaxAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span>Payment Processing Fee ({order.paymentServiceTaxRatePercent}%)</span>
+                    <span className="font-mono text-ink">
+                      {formatINR(order.paymentServiceTaxAmount)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="border-t border-ink/10 pt-3 flex justify-between items-baseline font-bold text-ink">
                   <span className="text-base!">Grand Total</span>

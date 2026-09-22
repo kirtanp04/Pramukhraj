@@ -14,10 +14,10 @@ public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<Store
             .Matches(@"^\+?[1-9]\d{7,14}$")
             .WithMessage("Support phone number must be a valid international number, for example +919876543210.");
         RuleFor(x => x.StoreAddress).NotEmpty().MaximumLength(1000);
-        RuleFor(x => x.TaxRatePercent).InclusiveBetween(0m, 100m)
-            .WithMessage("Tax rate must be between 0 and 100 percent.");
-        RuleFor(x => x.PaymentServiceTaxRatePercent).InclusiveBetween(0m, 100m)
-            .WithMessage("Payment service tax rate must be between 0 and 100 percent.");
+        RuleFor(x => x.TaxRatePercent).Equal(0m)
+            .WithMessage("As an unregistered business without a GSTIN, Tax Rate must be 0%. All prices must be all-inclusive (CGST Act Section 32).");
+        RuleFor(x => x.PaymentServiceTaxRatePercent).InclusiveBetween(0m, 10m)
+            .WithMessage("Payment processing fee must be between 0% and 10%.");
         RuleFor(x => x.FreeShippingMinimumAmount).InclusiveBetween(0m, 10_000_000m)
             .WithMessage("Free shipping minimum must be between 0 and 10,000,000.");
         RuleFor(x => x.ConcurrencyStamp).MaximumLength(64);

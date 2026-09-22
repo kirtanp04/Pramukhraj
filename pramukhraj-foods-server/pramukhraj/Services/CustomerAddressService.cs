@@ -252,8 +252,8 @@ public sealed class CustomerAddressService(
             session.ProviderShippingCost = 0m;
             var discountedGoods = Math.Max(0m, session.Subtotal - session.CouponDiscountAmount);
             session.PaymentServiceTaxAmount = Math.Round((discountedGoods + session.ProductTaxAmount) * paymentServiceRate / 100m, 2, MidpointRounding.AwayFromZero);
-            session.TaxAmount = session.ProductTaxAmount + session.PaymentServiceTaxAmount;
-            session.GrandTotal = discountedGoods + session.TaxAmount;
+            session.TaxAmount = session.ProductTaxAmount;
+            session.GrandTotal = discountedGoods + session.TaxAmount + session.PaymentServiceTaxAmount;
             session.SelectedCourierId = null; session.SelectedCourierName = null; session.EstimatedDeliveryOn = null;
             session.ShippingQuoteExpiresOn = null; session.ShippingQuoteJson = null;
             session.UpdatedOn = now; session.ConcurrencyStamp = Guid.NewGuid().ToString("N");

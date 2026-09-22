@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { AlertCircle, LoaderCircle, RefreshCw, Save, Settings2 } from 'lucide-react'
+import { AlertCircle, LoaderCircle, RefreshCw, Save, Settings2, ShieldCheck } from 'lucide-react'
 import { FormField, inputCls } from '@/components/admin/product/FormField'
 import { Button } from '@/components/ui/Button'
 import { MessageDialog } from '@/components/ui/MessageDialog'
@@ -50,7 +50,11 @@ export function AdminSettings() {
   async function submit(values: StoreSettingsFormValues) {
     setSaving(true)
     try {
-      const response = await storeSettingsApi.update(values)
+      const response = await storeSettingsApi.update({
+        ...values,
+        taxRatePercent: 0,
+        paymentServiceTaxRatePercent: finiteOrZero(values.paymentServiceTaxRatePercent),
+      })
       if (!mounted.current) return
       if (response.data) reset({
         ...response.data,
@@ -114,14 +118,32 @@ export function AdminSettings() {
         </section>
 
         <section className={cn('rounded-card border border-ink/10 bg-ivory p-5 shadow-sm md:p-8', saving && 'opacity-90')} aria-labelledby="checkout-rules-heading">
-          <h2 id="checkout-rules-heading" className="font-display text-lg! font-semibold">Checkout rules</h2>
-          <p className="mt-1 text-xs! text-ink-soft">Tax is excluded from product prices and added to the discounted merchandise value during checkout.</p>
+          <h2 id="checkout-rules-heading" className="font-display text-lg! font-semibold">Checkout & Tax Rules</h2>
+          <p className="mt-1 text-xs! text-ink-soft">Configure store taxation policies and free shipping thresholds.</p>
+
+          <div className="mt-4 rounded-xl border border-teal/20 bg-teal/5 p-4 text-xs! text-teal flex items-start gap-3">
+            <ShieldCheck size={18} className="shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold uppercase tracking-wider text-[11px]!">
+                GST Compliance Notice (No GSTIN / Unregistered Business)
+              </p>
+              <p className="text-teal/90 leading-relaxed">
+                Under <strong>Section 32 of the Indian CGST Act, 2017</strong>, businesses without a valid GSTIN registration are legally prohibited from collecting or displaying GST/tax from customers. To remain 100% compliant:
+              </p>
+              <ul className="list-disc pl-4 space-y-0.5 text-teal/90">
+                <li>Keep <strong>Tax rate (%)</strong> at <strong>0%</strong> (selling prices are treated as inclusive of all taxes).</li>
+                <li><strong>Payment processing fee (%)</strong>: Can be configured (e.g. 2%) to recover digital payment gateway costs from customers legally as a commercial handling fee (not a tax).</li>
+                <li>The store will automatically issue compliant <strong>Bills of Supply / Order Receipts</strong> instead of Tax Invoices.</li>
+              </ul>
+            </div>
+          </div>
+
           <div className="mt-5 grid gap-5 md:grid-cols-2">
-            <FormField label="Tax rate (%)" htmlFor="tax-rate" error={errors.taxRatePercent?.message} hint="Example: 5 displays as 5% and adds ₹5 tax to a ₹100 taxable amount." required>
-              <div className="relative"><input id="tax-rate" type="number" min={0} max={100} step="0.01" {...register('taxRatePercent', { setValueAs: value => value === '' || value === null || value === undefined ? 0 : Number(value) })} className={cn(inputCls(!!errors.taxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
+            <FormField label="Tax rate (%)" htmlFor="tax-rate" hint="Locked at 0.00% (All-inclusive pricing legally enforced under CGST Act Section 32 for unregistered sellers)." required>
+              <div className="relative"><input id="tax-rate" type="number" readOnly value={0} className={cn(inputCls(false), 'pr-10 bg-ink/5 text-ink-soft cursor-not-allowed')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
             </FormField>
-            <FormField label="Payment service tax (%)" htmlFor="payment-service-tax-rate" error={errors.paymentServiceTaxRatePercent?.message} hint="Example: 2 adds ₹2 on a ₹100 pre-payment-tax total. Enter 0 to disable it." required>
-              <div className="relative"><input id="payment-service-tax-rate" type="number" min={0} max={100} step="0.01" {...register('paymentServiceTaxRatePercent', { setValueAs: value => value === '' || value === null || value === undefined ? 0 : Number(value) })} className={cn(inputCls(!!errors.paymentServiceTaxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
+            <FormField label="Payment processing fee (%)" htmlFor="payment-service-tax-rate" error={errors.paymentServiceTaxRatePercent?.message} hint="Nominal commercial fee charged to the customer to cover payment gateway expenses (e.g. 2% Razorpay fee). Charged as a service handling fee, not a tax." required>
+              <div className="relative"><input id="payment-service-tax-rate" type="number" min={0} max={10} step="0.01" {...register('paymentServiceTaxRatePercent', { valueAsNumber: true })} className={cn(inputCls(!!errors.paymentServiceTaxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
             </FormField>
             <FormField label="Free shipping minimum (₹)" htmlFor="free-shipping" error={errors.freeShippingMinimumAmount?.message} hint="Applied after coupon discounts. Enter 0 to disable automatic free shipping." required>
               <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">₹</span><input id="free-shipping" type="number" min={0} max={10000000} step="0.01" {...register('freeShippingMinimumAmount', { valueAsNumber: true })} className={cn(inputCls(!!errors.freeShippingMinimumAmount), 'pl-9')} /></div>
