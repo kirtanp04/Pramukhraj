@@ -36,5 +36,6 @@ namespace pramukhraj.Interfaces
         IAdminOrderService AdminOrderService { get; }
         IAdminPaymentService AdminPaymentService { get; }
         IAdminShipmentService AdminShipmentService { get; }
+        IAdminLogService AdminLogService { get; }
     }
 }

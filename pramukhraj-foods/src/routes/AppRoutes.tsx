@@ -224,6 +224,10 @@ const AdminActions = lazyNamed(
   () => import("@/pages/admin/admin-action/AdminActions"),
   "AdminActions"
 );
+const AdminLogs = lazyNamed(
+  () => import("@/pages/admin/logs/AdminLogsPage"),
+  "AdminLogsPage"
+);
 const AdminBackgroundMetrics = lazyNamed(
   () => import("@/pages/admin/background-metrics/AdminBackgroundMetrics"),
   "AdminBackgroundMetrics"
@@ -399,6 +403,7 @@ export function AppRoutes() {
             { path: "users", element: lazyElement(AdminUsers) },
             { path: "admin-actions", element: lazyElement(AdminActions) },
             { path: "audit-logs", element: lazyElement(AdminActions) },
+            { path: "logs", element: lazyElement(AdminLogs) },
             { path: "background-metrics", element: lazyElement(AdminBackgroundMetrics) },
             { path: "server-metrics", element: lazyElement(AdminServerMetrics) },
             { path: "api-keys", element: lazyElement(AdminApiKeys) },
