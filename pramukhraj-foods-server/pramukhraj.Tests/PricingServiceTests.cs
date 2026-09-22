@@ -61,8 +61,27 @@ public sealed class PricingServiceTests
 
         Assert.Equal(5m, result.ProductTaxAmount);
         Assert.Equal(2.50m, result.PaymentServiceTaxAmount);
-        Assert.Equal(7.50m, result.TaxAmount);
+        Assert.Equal(5m, result.TaxAmount);
         Assert.Equal(127.50m, result.GrandTotal);
+        Assert.Equal(2m, result.PaymentServiceTaxRatePercent);
+    }
+
+    [Fact]
+    public void Calculate_UnregisteredDealer_HasZeroTaxAndCollectsPaymentFee()
+    {
+        var result = _service.Calculate(new PricingCalculationRequest(
+            [new PricingLine(Guid.NewGuid(), Guid.NewGuid(), 200m, 250m, 1)],
+            0m,
+            83m,
+            80m,
+            0m,
+            2m));
+
+        Assert.Equal(0m, result.ProductTaxAmount);
+        Assert.Equal(0m, result.TaxAmount);
+        Assert.Equal(5.66m, result.PaymentServiceTaxAmount);
+        Assert.Equal(288.66m, result.GrandTotal);
+        Assert.Equal(0m, result.TaxRatePercent);
         Assert.Equal(2m, result.PaymentServiceTaxRatePercent);
     }
 }

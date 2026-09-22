@@ -496,8 +496,10 @@ export function AdminShipmentDetailPage() {
                 <span className="font-mono text-ink">{formatINR(shipment.order.shippingAmount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-soft">Tax Amount</span>
-                <span className="font-mono text-ink">{formatINR(shipment.order.taxAmount)}</span>
+                <span className="text-ink-soft">{shipment.order.taxAmount > 0 ? "Tax Amount" : "Taxes"}</span>
+                <span className="font-mono text-ink">
+                  {shipment.order.taxAmount > 0 ? formatINR(shipment.order.taxAmount) : "None (0%)"}
+                </span>
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-ink/10 text-sm!">
                 <span className="font-bold text-ink">Order Grand Total</span>

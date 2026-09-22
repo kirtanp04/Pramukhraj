@@ -12,7 +12,7 @@ const navItems = [
   { to: '/account/returns', label: 'Returns', icon: RotateCcw },
   { to: '/account/reviews', label: 'Reviews', icon: Star },
   { to: '/account/support', label: 'Support Tickets', icon: Headset },
-  { to: '/account/invoices', label: 'Invoices', icon: FileText },
+  { to: '/account/invoices', label: 'Receipts & Invoices', icon: FileText },
   { to: '/account/profile', label: 'Profile', icon: User },
   { to: '/account/security', label: 'Security', icon: ShieldCheck },
 ]

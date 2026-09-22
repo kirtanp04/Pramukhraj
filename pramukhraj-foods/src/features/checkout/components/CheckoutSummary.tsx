@@ -19,11 +19,6 @@ export function CheckoutSummary({
 }) {
   const images = useCheckoutImages(session.items);
   const p = session.pricing;
-  const taxRatePercent = finiteOrZero(p.taxRatePercent);
-  const paymentServiceTaxRatePercent = finiteOrZero(p.paymentServiceTaxRatePercent);
-  const productTaxAmount = finiteOrZero(p.productTaxAmount);
-  const paymentServiceTaxAmount = finiteOrZero(p.paymentServiceTaxAmount);
-  const taxAmount = finiteOrZero(p.taxAmount);
   return (
     <aside className="h-fit rounded-[1.75rem] border border-ink/10 bg-ivory-dim p-5 lg:sticky lg:top-40">
       <div className="flex items-center justify-between">
@@ -69,17 +64,22 @@ export function CheckoutSummary({
         <Row label="Product savings" value={-p.itemDiscountAmount} accent info="Savings already included in current product selling prices compared with MRP." />
         <Row label="Coupon" value={-p.couponDiscountAmount} accent info="The discount applied by your active coupon. It is deducted once from the eligible item value." />
         <Row label="Prepaid shipping" value={p.customerShippingAmount} info="The live prepaid delivery charge for the selected PIN code and best-rated serviceable courier." />
-        <Row label="Tax" value={taxAmount} subdued info={`Product tax: ${taxRatePercent}% = ${formatINR(productTaxAmount)}. Payment service tax: ${paymentServiceTaxRatePercent}% = ${formatINR(paymentServiceTaxAmount)}. Example using current values: ${formatINR(productTaxAmount)} + ${formatINR(paymentServiceTaxAmount)} = ${formatINR(taxAmount)}.`} />
+        {Boolean(p.paymentServiceTaxAmount && p.paymentServiceTaxAmount > 0) && (
+          <Row
+            label="Payment processing fee"
+            value={p.paymentServiceTaxAmount!}
+            info="Nominal processing fee for digital payment gateway handling."
+          />
+        )}
       </div>
       <div className="mt-4 flex justify-between border-t border-ink/10 pt-4 text-base! font-semibold">
-        <span className="flex items-center gap-1">Total <SummaryInfo label="Total payable" description="The final amount payable after product savings and coupon discount, plus excluded tax and any prepaid shipping charge." value={p.grandTotal} /></span>
+        <span className="flex items-center gap-1">Total <SummaryInfo label="Total payable" description="The final amount payable after product savings, coupon discount, prepaid shipping, and nominal payment processing fee (product taxes inclusive)." value={p.grandTotal} /></span>
         <span className="font-mono text-lg! text-oxblood">
           {formatINR(p.grandTotal)}
         </span>
       </div>
       <p className="mt-2 text-[11px]! leading-5 text-ink-soft">
-        Product tax and any configured payment service tax are excluded from
-        product prices and added once at checkout.
+        All product prices are inclusive of all taxes. No additional tax is collected.
       </p>
     </aside>
   );
@@ -92,10 +92,6 @@ function SummaryInfo({ label, description, value }: { label: string; description
       <Tooltip.Portal><Tooltip.Content side="top" sideOffset={6} collisionPadding={12} className="z-[100] max-w-72 rounded-lg border border-ink/10 bg-ink px-3 py-2.5 text-xs! leading-5 text-ivory shadow-xl"><span className="font-semibold">{label}:</span> {description}<span className="mt-1.5 block border-t border-ivory/20 pt-1.5 text-ivory/90">Current value: {value < 0 ? "−" : ""}{formatINR(Math.abs(value))}</span><Tooltip.Arrow className="fill-ink" /></Tooltip.Content></Tooltip.Portal>
     </Tooltip.Root>
   </Tooltip.Provider>;
-}
-
-function finiteOrZero(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 function Row({
   label,

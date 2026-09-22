@@ -56,7 +56,7 @@ public sealed class StoreSettingsService(
 
             var data = new StoreSettingsData(
                 request.SupportEmail.Trim().ToLowerInvariant(), NormalizePhone(request.SupportPhoneNumber),
-                Money(request.TaxRatePercent ?? 0m), Money(request.PaymentServiceTaxRatePercent ?? 0m), request.StoreAddress.Trim(), request.StoreName.Trim(),
+                0m, Math.Clamp(request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m), request.StoreAddress.Trim(), request.StoreName.Trim(),
                 Money(request.FreeShippingMinimumAmount));
             var now = DateTime.UtcNow;
             if (entity is null)
@@ -113,8 +113,8 @@ public sealed class StoreSettingsService(
             return new StoreSettingsData(
                 value.SupportEmail?.Trim() ?? string.Empty,
                 value.SupportPhoneNumber?.Trim() ?? string.Empty,
-                Math.Clamp(value.TaxRatePercent ?? 0m, 0m, 100m),
-                Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 100m),
+                0m,
+                Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
                 value.StoreAddress?.Trim() ?? string.Empty,
                 string.IsNullOrWhiteSpace(value.StoreName) ? Defaults.StoreName : value.StoreName.Trim(),
                 Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m));

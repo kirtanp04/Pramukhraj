@@ -68,26 +68,27 @@ export function OrderPaymentSummary({ order }: OrderPaymentSummaryProps) {
           </span>
         </div>
 
+        {order.paymentServiceTaxAmount > 0 && (
+          <div className="flex items-center justify-between text-ink-soft">
+            <span>Payment Processing Fee:</span>
+            <span className="font-mono text-ink">
+              {formatINR(order.paymentServiceTaxAmount)}
+            </span>
+          </div>
+        )}
+
         {order.taxAmount > 0 && (
           <div className="space-y-1 border-t border-ink/5 pt-2">
             <div className="flex items-center justify-between text-ink-soft">
               <span>GST / Taxes:</span>
               <span className="font-mono text-ink">{formatINR(order.taxAmount)}</span>
             </div>
-            {(order.productTaxAmount > 0 || order.paymentServiceTaxAmount > 0) && (
-              <div className="space-y-0.5 pl-2 text-[11px]! text-ink-soft/80">
-                {order.productTaxAmount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span>Product GST ({order.productTaxRatePercent}%):</span>
-                    <span className="font-mono">{formatINR(order.productTaxAmount)}</span>
-                  </div>
-                )}
-                {order.paymentServiceTaxAmount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span>Payment & Processing GST ({order.paymentServiceTaxRatePercent}%):</span>
-                    <span className="font-mono">{formatINR(order.paymentServiceTaxAmount)}</span>
-                  </div>
-                )}
+            {order.productTaxAmount > 0 && (
+              <div className="pl-2 text-[11px]! text-ink-soft/80">
+                <div className="flex items-center justify-between">
+                  <span>Product GST ({order.productTaxRatePercent}%):</span>
+                  <span className="font-mono">{formatINR(order.productTaxAmount)}</span>
+                </div>
               </div>
             )}
           </div>

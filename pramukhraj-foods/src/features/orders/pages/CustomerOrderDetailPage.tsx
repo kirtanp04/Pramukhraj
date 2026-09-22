@@ -5,6 +5,7 @@ import {
   Calendar,
   AlertCircle,
   FileText,
+  FileCheck,
   RefreshCw,
   XCircle,
   CreditCard,
@@ -19,6 +20,7 @@ import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
 import { ShipmentTrackingCard } from "../components/ShipmentTrackingCard";
 import { OrderAddressCard } from "../components/OrderAddressCard";
 import { OrderPaymentSummary } from "../components/OrderPaymentSummary";
+import { BillOfSupplyReceiptModal } from "../components/BillOfSupplyReceiptModal";
 
 export function CustomerOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -26,6 +28,7 @@ export function CustomerOrderDetailPage() {
   const { order, isLoading, error, reload } = useCustomerOrderDetail(orderId);
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState<string>("");
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const handleCancelOrder = async () => {
     if (!orderId) return;
@@ -92,6 +95,18 @@ export function CustomerOrderDetailPage() {
         </Button>
 
         <div className="flex items-center gap-2">
+          {isPaid && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReceiptOpen(true)}
+              className="text-xs! gap-1.5"
+            >
+              <FileCheck size={13} className="text-oxblood" />
+              <span>Bill of Supply / Receipt</span>
+            </Button>
+          )}
+
           {order.canCancel && (
             <Button
               variant="outline"
@@ -229,6 +244,13 @@ export function CustomerOrderDetailPage() {
           <OrderPaymentSummary order={order} />
         </div>
       </div>
+
+      {/* Printable Bill of Supply / Order Receipt Modal */}
+      <BillOfSupplyReceiptModal
+        order={order}
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
+      />
     </div>
   );
 }

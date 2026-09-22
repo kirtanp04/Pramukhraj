@@ -21,7 +21,7 @@ public sealed class PricingService : IPricingService
         var paymentServiceTaxRate = Math.Clamp(request.PaymentServiceTaxRatePercent, 0m, 100m);
         var amountBeforePaymentServiceTax = Money(discountedGoods + productTaxAmount + customerShipping);
         var paymentServiceTaxAmount = Money(amountBeforePaymentServiceTax * paymentServiceTaxRate / 100m);
-        var taxAmount = Money(productTaxAmount + paymentServiceTaxAmount);
+        var taxAmount = Money(productTaxAmount);
         return new CheckoutPricingResponse(
             mrpTotal, subtotal, itemDiscount, couponDiscount, taxableAmount, productTaxAmount, paymentServiceTaxAmount, taxAmount,
             customerShipping, providerShipping, Money(amountBeforePaymentServiceTax + paymentServiceTaxAmount), "INR", false, taxRate, paymentServiceTaxRate);

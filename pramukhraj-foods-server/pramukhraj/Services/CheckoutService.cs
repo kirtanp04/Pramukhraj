@@ -47,7 +47,7 @@ public sealed class CheckoutService(
                 ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
                 cart!.Lines.Select(ToPricingLine).ToArray(), 0, customerShipping, quote?.Rate ?? 0,
-                settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+                0m, settings.PaymentServiceTaxRatePercent ?? 0m));
             var now = DateTime.UtcNow;
             var session = new CheckoutSession
             {
@@ -96,7 +96,7 @@ public sealed class CheckoutService(
             context.Session.CouponDiscountAmount, freeShippingCoupon) ? 0 : quote?.Rate ?? 0;
         var pricing = pricingService.Calculate(new PricingCalculationRequest(
             cart!.Lines.Select(ToPricingLine).ToArray(), context.Session!.CouponDiscountAmount,
-            customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+            customerShipping, quote?.Rate ?? 0, 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
         if (!AmountsMatch(context.Session, pricing))
             return ApiResponse<CheckoutSessionResponse>.Fail("Cart prices changed. Refresh checkout to continue.", 409);
         return ApiResponse<CheckoutSessionResponse>.Ok(
@@ -172,7 +172,7 @@ public sealed class CheckoutService(
                 coupon?.Discount ?? 0, coupon?.FreeShipping == true) ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
                 cart!.Lines.Select(ToPricingLine).ToArray(), coupon?.Discount ?? 0,
-                customerShipping, quote?.Rate ?? 0, settings.TaxRatePercent ?? 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+                customerShipping, quote?.Rate ?? 0, 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
             session.CartId = cart.Id;
             session.CartVersion = cart.Version;
             session.ShippingAddressId = addresses.Shipping?.Id;

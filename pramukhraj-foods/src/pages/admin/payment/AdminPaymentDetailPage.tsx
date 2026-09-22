@@ -350,7 +350,9 @@ export function AdminPaymentDetailPage() {
                       <td className="py-3 px-4 text-center font-mono">{item.quantity}</td>
                       <td className="py-3 px-4 text-right font-mono">{formatINR(item.unitPrice)}</td>
                       <td className="py-3 px-4 text-right font-mono text-ink-soft">
-                        {formatINR(item.taxAmount)} ({item.taxPercentage}%)
+                        {item.taxAmount > 0
+                          ? `${formatINR(item.taxAmount)} (${item.taxPercentage}%)`
+                          : "Inclusive (0%)"}
                       </td>
                       <td className="py-3 pl-4 text-right font-mono font-bold text-ink">
                         {formatINR(item.lineTotal)}
@@ -384,8 +386,10 @@ export function AdminPaymentDetailPage() {
                 <span className="font-mono">{formatINR(order.shippingAmount)}</span>
               </div>
               <div className="flex w-64 justify-between text-ink-soft">
-                <span>Taxes & GST:</span>
-                <span className="font-mono">{formatINR(order.taxAmount)}</span>
+                <span>{order.taxAmount > 0 ? "Taxes & GST:" : "Taxes:"}</span>
+                <span className="font-mono">
+                  {order.taxAmount > 0 ? formatINR(order.taxAmount) : "None (0%)"}
+                </span>
               </div>
               <div className="flex w-64 justify-between border-t border-ink/10 pt-2 font-display text-base! font-bold text-ink">
                 <span>Grand Total:</span>
