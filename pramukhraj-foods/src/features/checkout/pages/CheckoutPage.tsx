@@ -158,6 +158,18 @@ export function CheckoutPage() {
       if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
       completePayment(order.orderNumber, payment.storeName, order.orderId);
     } catch (error) {
+      try {
+        const order = readPendingOrder(session.checkoutSessionId);
+        if (order) {
+          const status = await paymentApi.status(order.orderId);
+          if (status?.isPaid) {
+            completePayment(order.orderNumber, order.storeName, order.orderId);
+            return;
+          }
+        }
+      } catch {
+        /* Ignore status check errors and fallback to showing error */
+      }
       setReadyMessage(getApiErrorMessage(error));
     } finally {
       setIsPaying(false);
@@ -398,6 +410,15 @@ function PendingPaymentRecovery({
       if (!verified?.isPaid) throw new Error("Payment confirmation is still pending.");
       onCompleted(order.orderNumber, payment.storeName, order.orderId);
     } catch (error) {
+      try {
+        const status = await paymentApi.status(order.orderId);
+        if (status?.isPaid) {
+          onCompleted(order.orderNumber, order.storeName, order.orderId);
+          return;
+        }
+      } catch {
+        /* Ignore status check errors and fallback to showing error */
+      }
       setMessage(getApiErrorMessage(error));
     } finally {
       setIsPaying(false);

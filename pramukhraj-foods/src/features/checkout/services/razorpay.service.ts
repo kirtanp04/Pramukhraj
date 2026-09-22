@@ -37,9 +37,16 @@ export async function openRazorpay(data: RazorpayCheckoutData): Promise<Razorpay
   ].filter((item): item is { code: string; name: string; method: "upi" | "card" } => item !== null);
   if (enabledMethods.length === 0) throw new Error("No payment method is currently available.");
   return new Promise((resolve, reject) => {
+    let lastFailureReason: string | null = null;
+    let isSettled = false;
+
     const checkout = new Razorpay({
-      key: data.keyId, amount: data.amountPaise, currency: data.currency, name: data.storeName,
-      description: `Payment for ${data.orderNumber}`, order_id: data.razorpayOrderId,
+      key: data.keyId,
+      amount: data.amountPaise,
+      currency: data.currency,
+      name: data.storeName,
+      description: `Payment for ${data.orderNumber}`,
+      order_id: data.razorpayOrderId,
       prefill: { name: data.customerName, email: data.customerEmail ?? undefined, contact: data.customerMobile },
       theme: { color: "#7f1d1d" },
       config: {
@@ -49,10 +56,29 @@ export async function openRazorpay(data: RazorpayCheckoutData): Promise<Razorpay
           preferences: { show_default_blocks: false },
         },
       },
-      modal: { escape: true, backdropclose: false, ondismiss: () => reject(new Error("Payment was cancelled. Your order is reserved for a short time.")) },
-      handler: resolve,
+      modal: {
+        escape: true,
+        backdropclose: false,
+        ondismiss: () => {
+          if (isSettled) return;
+          isSettled = true;
+          reject(new Error(lastFailureReason || "Payment was cancelled. Your order is reserved for a short time."));
+        },
+      },
+      handler: (response: RazorpaySuccess) => {
+        if (isSettled) return;
+        isSettled = true;
+        resolve(response);
+      },
     });
-    checkout.on("payment.failed", response => reject(new Error(response.error?.description || "Payment failed. You can retry safely.")));
+
+    checkout.on("payment.failed", response => {
+      // NOTE: Razorpay's modal remains open upon a failed payment attempt, allowing the customer to retry.
+      // We must not reject the promise here; we only record the error description so that if the customer
+      // closes/dismisses the modal without succeeding, the error message is communicated to them.
+      lastFailureReason = response.error?.description || "Payment failed. You can retry safely.";
+    });
+
     checkout.open();
   });
 }

@@ -327,7 +327,7 @@ public sealed class RazorpayPaymentService(
             EventType = eventType, PayloadJson = body, ReceivedOn = DateTime.UtcNow };
         db.WebhookInboxEvents.Add(inbox);
         await db.SaveChangesAsync(cancellationToken);
-        if (eventType is "payment.captured" or "payment.failed")
+        if (eventType == "payment.captured")
         {
             var entity = root.GetProperty("payload").GetProperty("payment").GetProperty("entity");
             var providerPaymentId = RequiredString(entity, "id");
@@ -336,8 +336,22 @@ public sealed class RazorpayPaymentService(
             if (payment is not null && entity.GetProperty("amount").GetInt64() == payment.AmountPaise &&
                 string.Equals(RequiredString(entity, "currency"), payment.Currency, StringComparison.OrdinalIgnoreCase))
             {
-                if (eventType == "payment.captured") await ConfirmAsync(payment, providerPaymentId, "Webhook", cancellationToken);
-                else await FailAsync(payment, providerPaymentId, cancellationToken);
+                await ConfirmAsync(payment, providerPaymentId, "Webhook", cancellationToken);
+            }
+        }
+        else if (eventType == "payment.failed")
+        {
+            var entity = root.GetProperty("payload").GetProperty("payment").GetProperty("entity");
+            var providerPaymentId = RequiredString(entity, "id");
+            var providerOrderId = RequiredString(entity, "order_id");
+            var payment = await db.Payments.Include(x => x.Order).SingleOrDefaultAsync(x => x.ProviderOrderId == providerOrderId, cancellationToken);
+            if (payment is not null && payment.Status != PaymentStatus.Paid)
+            {
+                var errorDesc = entity.TryGetProperty("error_description", out var desc) ? desc.GetString() : "Payment attempt failed.";
+                db.PaymentTransactions.Add(Transaction(payment.Id, "Webhook", providerPaymentId, "AttemptFailed", errorDesc));
+                payment.LastError = errorDesc;
+                payment.UpdatedOn = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
         inbox.ProcessedOn = DateTime.UtcNow;
@@ -374,13 +388,19 @@ public sealed class RazorpayPaymentService(
                 using var response = await httpClient.SendAsync(request, cancellationToken);
                 if (!response.IsSuccessStatusCode) continue;
                 using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
-                foreach (var item in json.RootElement.GetProperty("items").EnumerateArray())
+                if (!json.RootElement.TryGetProperty("items", out var itemsElement) || itemsElement.ValueKind != JsonValueKind.Array) continue;
+
+                var items = itemsElement.EnumerateArray().ToList();
+                var captured = items.FirstOrDefault(item =>
+                    item.GetProperty("amount").GetInt64() == payment.AmountPaise &&
+                    string.Equals(RequiredString(item, "currency"), payment.Currency, StringComparison.OrdinalIgnoreCase) &&
+                    RequiredString(item, "status") == "captured");
+
+                if (captured.ValueKind != JsonValueKind.Undefined)
                 {
-                    if (item.GetProperty("amount").GetInt64() != payment.AmountPaise || !string.Equals(RequiredString(item, "currency"), payment.Currency, StringComparison.OrdinalIgnoreCase)) continue;
-                    var status = RequiredString(item, "status");
-                    var providerPaymentId = RequiredString(item, "id");
-                    if (status == "captured") { await ConfirmAsync(payment, providerPaymentId, "Reconciliation", cancellationToken); reconciled++; break; }
-                    if (status == "failed") { await FailAsync(payment, providerPaymentId, cancellationToken); reconciled++; break; }
+                    var providerPaymentId = RequiredString(captured, "id");
+                    await ConfirmAsync(payment, providerPaymentId, "Reconciliation", cancellationToken);
+                    reconciled++;
                 }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
@@ -401,13 +421,44 @@ public sealed class RazorpayPaymentService(
             var now = DateTime.UtcNow;
             payment.ProviderPaymentId = providerPaymentId; payment.Status = PaymentStatus.Paid; payment.PaidOn = now; payment.UpdatedOn = now;
             payment.Order.Status = OrderStatus.Confirmed; payment.Order.UpdatedOn = now;
+
+            var releasedReservations = await db.InventoryReservations
+                .Where(x => x.OrderId == payment.OrderId && x.Status == InventoryReservationStatus.Released)
+                .ToListAsync(token);
+            foreach (var reservation in releasedReservations)
+            {
+                await db.ProductVariants.Where(x => x.Id == reservation.ProductVariantId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.StockQuantity, x => x.StockQuantity - reservation.Quantity), token);
+                reservation.Status = InventoryReservationStatus.Completed;
+                reservation.CompletedOn = now;
+            }
+
             await db.InventoryReservations.Where(x => x.OrderId == payment.OrderId && x.Status == InventoryReservationStatus.Reserved)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, InventoryReservationStatus.Completed).SetProperty(x => x.CompletedOn, now), token);
-            await db.CouponUsages.Where(x => x.OrderId == payment.OrderId && x.Status == CouponEnums.CouponUsageStatus.Reserved)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, CouponEnums.CouponUsageStatus.Redeemed).SetProperty(x => x.RedeemedOn, now), token);
+
+            await db.CouponUsages.Where(x => x.OrderId == payment.OrderId && (x.Status == CouponEnums.CouponUsageStatus.Reserved || x.Status == CouponEnums.CouponUsageStatus.Released))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, CouponEnums.CouponUsageStatus.Redeemed)
+                    .SetProperty(x => x.RedeemedOn, now)
+                    .SetProperty(x => x.ReleaseReason, (string?)null), token);
+
             db.OrderStatusHistories.Add(new() { Id = Guid.NewGuid(), OrderId = payment.OrderId, Status = OrderStatus.Confirmed, Note = "Payment captured and verified.", CreatedOn = now });
             db.PaymentTransactions.Add(Transaction(payment.Id, source, providerPaymentId, "Captured", null));
             db.OutboxMessages.Add(new() { Id = Guid.NewGuid(), Type = "CreateShiprocketOrder", AggregateId = payment.OrderId.ToString(), PayloadJson = JsonSerializer.Serialize(new { orderId = payment.OrderId }), CreatedOn = now, NextAttemptOn = now });
+
+            var checkoutSession = await db.CheckoutSessions.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == payment.Order.CheckoutSessionId, token);
+            if (checkoutSession is not null)
+            {
+                var cart = await db.Carts.SingleOrDefaultAsync(x => x.Id == checkoutSession.CartId && x.CustomerId == payment.Order.CustomerId, token);
+                if (cart is not null && cart.Status == CartStatus.Active)
+                {
+                    cart.Status = CartStatus.Converted;
+                    cart.ConvertedToOrderOn = now;
+                    cart.Version++;
+                    cart.UpdatedOn = now;
+                }
+            }
+
             await db.SaveChangesAsync(token);
             var notification = await notifications.CreateAsync(new CreateAdminNotification(AdminNotificationTypes.PaymentSucceeded, NotificationSeverities.Success,
                 "Payment received", $"Payment for order {payment.Order.OrderNumber} was captured successfully.", "Order", payment.OrderId.ToString(), "/admin/orders"), false, token);
