@@ -44,6 +44,7 @@ pramukhraj-foods-server/**/DataProtection-Keys/
 # Logs
 pramukhraj-foods-server/**/[Ll]og/
 pramukhraj-foods-server/**/[Ll]ogs/
+!pramukhraj-foods-server/**/DTOs/**/[Ll]ogs/
 pramukhraj-foods-server/**/*.log
 
 # Test and coverage output

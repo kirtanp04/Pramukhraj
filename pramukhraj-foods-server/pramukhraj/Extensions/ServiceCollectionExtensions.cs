@@ -321,6 +321,7 @@ namespace pramukhraj.Extensions
             services.AddScoped<IAdminOrderService, AdminOrderService>();
             services.AddScoped<IAdminPaymentService, AdminPaymentService>();
             services.AddScoped<IAdminShipmentService, AdminShipmentService>();
+            services.AddScoped<IAdminLogService, AdminLogService>();
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;

@@ -48,6 +48,7 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IAdminOrderService> _AdminOrderService;
         private readonly Lazy<IAdminPaymentService> _AdminPaymentService;
         private readonly Lazy<IAdminShipmentService> _AdminShipmentService;
+        private readonly Lazy<IAdminLogService> _AdminLogService;
 
       
         public ServiceManager(
@@ -81,7 +82,8 @@ namespace pramukhraj.Extensions
             ICustomerOrderService customerOrderService,
             IAdminOrderService adminOrderService,
             IAdminPaymentService adminPaymentService,
-            IAdminShipmentService adminShipmentService
+            IAdminShipmentService adminShipmentService,
+            IAdminLogService adminLogService
             )
         {
           
@@ -125,6 +127,7 @@ namespace pramukhraj.Extensions
             _AdminOrderService = new Lazy<IAdminOrderService>(() => adminOrderService);
             _AdminPaymentService = new Lazy<IAdminPaymentService>(() => adminPaymentService);
             _AdminShipmentService = new Lazy<IAdminShipmentService>(() => adminShipmentService);
+            _AdminLogService = new Lazy<IAdminLogService>(() => adminLogService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -158,6 +161,7 @@ namespace pramukhraj.Extensions
         public IAdminOrderService AdminOrderService => _AdminOrderService.Value;
         public IAdminPaymentService AdminPaymentService => _AdminPaymentService.Value;
         public IAdminShipmentService AdminShipmentService => _AdminShipmentService.Value;
+        public IAdminLogService AdminLogService => _AdminLogService.Value;
       
     }
 }

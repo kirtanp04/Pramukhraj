@@ -262,6 +262,12 @@ const AdminApiPaths = {
     get: "admin/settings",
     update: "admin/settings",
   },
+  logs: {
+    getChunk: "admin/logs",
+    getFiles: "admin/logs/files",
+    clear: "admin/logs/clear",
+    download: (date?: string) => `admin/logs/download${date ? `?date=${encodeURIComponent(date)}` : ""}`,
+  },
 };
 
 export const ApiPath = {
