@@ -21,7 +21,6 @@ let mergeGuestCartPromise: Promise<boolean> | null = null;
 interface CartState {
   cart: CartResponse | null;
   lines: LegacyLine[];
-  wishlist: string[];
   isCartOpen: boolean;
   isLoading: boolean;
   isUpdating: boolean;
@@ -37,7 +36,6 @@ interface CartState {
   ) => Promise<void>;
   clearCart: () => Promise<void>;
   mergeGuestCart: () => Promise<boolean>;
-  toggleWishlist: (productId: string) => void;
   openCart: () => void;
   closeCart: () => void;
 }
@@ -157,7 +155,6 @@ function preserveLoadedImages(
 export const useCartStore = create<CartState>((set, get) => ({
   cart: null,
   lines: initialLines(),
-  wishlist: [],
   isCartOpen: false,
   isLoading: false,
   isUpdating: false,
@@ -386,12 +383,6 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     return mergeGuestCartPromise;
   },
-  toggleWishlist: productId =>
-    set(state => ({
-      wishlist: state.wishlist.includes(productId)
-        ? state.wishlist.filter(id => id !== productId)
-        : [...state.wishlist, productId],
-    })),
   openCart: () => {
     set({ isCartOpen: true });
     void get().loadCart();

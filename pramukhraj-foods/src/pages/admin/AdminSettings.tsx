@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { AlertCircle, LoaderCircle, RefreshCw, Save, Settings2, ShieldCheck } from 'lucide-react'
+import { AlertCircle, LoaderCircle, RefreshCw, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react'
 import { FormField, inputCls } from '@/components/admin/product/FormField'
 import { Button } from '@/components/ui/Button'
 import { MessageDialog } from '@/components/ui/MessageDialog'
@@ -22,7 +22,8 @@ export function AdminSettings() {
   const form = useForm<StoreSettingsFormValues>({
     resolver: zodResolver(storeSettingsSchema), defaultValues: DEFAULT_STORE_SETTINGS, mode: 'onChange',
   })
-  const { register, reset, setError, formState: { errors, isDirty } } = form
+  const { register, reset, setError, watch, formState: { errors, isDirty } } = form
+  const returnWindowDays = watch('returnWindowDays') ?? 0
 
   useEffect(() => () => { mounted.current = false }, [])
   useEffect(() => {
@@ -36,6 +37,7 @@ export function AdminSettings() {
           ...settings,
           taxRatePercent: finiteOrZero(settings.taxRatePercent),
           paymentServiceTaxRatePercent: finiteOrZero(settings.paymentServiceTaxRatePercent),
+          returnWindowDays: finiteOrZero(settings.returnWindowDays),
         })
       } catch (error) {
         if (!controller.signal.aborted) setLoadError(getApiErrorMessage(error))
@@ -54,12 +56,14 @@ export function AdminSettings() {
         ...values,
         taxRatePercent: 0,
         paymentServiceTaxRatePercent: finiteOrZero(values.paymentServiceTaxRatePercent),
+        returnWindowDays: Math.round(finiteOrZero(values.returnWindowDays)),
       })
       if (!mounted.current) return
       if (response.data) reset({
         ...response.data,
         taxRatePercent: finiteOrZero(response.data.taxRatePercent),
         paymentServiceTaxRatePercent: finiteOrZero(response.data.paymentServiceTaxRatePercent),
+        returnWindowDays: finiteOrZero(response.data.returnWindowDays),
       })
       dialog.success(response.message, { title: 'Settings Saved' })
     } catch (error) {
@@ -90,7 +94,7 @@ export function AdminSettings() {
         <div>
           <div className="mb-1 flex items-center gap-2 text-oxblood"><Settings2 size={18} aria-hidden /><span className="text-xs! font-semibold uppercase tracking-[0.16em]">Configuration</span></div>
           <h1 className="font-display text-2xl!">Store settings</h1>
-          <p className="mt-1 text-sm! text-ink-soft">Manage customer support details and checkout pricing rules.</p>
+          <p className="mt-1 text-sm! text-ink-soft">Manage customer support details, checkout pricing, and return policies.</p>
         </div>
         <Button type="submit" form="store-settings-form" disabled={saving || !isDirty} className="min-w-36">
           {saving ? <><LoaderCircle size={15} className="animate-spin" /> Saving...</> : <><Save size={15} /> Save changes</>}
@@ -118,8 +122,8 @@ export function AdminSettings() {
         </section>
 
         <section className={cn('rounded-card border border-ink/10 bg-ivory p-5 shadow-sm md:p-8', saving && 'opacity-90')} aria-labelledby="checkout-rules-heading">
-          <h2 id="checkout-rules-heading" className="font-display text-lg! font-semibold">Checkout & Tax Rules</h2>
-          <p className="mt-1 text-xs! text-ink-soft">Configure store taxation policies and free shipping thresholds.</p>
+          <h2 id="checkout-rules-heading" className="font-display text-lg! font-semibold">Checkout, Shipping & Return Rules</h2>
+          <p className="mt-1 text-xs! text-ink-soft">Configure store taxation policies, free shipping thresholds, and return policy windows.</p>
 
           <div className="mt-4 rounded-xl border border-teal/20 bg-teal/5 p-4 text-xs! text-teal flex items-start gap-3">
             <ShieldCheck size={18} className="shrink-0 mt-0.5" />
@@ -147,6 +151,23 @@ export function AdminSettings() {
             </FormField>
             <FormField label="Free shipping minimum (₹)" htmlFor="free-shipping" error={errors.freeShippingMinimumAmount?.message} hint="Applied after coupon discounts. Enter 0 to disable automatic free shipping." required>
               <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">₹</span><input id="free-shipping" type="number" min={0} max={10000000} step="0.01" {...register('freeShippingMinimumAmount', { valueAsNumber: true })} className={cn(inputCls(!!errors.freeShippingMinimumAmount), 'pl-9')} /></div>
+            </FormField>
+            <FormField label="Return window (days)" htmlFor="return-window-days" error={errors.returnWindowDays?.message} hint="Number of days after delivery when returns are accepted. Set to 0 if returns are not accepted." required>
+              <div className="relative">
+                <input id="return-window-days" type="number" min={0} max={365} step={1} {...register('returnWindowDays', { valueAsNumber: true })} className={cn(inputCls(!!errors.returnWindowDays), 'pr-14')} />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">days</span>
+              </div>
+              {Number(returnWindowDays) === 0 ? (
+                <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-ink/10 bg-ink/5 px-2.5 py-1.5 text-xs! font-medium text-ink-soft">
+                  <RotateCcw size={14} className="shrink-0 text-ink-soft" aria-hidden />
+                  <span><strong>0 days:</strong> Returns are not applicable (Orders cannot be returned).</span>
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-teal/20 bg-teal/5 px-2.5 py-1.5 text-xs! font-medium text-teal">
+                  <RotateCcw size={14} className="shrink-0 text-teal" aria-hidden />
+                  <span>Returns accepted within <strong>{returnWindowDays} day{Number(returnWindowDays) === 1 ? '' : 's'}</strong> of delivery.</span>
+                </div>
+              )}
             </FormField>
           </div>
         </section>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, Menu, X, ChevronDown, UserRound } from "lucide-react";
+import { ShoppingBag, Menu, X, ChevronDown, UserRound } from "lucide-react";
 import { Logo } from "./Logo";
 import { SearchBar } from "./SearchBar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -19,7 +19,6 @@ export function Header() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const lines = useCartStore(s => s.lines);
-  const wishlist = useCartStore(s => s.wishlist);
   const openCart = useCartStore(s => s.openCart);
   const customer = useCustomerAuthStore(s => s.customer);
   const isCustomerAuthenticated = useCustomerAuthStore(s => s.isAuthenticated);
@@ -103,18 +102,6 @@ export function Header() {
               </motion.span>
             </AnimatePresence>
           </button> */}
-          <Link
-            to="/account/wishlist"
-            aria-label="Wishlist"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
-          >
-            <Heart size={18} />
-            {wishlist.length > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-oxblood px-1 text-[9px] font-medium text-ivory">
-                {wishlist.length}
-              </span>
-            )}
-          </Link>
           <button
             onClick={openCart}
             aria-label="Cart"
