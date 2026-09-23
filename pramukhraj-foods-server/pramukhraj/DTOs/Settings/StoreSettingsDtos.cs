@@ -7,7 +7,8 @@ public sealed record StoreSettingsData(
     decimal? PaymentServiceTaxRatePercent,
     string StoreAddress,
     string StoreName,
-    decimal FreeShippingMinimumAmount);
+    decimal FreeShippingMinimumAmount,
+    int ReturnWindowDays = 0);
 
 public sealed record StoreSettingsWriteRequest(
     string SupportEmail,
@@ -17,7 +18,8 @@ public sealed record StoreSettingsWriteRequest(
     string StoreAddress,
     string StoreName,
     decimal FreeShippingMinimumAmount,
-    string? ConcurrencyStamp);
+    string? ConcurrencyStamp,
+    int ReturnWindowDays = 0);
 
 public sealed record StoreSettingsResponse(
     string SupportEmail,
@@ -28,4 +30,6 @@ public sealed record StoreSettingsResponse(
     string StoreName,
     decimal FreeShippingMinimumAmount,
     DateTime? UpdatedOn,
-    string? ConcurrencyStamp);
+    string? ConcurrencyStamp,
+    int ReturnWindowDays = 0);
+

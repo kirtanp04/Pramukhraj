@@ -1,4 +1,4 @@
-import { Outlet, useRoutes } from "react-router-dom";
+import { Navigate, Outlet, useRoutes } from "react-router-dom";
 import { LazyRoute } from "@/routes/RouteLoader";
 import { lazyNamed } from "@/routes/lazyNamed";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
@@ -54,10 +54,6 @@ const CustomerOrderDetailPage = lazyNamed(
   () => import("@/features/orders/pages/CustomerOrderDetailPage"),
   "CustomerOrderDetailPage"
 );
-const AccountWishlist = lazyNamed(
-  () => import("@/pages/account/AccountWishlist"),
-  "AccountWishlist"
-);
 const AccountAddresses = lazyNamed(
   () => import("@/features/customer-addresses/pages/CustomerAddressesPage"),
   "CustomerAddressesPage"
@@ -66,10 +62,6 @@ const AccountNotifications = lazyNamed(
   () => import("@/pages/account/AccountNotifications"),
   "AccountNotifications"
 );
-const AccountWallet = lazyNamed(
-  () => import("@/pages/account/AccountWallet"),
-  "AccountWallet"
-);
 const AccountReturns = lazyNamed(
   () => import("@/pages/account/AccountReturns"),
   "AccountReturns"
@@ -77,10 +69,6 @@ const AccountReturns = lazyNamed(
 const AccountReviews = lazyNamed(
   () => import("@/pages/account/AccountReviews"),
   "AccountReviews"
-);
-const AccountSupport = lazyNamed(
-  () => import("@/pages/account/AccountSupport"),
-  "AccountSupport"
 );
 const AccountInvoices = lazyNamed(
   () => import("@/pages/account/AccountInvoices"),
@@ -95,10 +83,6 @@ const AccountSecurity = lazyNamed(
   "AccountSecurity"
 );
 // const AdminLogin = lazyNamed(() => import("@/pages/admin/AdminLogin"), "AdminLogin");
-const AdminDashboard = lazyNamed(
-  () => import("@/pages/admin/AdminDashboard"),
-  "AdminDashboard"
-);
 const AdminAnalytics = lazyNamed(
   () => import("@/pages/admin/AdminAnalytics"),
   "AdminAnalytics"
@@ -236,22 +220,6 @@ const AdminServerMetrics = lazyNamed(
   () => import("@/pages/admin/server-metrics/AdminServerMetrics"),
   "AdminServerMetrics"
 );
-const AdminApiKeys = lazyNamed(
-  () => import("@/pages/admin/AdminApiKeys"),
-  "AdminApiKeys"
-);
-const AdminIntegrations = lazyNamed(
-  () => import("@/pages/admin/AdminIntegrations"),
-  "AdminIntegrations"
-);
-const AdminFeatureFlags = lazyNamed(
-  () => import("@/pages/admin/AdminFeatureFlags"),
-  "AdminFeatureFlags"
-);
-const AdminBackup = lazyNamed(
-  () => import("@/pages/admin/AdminBackup"),
-  "AdminBackup"
-);
 const AdminSettings = lazyNamed(
   () => import("@/pages/admin/AdminSettings"),
   "AdminSettings"
@@ -292,16 +260,13 @@ export function AppRoutes() {
             { index: true, element: lazyElement(AccountDashboard) },
             { path: "orders", element: lazyElement(AccountOrders) },
             { path: "orders/:orderId", element: lazyElement(CustomerOrderDetailPage) },
-            { path: "wishlist", element: lazyElement(AccountWishlist) },
             { path: "addresses", element: lazyElement(AccountAddresses) },
             {
               path: "notifications",
               element: lazyElement(AccountNotifications),
             },
-            { path: "wallet", element: lazyElement(AccountWallet) },
             { path: "returns", element: lazyElement(AccountReturns) },
             { path: "reviews", element: lazyElement(AccountReviews) },
-            { path: "support", element: lazyElement(AccountSupport) },
             { path: "invoices", element: lazyElement(AccountInvoices) },
             { path: "profile", element: lazyElement(AccountProfile) },
             { path: "security", element: lazyElement(AccountSecurity) },
@@ -318,7 +283,7 @@ export function AppRoutes() {
           path: "/admin",
           element: lazyElement(AdminLayout),
           children: [
-            { index: true, element: lazyElement(AdminDashboard) },
+            { index: true, element: <Navigate to="/admin/orders" replace /> },
             { path: "analytics", element: lazyElement(AdminAnalytics) },
             { path: "cache-metrics", element: lazyElement(AdminCacheMetrics) },
             { path: "orders", element: lazyElement(AdminOrders) },
@@ -406,10 +371,6 @@ export function AppRoutes() {
             { path: "logs", element: lazyElement(AdminLogs) },
             { path: "background-metrics", element: lazyElement(AdminBackgroundMetrics) },
             { path: "server-metrics", element: lazyElement(AdminServerMetrics) },
-            { path: "api-keys", element: lazyElement(AdminApiKeys) },
-            { path: "integrations", element: lazyElement(AdminIntegrations) },
-            { path: "feature-flags", element: lazyElement(AdminFeatureFlags) },
-            { path: "backup", element: lazyElement(AdminBackup) },
             { path: "settings", element: lazyElement(AdminSettings) },
           ],
         },

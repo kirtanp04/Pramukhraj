@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard, BarChart3, ShoppingCart, Package, Tags, Users, Star, Ticket, Warehouse,
   Truck, RotateCcw, CreditCard, Bell, UserCog, Settings,
-  Receipt, ScrollText, Activity, Database, DatabaseBackup, KeyRound, Plug, Mail, ToggleLeft, CircleHelp, MessageSquareText, ServerCog, Terminal,
+  Receipt, ScrollText, Activity, Database, Mail, CircleHelp, MessageSquareText, ServerCog, Terminal,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -21,7 +21,6 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true },
       { label: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
       { label: 'Cache Metrics', to: '/admin/cache-metrics', icon: Database },
       { label: 'Background Metrics', to: '/admin/background-metrics', icon: Activity },
@@ -78,10 +77,6 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Admin Users', to: '/admin/users', icon: UserCog },
       { label: 'Admin Actions', to: '/admin/admin-actions?page=1', icon: ScrollText },
       { label: 'System Logs', to: '/admin/logs', icon: Terminal },
-      { label: 'API Keys', to: '/admin/api-keys', icon: KeyRound },
-      { label: 'Integrations', to: '/admin/integrations', icon: Plug },
-      { label: 'Feature Flags', to: '/admin/feature-flags', icon: ToggleLeft },
-      { label: 'Backups', to: '/admin/backup', icon: DatabaseBackup },
       { label: 'Settings', to: '/admin/settings', icon: Settings },
     ],
   },

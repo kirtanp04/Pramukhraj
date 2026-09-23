@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Heart, ShoppingBag } from 'lucide-react'
+import { ShoppingBag } from 'lucide-react'
 import type { Product } from '@/types/catalog'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -19,9 +19,6 @@ interface ProductCardProps {
 
 export function ProductCard({ product, className, selectedStatus }: ProductCardProps) {
   const addToCart = useCartStore((s) => s.addToCart)
-  const toggleWishlist = useCartStore((s) => s.toggleWishlist)
-  const wishlist = useCartStore((s) => s.wishlist)
-  const isWishlisted = wishlist.includes(product.id)
 
   const badge = getProductStatusBadge(product, selectedStatus)
 
@@ -48,17 +45,6 @@ export function ProductCard({ product, className, selectedStatus }: ProductCardP
             {product.discountPercent}% OFF
           </Badge>
         )}
-        <button
-          type="button"
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          onClick={(e) => {
-            e.preventDefault()
-            toggleWishlist(product.id)
-          }}
-          className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-ivory/90 text-ink shadow-sm backdrop-blur transition-transform hover:scale-110"
-        >
-          <Heart size={16} className={cn(isWishlisted && 'fill-oxblood text-oxblood')} />
-        </button>
         {product.stock === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-ink/50">
             <span className="stamp-badge rounded-full bg-ivory px-3 py-1 text-xs">Out of Stock</span>

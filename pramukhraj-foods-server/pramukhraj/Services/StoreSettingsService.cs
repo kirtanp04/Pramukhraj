@@ -21,7 +21,7 @@ public sealed class StoreSettingsService(
     private const int SettingsId = 1;
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m);
+    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m, 0);
 
     public async Task<ApiResponse<StoreSettingsResponse>> GetAdminAsync(CancellationToken cancellationToken = default)
     {
@@ -57,7 +57,7 @@ public sealed class StoreSettingsService(
             var data = new StoreSettingsData(
                 request.SupportEmail.Trim().ToLowerInvariant(), NormalizePhone(request.SupportPhoneNumber),
                 0m, Math.Clamp(request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m), request.StoreAddress.Trim(), request.StoreName.Trim(),
-                Money(request.FreeShippingMinimumAmount));
+                Money(request.FreeShippingMinimumAmount), Math.Clamp(request.ReturnWindowDays, 0, 365));
             var now = DateTime.UtcNow;
             if (entity is null)
             {
@@ -117,7 +117,8 @@ public sealed class StoreSettingsService(
                 Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
                 value.StoreAddress?.Trim() ?? string.Empty,
                 string.IsNullOrWhiteSpace(value.StoreName) ? Defaults.StoreName : value.StoreName.Trim(),
-                Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m));
+                Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m),
+                Math.Clamp(value.ReturnWindowDays, 0, 365));
         }
         catch (JsonException exception)
         {
@@ -128,7 +129,8 @@ public sealed class StoreSettingsService(
 
     private static StoreSettingsResponse ToResponse(StoreSettingsData data, StoreSettings? entity) => new(
         data.SupportEmail, data.SupportPhoneNumber, data.TaxRatePercent ?? 0m, data.PaymentServiceTaxRatePercent ?? 0m, data.StoreAddress,
-        data.StoreName, data.FreeShippingMinimumAmount, entity?.UpdatedOn, entity?.ConcurrencyStamp);
+        data.StoreName, data.FreeShippingMinimumAmount, entity?.UpdatedOn, entity?.ConcurrencyStamp,
+        data.ReturnWindowDays);
     private static string NormalizePhone(string value) => new(value.Where(x => char.IsDigit(x) || x == '+').ToArray());
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
     private static ApiResponse<StoreSettingsResponse> ValidationFailure(ValidationResult result) =>

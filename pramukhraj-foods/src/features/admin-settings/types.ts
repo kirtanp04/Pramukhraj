@@ -6,6 +6,7 @@ export interface StoreSettings {
   storeAddress: string
   storeName: string
   freeShippingMinimumAmount: number
+  returnWindowDays: number
   updatedOn: string | null
   concurrencyStamp: string | null
 }
@@ -18,5 +19,6 @@ export interface StoreSettingsFormValues {
   storeAddress: string
   storeName: string
   freeShippingMinimumAmount: number
+  returnWindowDays: number
   concurrencyStamp?: string | null
 }

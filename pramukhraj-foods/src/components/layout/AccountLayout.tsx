@@ -1,17 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Package, Heart, MapPin, Bell, Wallet, RotateCcw, Star, Headset, FileText, User, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, Bell, RotateCcw, Star, FileText, User, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/account', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/account/orders', label: 'Orders', icon: Package },
-  { to: '/account/wishlist', label: 'Wishlist', icon: Heart },
   { to: '/account/addresses', label: 'Addresses', icon: MapPin },
   { to: '/account/notifications', label: 'Notifications', icon: Bell },
-  { to: '/account/wallet', label: 'Wallet & Rewards', icon: Wallet },
   { to: '/account/returns', label: 'Returns', icon: RotateCcw },
   { to: '/account/reviews', label: 'Reviews', icon: Star },
-  { to: '/account/support', label: 'Support Tickets', icon: Headset },
   { to: '/account/invoices', label: 'Receipts & Invoices', icon: FileText },
   { to: '/account/profile', label: 'Profile', icon: User },
   { to: '/account/security', label: 'Security', icon: ShieldCheck },

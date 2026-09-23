@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
 import * as Tabs from '@radix-ui/react-tabs'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, Share2, ShoppingBag, Truck, ShieldCheck, RotateCcw, Check, Minus } from 'lucide-react'
+import { Share2, ShoppingBag, Truck, ShieldCheck, RotateCcw, Check, Minus } from 'lucide-react'
 import { products } from '@/mock'
 import { formatINR, cn } from '@/lib/utils'
 import { Rating } from '@/components/ui/Rating'
@@ -20,15 +20,12 @@ export function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const addToCart = useCartStore((s) => s.addToCart)
-  const toggleWishlist = useCartStore((s) => s.toggleWishlist)
-  const wishlist = useCartStore((s) => s.wishlist)
 
   useEffect(() => setActiveImage(0), [slug])
 
   if (!product) return <Navigate to="/products" replace />
 
   const related = products.filter((p) => product.relatedProductIds.includes(p.id))
-  const isWishlisted = wishlist.includes(product.id)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
@@ -117,9 +114,6 @@ export function ProductDetail() {
           </div>
 
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={() => toggleWishlist(product.id)} className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-oxblood">
-              <Heart size={16} className={cn(isWishlisted && 'fill-oxblood text-oxblood')} /> {isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
-            </button>
             <button className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
               <Share2 size={16} /> Share
             </button>
