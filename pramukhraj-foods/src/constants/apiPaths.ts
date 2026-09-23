@@ -77,6 +77,23 @@ const CustomerApiPaths = {
     tracking: (orderId: string) => `customer/orders/${encodeURIComponent(orderId)}/tracking`,
     trackPublic: (query: string) => `orders/track?query=${encodeURIComponent(query)}`,
   },
+  returns: {
+    eligibility: (orderId: string) =>
+      `customer/orders/${encodeURIComponent(orderId)}/return-eligibility`,
+    create: (orderId: string) =>
+      `customer/orders/${encodeURIComponent(orderId)}/returns`,
+    list: (params?: { page?: number; pageSize?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.append("page", params.page.toString());
+      if (params?.pageSize) q.append("pageSize", params.pageSize.toString());
+      const qs = q.toString();
+      return `customer/returns${qs ? `?${qs}` : ""}`;
+    },
+    detail: (returnId: string) =>
+      `customer/returns/${encodeURIComponent(returnId)}`,
+    cancel: (returnId: string) =>
+      `customer/returns/${encodeURIComponent(returnId)}/cancel`,
+  },
 };
 
 const AdminApiPaths = {
@@ -304,6 +321,33 @@ const AdminApiPaths = {
       return `admin/sales/export${q ? `?${q}` : ""}`;
     },
     clearCache: "admin/sales/clear-cache",
+  },
+  returns: {
+    list: (query?: {
+      status?: number | string;
+      searchQuery?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      pageSize?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (query?.status !== undefined && query.status !== "" && query.status !== "ALL") {
+        params.set("status", String(query.status));
+      }
+      if (query?.searchQuery) params.set("searchQuery", query.searchQuery);
+      if (query?.startDate) params.set("startDate", query.startDate);
+      if (query?.endDate) params.set("endDate", query.endDate);
+      if (query?.page) params.set("page", String(query.page));
+      if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+      const q = params.toString();
+      return `admin/returns${q ? `?${q}` : ""}`;
+    },
+    details: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}`,
+    approve: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/approve`,
+    reject: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/reject`,
+    inspect: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/inspect`,
+    processRefund: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/process-refund`,
   },
 };
 
