@@ -12,6 +12,7 @@ using pramukhraj.Entities.Order;
 using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Return;
 using pramukhraj.Interfaces;
+using pramukhraj.DTOs.Notifications;
 using static pramukhraj.Common.AdminActions;
 
 namespace pramukhraj.Services;
@@ -21,6 +22,8 @@ public sealed class RefundService(
     AppDbContext db,
     IProviderCredentialService credentialsService,
     IHttpContextAccessor httpContextAccessor,
+    ICacheService cache,
+    IAdminNotificationService notifications,
     ILogger<RefundService> logger) : IRefundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -203,6 +206,7 @@ public sealed class RefundService(
             });
 
             await db.SaveChangesAsync(ct);
+            try { cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund processed - invalidating sales cache"); } catch { /* non-fatal */ }
             logger.LogInformation("Refund {ProviderRefundId} successfully processed for Return {ReturnNumber}", providerRefundId, returnRequest.ReturnNumber);
 
             return ApiResponse<AdminRefundDetailDto>.Ok(new AdminRefundDetailDto(
@@ -261,6 +265,7 @@ public sealed class RefundService(
                 return true;
 
             var refundRecord = await db.RefundRecords
+                .Include(r => r.ReturnRequest).ThenInclude(rr => rr.Order)
                 .Include(r => r.ReturnRequest).ThenInclude(rr => rr.Items)
                 .SingleOrDefaultAsync(r => r.ProviderRefundId == providerRefundId, ct);
 
@@ -284,11 +289,45 @@ public sealed class RefundService(
                     var variant = await db.ProductVariants.SingleOrDefaultAsync(v => v.Id == item.ProductVariantId, ct);
                     if (variant is not null) variant.StockQuantity += item.Quantity;
                 }
+
+                try { cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund webhook processed - invalidating sales cache"); } catch { /* non-fatal */ }
+
+                try
+                {
+                    await notifications.CreateAsync(new CreateAdminNotification(
+                        Type: "RefundCompleted",
+                        Severity: "Success",
+                        Title: $"Refund Completed #{refundRecord.ReturnRequest.ReturnNumber}",
+                        Message: $"Razorpay confirmed refund of ₹{((decimal)refundRecord.AmountPaise / 100m):N2} for Order #{refundRecord.ReturnRequest.Order?.OrderNumber}.",
+                        EntityType: "Return",
+                        EntityId: refundRecord.ReturnRequest.Id.ToString(),
+                        ActionUrl: "/admin/returns"), publishImmediately: true, cancellationToken: ct);
+                }
+                catch (Exception nEx)
+                {
+                    logger.LogWarning(nEx, "Failed to publish admin notification for refund.processed");
+                }
             }
             else if (eventType == "refund.failed")
             {
                 refundRecord.Status = RefundStatus.Failed;
                 refundRecord.FailureReason = "Gateway reported refund failure.";
+
+                try
+                {
+                    await notifications.CreateAsync(new CreateAdminNotification(
+                        Type: "RefundFailed",
+                        Severity: "Error",
+                        Title: $"Refund Failed #{refundRecord.ReturnRequest.ReturnNumber}",
+                        Message: $"Razorpay refund of ₹{((decimal)refundRecord.AmountPaise / 100m):N2} failed: {refundRecord.FailureReason}",
+                        EntityType: "Return",
+                        EntityId: refundRecord.ReturnRequest.Id.ToString(),
+                        ActionUrl: "/admin/returns"), publishImmediately: true, cancellationToken: ct);
+                }
+                catch (Exception nEx)
+                {
+                    logger.LogWarning(nEx, "Failed to publish admin notification for refund.failed");
+                }
             }
 
             await db.SaveChangesAsync(ct);

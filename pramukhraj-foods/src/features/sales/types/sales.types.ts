@@ -12,6 +12,9 @@ export interface AdminSalesSummary {
   repeatCustomerRatePercent: number
   previousPeriodRevenue: number
   revenueGrowthPercent: number
+  totalRefunds?: number
+  totalReturnsCount?: number
+  returnRatePercent?: number
 }
 
 export interface AdminSalesTimelinePoint {

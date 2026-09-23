@@ -9,6 +9,8 @@ using pramukhraj.Entities.Order;
 using pramukhraj.Entities.Return;
 using pramukhraj.Entities.Shipment;
 using pramukhraj.Interfaces;
+using pramukhraj.DTOs.Email;
+using pramukhraj.DTOs.Notifications;
 using static pramukhraj.Common.AdminActions;
 
 namespace pramukhraj.Services;
@@ -17,6 +19,8 @@ public sealed class ReturnService(
     AppDbContext db,
     IStoreSettingsService settingsService,
     IHttpContextAccessor httpContextAccessor,
+    IAdminNotificationService adminNotifications,
+    IEmailService emailService,
     ILogger<ReturnService> logger) : IReturnService
 {
     // ==========================================
@@ -242,6 +246,42 @@ public sealed class ReturnService(
             await tx.CommitAsync(ct);
 
             logger.LogInformation("Return request {ReturnNumber} created successfully for OrderId={OrderId}, CustomerId={CustomerId}", returnNumber, orderId, customerId);
+
+            // Real-time admin notification
+            try
+            {
+                await adminNotifications.CreateAsync(new CreateAdminNotification(
+                    Type: "ReturnRequested",
+                    Severity: "Info",
+                    Title: $"New Return Request #{returnNumber}",
+                    Message: $"Customer requested return for {returnItems.Count} item(s) on Order #{order.OrderNumber} (Refund value: ₹{totalRefundAmount:N2}).",
+                    EntityType: "Return",
+                    EntityId: returnRequest.Id.ToString(),
+                    ActionUrl: "/admin/returns"), publishImmediately: true, cancellationToken: ct);
+            }
+            catch (Exception notifEx)
+            {
+                logger.LogWarning(notifEx, "Failed to publish admin notification for Return {ReturnNumber}", returnNumber);
+            }
+
+            // Customer confirmation email
+            try
+            {
+                var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == customerId, ct);
+                if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Return Request Received - #{returnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>We have received your return request <strong>#{returnNumber}</strong> for Order #{order.OrderNumber}.</p><p>Our team is reviewing your request and will update you shortly.</p>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nWe have received your return request #{returnNumber} for Order #{order.OrderNumber}.\nOur team is reviewing your request and will update you shortly."), ct);
+                }
+            }
+            catch (Exception emailEx)
+            {
+                logger.LogWarning(emailEx, "Failed to send customer return acknowledgement email for Return {ReturnNumber}", returnNumber);
+            }
 
             return ApiResponse<CustomerReturnDetailsResponse>.Ok(
                 MapCustomerReturnDetails(returnRequest, order.OrderNumber),
@@ -579,6 +619,24 @@ public sealed class ReturnService(
             logger.LogInformation("Return request {ReturnNumber} approved by admin {AdminId}", returnRequest.ReturnNumber, adminId);
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Return Request Approved - #{returnRequest.ReturnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} has been <strong>Approved</strong>.</p><p>Please pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.</p>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} has been Approved.\nPlease pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly."), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send return approval email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
                 MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
                 "Return request approved successfully.");
@@ -653,6 +711,24 @@ public sealed class ReturnService(
             logger.LogInformation("Return request {ReturnNumber} rejected by admin {AdminId}", returnRequest.ReturnNumber, adminId);
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Return Request Update - #{returnRequest.ReturnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} could not be approved for the following reason:</p><blockquote>{request.RejectionReason.Trim()}</blockquote>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} could not be approved for the following reason:\n{request.RejectionReason.Trim()}"), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send return rejection email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
                 MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
                 "Return request has been rejected.");

@@ -24,6 +24,7 @@ import {
   CreditCard,
   Users,
   RefreshCw,
+  RotateCcw,
   Calendar,
   Layers,
   ShoppingBasket,
@@ -615,8 +616,8 @@ export function AdminSales() {
 
       {/* ─── KPI Financial StatCards ──────────────────────────────────────────── */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="rounded-card border border-ink/10 bg-ivory p-5 space-y-3">
               <Skeleton className="h-8 w-8 rounded-full" />
               <Skeleton className="h-7 w-28" />
@@ -625,7 +626,7 @@ export function AdminSales() {
           ))}
         </div>
       ) : summary ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Net Revenue"
             value={formatINR(summary.netRevenue)}
@@ -651,6 +652,27 @@ export function AdminSales() {
             icon={Package}
           />
           <StatCard
+            label="Repeat Customer Rate"
+            value={`${summary.repeatCustomerRatePercent.toFixed(1)}%`}
+            icon={Users}
+            change="Loyalty index"
+            positive={summary.repeatCustomerRatePercent > 20}
+          />
+          <StatCard
+            label="Total Refunds Issued"
+            value={formatINR(summary.totalRefunds ?? 0)}
+            icon={RotateCcw}
+            change="Deducted from gross"
+            positive={false}
+          />
+          <StatCard
+            label="Return Rate"
+            value={`${(summary.returnRatePercent ?? 0).toFixed(1)}%`}
+            icon={RotateCcw}
+            change={`${summary.totalReturnsCount ?? 0} return requests`}
+            positive={(summary.returnRatePercent ?? 0) < 5}
+          />
+          <StatCard
             label="Total Discounts Given"
             value={formatINR(summary.totalDiscounts)}
             icon={Tag}
@@ -664,13 +686,6 @@ export function AdminSales() {
             label="Payment Processing Fees"
             value={formatINR(summary.paymentProcessingFeesCollected)}
             icon={CreditCard}
-          />
-          <StatCard
-            label="Repeat Customer Rate"
-            value={`${summary.repeatCustomerRatePercent.toFixed(1)}%`}
-            icon={Users}
-            change="Loyalty index"
-            positive={summary.repeatCustomerRatePercent > 20}
           />
         </div>
       ) : null}
