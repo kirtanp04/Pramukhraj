@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using pramukhraj.Common;
 using pramukhraj.DTOs.Logs;
 using pramukhraj.Interfaces;
 
@@ -38,6 +39,7 @@ public sealed class AdminLogsController(IServiceManager serviceManager) : Contro
     }
 
     [HttpGet("download")]
+    [SkipEncryption]
     public async Task<IActionResult> DownloadLogFile(
         [FromQuery] string? date,
         CancellationToken cancellationToken)

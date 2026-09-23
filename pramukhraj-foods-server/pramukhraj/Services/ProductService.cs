@@ -1,4 +1,4 @@
-﻿using FluentValidation.Results;
+using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using pramukhraj.Common;
@@ -3203,6 +3203,7 @@ namespace pramukhraj.Services
             _cache.RemoveByPrefix(CacheKey.Categories.AllPrefix);
             // Review projections include the product name.
             _cache.RemoveByPrefix(CacheKey.Reviews.AllPrefix);
+            _cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Product/Category changed - invalidate sales reports");
         }
 
         private static ApiResponse<T> ValidationFailure<T>(ValidationResult validation, string message) =>
