@@ -116,6 +116,7 @@ public sealed class OrderService(
 
                 cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order placed - inventory stock deducted");
                 cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order placed - inventory stock deducted");
+                cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Order placed - sales reports invalidated");
                 if (session.CouponId.HasValue)
                     cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order placed - coupon usage recorded");
             });

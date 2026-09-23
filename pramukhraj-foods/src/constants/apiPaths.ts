@@ -268,6 +268,43 @@ const AdminApiPaths = {
     clear: "admin/logs/clear",
     download: (date?: string) => `admin/logs/download${date ? `?date=${encodeURIComponent(date)}` : ""}`,
   },
+  sales: {
+    report: (params?: {
+      startDate?: string;
+      endDate?: string;
+      status?: string;
+      granularity?: string;
+      refresh?: boolean;
+    }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.set("startDate", params.startDate);
+      if (params?.endDate) searchParams.set("endDate", params.endDate);
+      if (params?.status) searchParams.set("status", params.status);
+      if (params?.granularity) searchParams.set("granularity", params.granularity);
+      if (params?.refresh) searchParams.set("refresh", "true");
+      const q = searchParams.toString();
+      return `admin/sales/report${q ? `?${q}` : ""}`;
+    },
+    export: (params?: {
+      startDate?: string;
+      endDate?: string;
+      status?: string;
+      granularity?: string;
+      refresh?: boolean;
+      format?: string;
+    }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.set("startDate", params.startDate);
+      if (params?.endDate) searchParams.set("endDate", params.endDate);
+      if (params?.status) searchParams.set("status", params.status);
+      if (params?.granularity) searchParams.set("granularity", params.granularity);
+      if (params?.refresh) searchParams.set("refresh", "true");
+      if (params?.format) searchParams.set("format", params.format);
+      const q = searchParams.toString();
+      return `admin/sales/export${q ? `?${q}` : ""}`;
+    },
+    clearCache: "admin/sales/clear-cache",
+  },
 };
 
 export const ApiPath = {

@@ -306,6 +306,7 @@ public sealed class RazorpayPaymentService(
 
             cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order pending payment cancelled - stock restored");
             cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order pending payment cancelled - stock restored");
+            cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Order pending payment cancelled - sales report updated");
             if (order.CouponId.HasValue)
                 cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order pending payment cancelled - coupon released");
         });
@@ -468,6 +469,7 @@ public sealed class RazorpayPaymentService(
 
             cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order payment confirmed - stock finalized");
             cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order payment confirmed - stock finalized");
+            cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Order payment confirmed - sales report updated");
             if (payment.Order.CouponId.HasValue)
                 cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order payment confirmed - coupon redeemed");
         });
@@ -526,6 +528,7 @@ public sealed class RazorpayPaymentService(
 
             cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Order payment released - stock restored");
             cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Order payment released - stock restored");
+            cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Order payment released/failed - sales report updated");
             if (payment.Order.CouponId.HasValue)
                 cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix, "Order payment released - coupon released");
         });

@@ -99,6 +99,7 @@ public sealed class CouponService : ICouponService
             await _db.AdminActions.AddAsync(audit, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
             _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
+            _cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Coupon created - invalidate sales reports");
 
             return new ApiResponse<Guid>
             {
@@ -238,6 +239,7 @@ public sealed class CouponService : ICouponService
                 cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
             _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
+            _cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Coupon updated - invalidate sales reports");
 
             return new ApiResponse<Guid>
             {
@@ -453,6 +455,7 @@ public sealed class CouponService : ICouponService
                 cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
             _cache.RemoveByPrefix(CacheKey.Coupons.AllPrefix);
+            _cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Coupon archived - invalidate sales reports");
 
             return ApiResponse<string>.Ok(couponId.ToString(), "Coupon archived successfully.");
         }

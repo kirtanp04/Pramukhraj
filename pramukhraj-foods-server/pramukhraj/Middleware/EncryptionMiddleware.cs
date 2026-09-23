@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using pramukhraj.Configurations;
 using pramukhraj.Services;
 using System.Text;
@@ -34,7 +34,17 @@ namespace pramukhraj.Middleware
             // authorization still run for this narrowly scoped admin endpoint.
             if (path.Equals("/api/admin/notifications/stream", StringComparison.OrdinalIgnoreCase) ||
                 path.Equals("/api/webhooks/razorpay", StringComparison.OrdinalIgnoreCase)||
-                path.Equals("/api/webhooks/shipping", StringComparison.OrdinalIgnoreCase))
+                path.Equals("/api/webhooks/shipping", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/api/admin/sales/export", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/api/admin/logs/download", StringComparison.OrdinalIgnoreCase))
+            {
+                await _next(context);
+                return;
+            }
+
+            // Check if endpoint is decorated with [SkipEncryption]
+            var endpoint = context.GetEndpoint();
+            if (endpoint?.Metadata.GetMetadata<pramukhraj.Common.SkipEncryptionAttribute>() != null)
             {
                 await _next(context);
                 return;
@@ -96,8 +106,17 @@ namespace pramukhraj.Middleware
                 var plainTextResponse =
                     await reader.ReadToEndAsync(context.RequestAborted);
 
-                // Encrypt only successful responses.
-                if (!string.IsNullOrWhiteSpace(plainTextResponse) &&
+                // Check if the response is a file download or non-JSON binary/text stream
+                var contentType = context.Response.ContentType ?? string.Empty;
+                var isFileOrNonJson = context.Response.Headers.ContentDisposition.Count > 0 ||
+                                     contentType.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) ||
+                                     contentType.StartsWith("application/vnd.", StringComparison.OrdinalIgnoreCase) ||
+                                     contentType.StartsWith("application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                                     contentType.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase);
+
+                // Encrypt only successful JSON responses.
+                if (!isFileOrNonJson &&
+                    !string.IsNullOrWhiteSpace(plainTextResponse) &&
                     context.Response.StatusCode is >= 200 and < 300)
                 {
                     await WriteEncryptedResponseAsync(

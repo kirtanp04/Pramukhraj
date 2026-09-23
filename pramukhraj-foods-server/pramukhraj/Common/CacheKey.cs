@@ -1,4 +1,4 @@
-﻿namespace pramukhraj.Common
+namespace pramukhraj.Common
 {
     public static class CacheKey
     {
@@ -111,6 +111,16 @@
 
             public static string Shipping
                 => $"{Prefix}:store:shipping";
+        }
+
+        public static class Sales
+        {
+            private const string Base = $"{Prefix}:sales";
+
+            public static string AllPrefix => $"{Base}:";
+
+            public static string Report(DateTime start, DateTime end, string status, string granularity)
+                => $"{Base}:report:s:{start:yyyyMMddHHmmss}:e:{end:yyyyMMddHHmmss}:st:{status.ToLowerInvariant()}:g:{granularity.ToLowerInvariant()}";
         }
 
         private static string NormalizeIds(IEnumerable<Guid> ids)
