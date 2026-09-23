@@ -57,7 +57,13 @@ public sealed record AdminReturnDetailsResponse(
     IReadOnlyList<AdminReturnItemDetailDto> Items,
     IReadOnlyList<CustomerReturnMediaDto> Media,
     IReadOnlyList<AdminReturnTimelineDto> Timeline,
-    AdminRefundDetailDto? Refund);
+    AdminRefundDetailDto? Refund,
+    string? CourierName = null,
+    string? TrackingNumber = null,
+    string? TrackingUrl = null,
+    DateTime? PickupScheduledDate = null,
+    DateTime? PickedUpOn = null,
+    DateTime? DeliveredToWarehouseOn = null);
 
 public sealed record AdminReturnItemDetailDto(
     Guid Id,
@@ -111,11 +117,23 @@ public sealed record AdminItemInspectionResult(
 public sealed record AdminProcessRefundRequest(
     string? RefundSpeed = "normal");
 
+public sealed record ScheduleReversePickupRequest(
+    string CourierName,
+    string TrackingNumber,
+    string? TrackingUrl = null,
+    DateTime? PickupScheduledDate = null,
+    string? Notes = null);
+
+public sealed record UpdateReverseTrackingRequest(
+    ReturnStatus Status,
+    string? Notes = null);
+
 public sealed record AdminReturnStatusCounts(
     int Total,
     int Requested,
     int Approved,
     int Rejected,
+    int PickupScheduled,
     int InTransit,
     int DeliveredToWarehouse,
     int InspectionPassed,

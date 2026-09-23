@@ -98,7 +98,7 @@ public sealed class ReturnService(
                     Items: []));
             }
 
-            var eligibleItems = CalculateEligibleItems(order);
+            var eligibleItems = await CalculateEligibleItemsAsync(order, ct);
             var anyReturnable = eligibleItems.Any(i => i.ReturnableQuantity > 0);
 
             return ApiResponse<ReturnEligibilityResponse>.Ok(new ReturnEligibilityResponse(
@@ -106,7 +106,7 @@ public sealed class ReturnService(
                 ReturnWindowDays: returnWindowDays,
                 DeliveredOn: deliveredOn,
                 ReturnWindowExpiresOn: expiresOn,
-                IneligibilityReason: anyReturnable ? null : "All items in this order have already been returned or have an active return request.",
+                IneligibilityReason: anyReturnable ? null : "All items in this order have already been returned, are non-returnable, or have an active return request.",
                 Items: eligibleItems));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -159,7 +159,7 @@ public sealed class ReturnService(
             if (DateTime.UtcNow > expiresOn)
                 return ApiResponse<CustomerReturnDetailsResponse>.Fail($"The return window of {returnWindowDays} day(s) for this order has expired.", 400);
 
-            var eligibleItems = CalculateEligibleItems(order).ToDictionary(i => i.OrderItemId);
+            var eligibleItems = (await CalculateEligibleItemsAsync(order, ct)).ToDictionary(i => i.OrderItemId);
 
             decimal totalRefundAmount = 0m;
             var returnItems = new List<ReturnItem>();
@@ -169,6 +169,9 @@ public sealed class ReturnService(
             {
                 if (!eligibleItems.TryGetValue(reqItem.OrderItemId, out var eligible) || eligible.ReturnableQuantity <= 0)
                     return ApiResponse<CustomerReturnDetailsResponse>.Fail($"Item '{reqItem.OrderItemId}' is not eligible for return.", 400);
+
+                if (!eligible.IsReturnable)
+                    return ApiResponse<CustomerReturnDetailsResponse>.Fail($"Item '{eligible.ProductName}' is non-returnable as per store policy.", 400);
 
                 if (reqItem.Quantity <= 0 || reqItem.Quantity > eligible.ReturnableQuantity)
                     return ApiResponse<CustomerReturnDetailsResponse>.Fail(
@@ -443,6 +446,7 @@ public sealed class ReturnService(
                 Requested: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.Requested, ct),
                 Approved: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.Approved, ct),
                 Rejected: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.Rejected, ct),
+                PickupScheduled: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.PickupScheduled, ct),
                 InTransit: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.InTransit, ct),
                 DeliveredToWarehouse: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.DeliveredToWarehouse, ct),
                 InspectionPassed: await db.ReturnRequests.CountAsync(r => r.Status == ReturnStatus.InspectionPassed, ct),
@@ -741,6 +745,200 @@ public sealed class ReturnService(
         }
     }
 
+    public async Task<ApiResponse<AdminReturnDetailsResponse>> SchedulePickupAsync(
+        Guid returnId,
+        ScheduleReversePickupRequest request,
+        CancellationToken ct = default)
+    {
+        var adminInfo = Common.Common.GetAdminClaimInfo(httpContextAccessor);
+        if (!adminInfo.Success || adminInfo.Data is null || !Guid.TryParse(adminInfo.Data.Id, out var adminId))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Admin authentication required.", 401);
+
+        if (string.IsNullOrWhiteSpace(request?.CourierName))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Courier/carrier name is required.", 400);
+
+        if (string.IsNullOrWhiteSpace(request?.TrackingNumber))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Reverse AWB / Tracking number is required.", 400);
+
+        try
+        {
+            var returnRequest = await db.ReturnRequests
+                .Include(r => r.Order)
+                .Include(r => r.Items)
+                .Include(r => r.Media)
+                .Include(r => r.StatusHistory)
+                .Include(r => r.Refund)
+                .SingleOrDefaultAsync(r => r.Id == returnId, ct);
+
+            if (returnRequest is null)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("Return request was not found.", 404);
+
+            if (returnRequest.Status != ReturnStatus.Approved && returnRequest.Status != ReturnStatus.PickupScheduled)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail($"Reverse pickup can only be scheduled for Approved returns (current status: '{returnRequest.Status}').", 400);
+
+            var now = DateTime.UtcNow;
+            returnRequest.CourierName = request.CourierName.Trim();
+            returnRequest.TrackingNumber = request.TrackingNumber.Trim();
+            returnRequest.TrackingUrl = string.IsNullOrWhiteSpace(request.TrackingUrl) ? null : request.TrackingUrl.Trim();
+            returnRequest.PickupScheduledDate = request.PickupScheduledDate;
+            returnRequest.Status = ReturnStatus.PickupScheduled;
+            returnRequest.UpdatedOn = now;
+            returnRequest.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+
+            var note = $"Reverse pickup scheduled with {returnRequest.CourierName}. AWB: {returnRequest.TrackingNumber}.";
+            if (request.PickupScheduledDate.HasValue)
+                note += $" Scheduled Date: {request.PickupScheduledDate.Value:yyyy-MM-dd}.";
+            if (!string.IsNullOrWhiteSpace(request.Notes))
+                note += $" Note: {request.Notes.Trim()}";
+
+            returnRequest.StatusHistory.Add(new ReturnStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ReturnRequestId = returnRequest.Id,
+                Status = ReturnStatus.PickupScheduled,
+                Note = note,
+                ActorAdminId = adminId,
+                ActorAdminName = adminInfo.Data.UserName,
+                CreatedOn = now
+            });
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Reverse pickup scheduled for Return {ReturnNumber}. Courier: {Courier}, AWB: {AWB}", returnRequest.ReturnNumber, returnRequest.CourierName, returnRequest.TrackingNumber);
+
+            var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Reverse Pickup Scheduled - #{returnRequest.ReturnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>A reverse pickup has been scheduled for your return request <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}).</p><p><strong>Courier:</strong> {returnRequest.CourierName}<br/><strong>Tracking Number (AWB):</strong> {returnRequest.TrackingNumber}" + (returnRequest.PickupScheduledDate.HasValue ? $"<br/><strong>Pickup Date:</strong> {returnRequest.PickupScheduledDate.Value:dd MMM yyyy}" : "") + "</p><p>Please keep the package securely packed and hand it over to the courier executive.</p>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nA reverse pickup has been scheduled for your return #{returnRequest.ReturnNumber}.\nCourier: {returnRequest.CourierName}\nAWB: {returnRequest.TrackingNumber}\nPlease hand over the package to the pickup executive."), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send pickup scheduled email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
+            return ApiResponse<AdminReturnDetailsResponse>.Ok(
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
+                "Reverse pickup scheduled successfully.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to schedule reverse pickup for ReturnId={ReturnId}", returnId);
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Unable to schedule reverse pickup.", 500);
+        }
+    }
+
+    public async Task<ApiResponse<AdminReturnDetailsResponse>> UpdateReverseTrackingStatusAsync(
+        Guid returnId,
+        UpdateReverseTrackingRequest request,
+        CancellationToken ct = default)
+    {
+        var adminInfo = Common.Common.GetAdminClaimInfo(httpContextAccessor);
+        if (!adminInfo.Success || adminInfo.Data is null || !Guid.TryParse(adminInfo.Data.Id, out var adminId))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Admin authentication required.", 401);
+
+        var validTargetStatuses = new[]
+        {
+            ReturnStatus.InTransit,
+            ReturnStatus.DeliveredToWarehouse
+        };
+
+        if (!validTargetStatuses.Contains(request.Status))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail($"Invalid reverse tracking status '{request.Status}'. Valid transitions are 'InTransit' or 'DeliveredToWarehouse'.", 400);
+
+        try
+        {
+            var returnRequest = await db.ReturnRequests
+                .Include(r => r.Order)
+                .Include(r => r.Items)
+                .Include(r => r.Media)
+                .Include(r => r.StatusHistory)
+                .Include(r => r.Refund)
+                .SingleOrDefaultAsync(r => r.Id == returnId, ct);
+
+            if (returnRequest is null)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("Return request was not found.", 404);
+
+            var now = DateTime.UtcNow;
+
+            if (request.Status == ReturnStatus.InTransit)
+            {
+                if (returnRequest.Status != ReturnStatus.PickupScheduled && returnRequest.Status != ReturnStatus.Approved)
+                    return ApiResponse<AdminReturnDetailsResponse>.Fail($"Cannot mark InTransit from status '{returnRequest.Status}'.", 400);
+
+                returnRequest.Status = ReturnStatus.InTransit;
+                returnRequest.PickedUpOn = now;
+            }
+            else if (request.Status == ReturnStatus.DeliveredToWarehouse)
+            {
+                if (returnRequest.Status != ReturnStatus.InTransit && returnRequest.Status != ReturnStatus.PickupScheduled && returnRequest.Status != ReturnStatus.Approved)
+                    return ApiResponse<AdminReturnDetailsResponse>.Fail($"Cannot mark DeliveredToWarehouse from status '{returnRequest.Status}'.", 400);
+
+                returnRequest.Status = ReturnStatus.DeliveredToWarehouse;
+                returnRequest.DeliveredToWarehouseOn = now;
+                returnRequest.ReceivedOn = now;
+            }
+
+            returnRequest.UpdatedOn = now;
+            returnRequest.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+
+            var note = $"Reverse tracking updated to {returnRequest.Status} by {adminInfo.Data.UserName}.";
+            if (!string.IsNullOrWhiteSpace(request.Notes))
+                note += $" Note: {request.Notes.Trim()}";
+
+            returnRequest.StatusHistory.Add(new ReturnStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ReturnRequestId = returnRequest.Id,
+                Status = returnRequest.Status,
+                Note = note,
+                ActorAdminId = adminId,
+                ActorAdminName = adminInfo.Data.UserName,
+                CreatedOn = now
+            });
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Return {ReturnNumber} status updated to {Status}", returnRequest.ReturnNumber, returnRequest.Status);
+
+            var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (returnRequest.Status == ReturnStatus.DeliveredToWarehouse && customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Return Package Received at Warehouse - #{returnRequest.ReturnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>We have received your returned item(s) for <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}) at our fulfillment warehouse.</p><p>Our quality assurance team is performing inspection. Once verified, your refund will be processed immediately.</p>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nWe have received your return package #{returnRequest.ReturnNumber} at our warehouse.\nOur quality team is conducting inspection."), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send package received email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
+            return ApiResponse<AdminReturnDetailsResponse>.Ok(
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
+                $"Return status updated to {returnRequest.Status}.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update reverse tracking for ReturnId={ReturnId}", returnId);
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Unable to update reverse tracking status.", 500);
+        }
+    }
+
     public async Task<ApiResponse<AdminReturnDetailsResponse>> InspectReturnAsync(
         Guid returnId,
         AdminInspectReturnRequest request,
@@ -856,7 +1054,7 @@ public sealed class ReturnService(
     // Internal Helpers
     // ==========================================
 
-    private static IReadOnlyList<EligibleOrderItemDto> CalculateEligibleItems(Order order)
+    private async Task<IReadOnlyList<EligibleOrderItemDto>> CalculateEligibleItemsAsync(Order order, CancellationToken ct)
     {
         var existingReturns = order.Returns
             .Where(r => r.Status != ReturnStatus.Rejected && r.Status != ReturnStatus.Cancelled)
@@ -864,12 +1062,19 @@ public sealed class ReturnService(
             .GroupBy(i => i.OrderItemId)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
 
+        var productIds = order.Items.Select(i => i.ProductId).Distinct().ToList();
+        var nonReturnableMap = await db.Products.AsNoTracking()
+            .Include(p => p.Category)
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => (!p.IsReturnable || (p.Category != null && !p.Category.IsReturnable)), ct);
+
         var items = new List<EligibleOrderItemDto>();
 
         foreach (var orderItem in order.Items)
         {
             var alreadyReturned = existingReturns.TryGetValue(orderItem.Id, out var returnedQty) ? returnedQty : 0;
-            var returnableQty = Math.Max(0, orderItem.Quantity - alreadyReturned);
+            var isNonReturnable = nonReturnableMap.TryGetValue(orderItem.ProductId, out var nonRet) && nonRet;
+            var returnableQty = isNonReturnable ? 0 : Math.Max(0, orderItem.Quantity - alreadyReturned);
 
             decimal couponShare = 0m;
             if (order.Subtotal > 0m && order.CouponDiscountAmount > 0m)
@@ -892,7 +1097,9 @@ public sealed class ReturnService(
                 AlreadyReturnedQuantity: alreadyReturned,
                 ReturnableQuantity: returnableQty,
                 UnitPrice: orderItem.UnitPrice,
-                RefundPerItem: refundPerItem));
+                RefundPerItem: refundPerItem,
+                IsReturnable: !isNonReturnable,
+                NonReturnableReason: isNonReturnable ? "Non-returnable item as per store policy." : null));
         }
 
         return items;
@@ -933,7 +1140,15 @@ public sealed class ReturnService(
             Media: r.Media.Select(m => new CustomerReturnMediaDto(m.Id, m.Url, m.FileName)).ToList(),
             Timeline: r.StatusHistory.OrderBy(h => h.CreatedOn).Select(h => new CustomerReturnTimelineDto(h.Status, h.Note, h.CreatedOn)).ToList(),
             Refund: r.Refund is null ? null : new CustomerRefundDetailDto(
-                r.Refund.ProviderRefundId, (decimal)r.Refund.AmountPaise / 100m, r.Refund.Status, r.Refund.SettledOn));
+                r.Refund.ProviderRefundId, (decimal)r.Refund.AmountPaise / 100m, r.Refund.Status, r.Refund.SettledOn),
+            CourierName: r.CourierName,
+            TrackingNumber: r.TrackingNumber,
+            TrackingUrl: r.TrackingUrl,
+            PickupScheduledDate: r.PickupScheduledDate,
+            PickedUpOn: r.PickedUpOn,
+            DeliveredToWarehouseOn: r.DeliveredToWarehouseOn,
+            ReceivedOn: r.ReceivedOn,
+            InspectedOn: r.InspectedOn);
 
     private static AdminReturnDetailsResponse MapAdminReturnDetails(ReturnRequest r, string orderNumber, Customer? customer) =>
         new(
@@ -966,5 +1181,11 @@ public sealed class ReturnService(
             Media: r.Media.Select(m => new CustomerReturnMediaDto(m.Id, m.Url, m.FileName)).ToList(),
             Timeline: r.StatusHistory.OrderBy(h => h.CreatedOn).Select(h => new AdminReturnTimelineDto(h.Id, h.Status, h.Note, h.ActorAdminId, h.ActorAdminName, h.CreatedOn)).ToList(),
             Refund: r.Refund is null ? null : new AdminRefundDetailDto(
-                r.Refund.Id, r.Refund.IdempotencyKey, r.Refund.ProviderRefundId, (decimal)r.Refund.AmountPaise / 100m, r.Refund.AmountPaise, r.Refund.Currency, r.Refund.Status, r.Refund.RefundSpeed, r.Refund.FailureReason, r.Refund.CreatedOn, r.Refund.SettledOn));
+                r.Refund.Id, r.Refund.IdempotencyKey, r.Refund.ProviderRefundId, (decimal)r.Refund.AmountPaise / 100m, r.Refund.AmountPaise, r.Refund.Currency, r.Refund.Status, r.Refund.RefundSpeed, r.Refund.FailureReason, r.Refund.CreatedOn, r.Refund.SettledOn),
+            CourierName: r.CourierName,
+            TrackingNumber: r.TrackingNumber,
+            TrackingUrl: r.TrackingUrl,
+            PickupScheduledDate: r.PickupScheduledDate,
+            PickedUpOn: r.PickedUpOn,
+            DeliveredToWarehouseOn: r.DeliveredToWarehouseOn);
 }

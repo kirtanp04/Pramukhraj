@@ -47,6 +47,20 @@ public sealed class AdminReturnsController(IServiceManager services) : Controlle
         return StatusCode(response.StatusCode, response);
     }
 
+    [HttpPost("{returnId:guid}/schedule-pickup")]
+    public async Task<IActionResult> SchedulePickup(Guid returnId, [FromBody] ScheduleReversePickupRequest request, CancellationToken ct)
+    {
+        var response = await services.ReturnService.SchedulePickupAsync(returnId, request, ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
+    [HttpPost("{returnId:guid}/update-tracking")]
+    public async Task<IActionResult> UpdateTracking(Guid returnId, [FromBody] UpdateReverseTrackingRequest request, CancellationToken ct)
+    {
+        var response = await services.ReturnService.UpdateReverseTrackingStatusAsync(returnId, request, ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
     [HttpPost("{returnId:guid}/process-refund")]
     public async Task<IActionResult> ProcessRefund(Guid returnId, [FromBody] AdminProcessRefundRequest request, CancellationToken ct)
     {

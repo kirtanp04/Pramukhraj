@@ -71,3 +71,36 @@ public sealed class AdminInspectReturnRequestValidator : AbstractValidator<Admin
     }
 }
 
+public sealed class ScheduleReversePickupRequestValidator : AbstractValidator<ScheduleReversePickupRequest>
+{
+    public ScheduleReversePickupRequestValidator()
+    {
+        RuleFor(x => x.CourierName)
+            .NotEmpty().WithMessage("Courier/carrier name is required.")
+            .MaximumLength(100).WithMessage("Courier name cannot exceed 100 characters.");
+
+        RuleFor(x => x.TrackingNumber)
+            .NotEmpty().WithMessage("Reverse AWB / Tracking number is required.")
+            .MaximumLength(100).WithMessage("Tracking number cannot exceed 100 characters.");
+
+        RuleFor(x => x.TrackingUrl)
+            .MaximumLength(500).WithMessage("Tracking URL cannot exceed 500 characters.");
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters.");
+    }
+}
+
+public sealed class UpdateReverseTrackingRequestValidator : AbstractValidator<UpdateReverseTrackingRequest>
+{
+    public UpdateReverseTrackingRequestValidator()
+    {
+        RuleFor(x => x.Status)
+            .Must(s => s == ReturnStatus.InTransit || s == ReturnStatus.DeliveredToWarehouse)
+            .WithMessage("Status must be either 'InTransit' or 'DeliveredToWarehouse'.");
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters.");
+    }
+}
+

@@ -11,6 +11,8 @@ public sealed class ReturnAndRefundModuleTests
     private readonly AdminApproveReturnRequestValidator _approveValidator = new();
     private readonly AdminRejectReturnRequestValidator _rejectValidator = new();
     private readonly AdminInspectReturnRequestValidator _inspectValidator = new();
+    private readonly ScheduleReversePickupRequestValidator _pickupValidator = new();
+    private readonly UpdateReverseTrackingRequestValidator _updateTrackingValidator = new();
 
     [Fact]
     public void CreateReturnRequest_ValidData_PassesValidation()
@@ -174,6 +176,60 @@ public sealed class ReturnAndRefundModuleTests
         Assert.Equal(120m, itemACouponShare);
         Assert.Equal(480m, itemANetTotal);
         Assert.Equal(240m, itemARefundPerUnit);
+    }
+
+    [Fact]
+    public void ScheduleReversePickup_ValidData_PassesValidation()
+    {
+        var request = new ScheduleReversePickupRequest(
+            CourierName: "Blue Dart",
+            TrackingNumber: "BD982736412IN",
+            TrackingUrl: "https://bluedart.com/track/BD982736412IN",
+            PickupScheduledDate: DateTime.UtcNow.AddDays(1),
+            Notes: "Driver will collect package between 2 PM - 5 PM.");
+
+        var result = _pickupValidator.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("", "BD123")]
+    [InlineData("Delhivery", "")]
+    public void ScheduleReversePickup_MissingRequiredFields_FailsValidation(string courier, string trackingNumber)
+    {
+        var request = new ScheduleReversePickupRequest(
+            CourierName: courier,
+            TrackingNumber: trackingNumber,
+            TrackingUrl: null,
+            PickupScheduledDate: null,
+            Notes: null);
+
+        var result = _pickupValidator.Validate(request);
+        Assert.False(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(ReturnStatus.InTransit)]
+    [InlineData(ReturnStatus.DeliveredToWarehouse)]
+    public void UpdateReverseTracking_AllowedStatuses_PassesValidation(ReturnStatus status)
+    {
+        var request = new UpdateReverseTrackingRequest(status, "Carrier scan completed.");
+        var result = _updateTrackingValidator.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(ReturnStatus.Requested)]
+    [InlineData(ReturnStatus.Approved)]
+    [InlineData(ReturnStatus.PickupScheduled)]
+    [InlineData(ReturnStatus.InspectionPassed)]
+    [InlineData(ReturnStatus.RefundCompleted)]
+    [InlineData(ReturnStatus.Rejected)]
+    public void UpdateReverseTracking_DisallowedStatuses_FailsValidation(ReturnStatus status)
+    {
+        var request = new UpdateReverseTrackingRequest(status, "Invalid attempt.");
+        var result = _updateTrackingValidator.Validate(request);
+        Assert.False(result.IsValid);
     }
 }
 

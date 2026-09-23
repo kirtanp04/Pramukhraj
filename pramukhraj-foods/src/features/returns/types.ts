@@ -111,6 +111,8 @@ export interface EligibleOrderItem {
   returnableQuantity: number;
   unitPrice: number;
   refundPerItem: number;
+  isReturnable?: boolean;
+  nonReturnableReason?: string | null;
 }
 
 export interface ReturnEligibility {
@@ -210,6 +212,14 @@ export interface CustomerReturnDetails {
   media: CustomerReturnMedia[];
   timeline: CustomerReturnTimeline[];
   refund: CustomerRefundDetail | null;
+  courierName?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  pickupScheduledDate?: string | null;
+  pickedUpOn?: string | null;
+  deliveredToWarehouseOn?: string | null;
+  receivedOn?: string | null;
+  inspectedOn?: string | null;
 }
 
 // Customer List Page Response

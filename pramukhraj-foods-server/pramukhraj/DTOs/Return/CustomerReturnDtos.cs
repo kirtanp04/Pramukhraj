@@ -19,7 +19,9 @@ public sealed record EligibleOrderItemDto(
     int AlreadyReturnedQuantity,
     int ReturnableQuantity,
     decimal UnitPrice,
-    decimal RefundPerItem);
+    decimal RefundPerItem,
+    bool IsReturnable = true,
+    string? NonReturnableReason = null);
 
 public sealed record CreateReturnRequest(
     IReadOnlyList<CreateReturnItemDto> Items,
@@ -70,7 +72,15 @@ public sealed record CustomerReturnDetailsResponse(
     IReadOnlyList<CustomerReturnItemDetailDto> Items,
     IReadOnlyList<CustomerReturnMediaDto> Media,
     IReadOnlyList<CustomerReturnTimelineDto> Timeline,
-    CustomerRefundDetailDto? Refund);
+    CustomerRefundDetailDto? Refund,
+    string? CourierName = null,
+    string? TrackingNumber = null,
+    string? TrackingUrl = null,
+    DateTime? PickupScheduledDate = null,
+    DateTime? PickedUpOn = null,
+    DateTime? DeliveredToWarehouseOn = null,
+    DateTime? ReceivedOn = null,
+    DateTime? InspectedOn = null);
 
 public sealed record CustomerReturnItemDetailDto(
     Guid Id,

@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   Ban,
   Loader2,
+  Printer,
+  Truck,
+  ExternalLink,
 } from "lucide-react";
 import { formatDateTime, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
@@ -22,6 +25,7 @@ import {
   InspectionOutcome,
   type CustomerReturnDetails,
 } from "../types";
+import { ReturnPackingSlipModal } from "./ReturnPackingSlipModal";
 
 interface CustomerReturnDetailModalProps {
   returnId: string | null;
@@ -42,6 +46,7 @@ export function CustomerReturnDetailModal({
   const [isCancelling, setIsCancelling] = useState(false);
   const [actionError, setActionError] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [showPackingSlip, setShowPackingSlip] = useState(false);
 
   const modalDescId = useId();
 
@@ -124,16 +129,32 @@ export function CustomerReturnDetailModal({
               </div>
             </div>
 
-            <Dialog.Close asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label="Close"
-                className="h-8 w-8 p-0 rounded-full"
-              >
-                <X size={14} />
-              </Button>
-            </Dialog.Close>
+            <div className="flex items-center gap-2">
+              {details &&
+                details.status !== ReturnStatus.Requested &&
+                details.status !== ReturnStatus.Rejected &&
+                details.status !== ReturnStatus.Cancelled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPackingSlip(true)}
+                    className="gap-1.5 text-xs! border-ink/20 hover:border-oxblood hover:text-oxblood"
+                  >
+                    <Printer size={13} />
+                    <span>Print RMA Slip</span>
+                  </Button>
+                )}
+              <Dialog.Close asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Close"
+                  className="h-8 w-8 p-0 rounded-full"
+                >
+                  <X size={14} />
+                </Button>
+              </Dialog.Close>
+            </div>
           </div>
 
           {/* Body */}
@@ -197,6 +218,68 @@ export function CustomerReturnDetailModal({
                     )}
                   </div>
                 )}
+
+                {/* Reverse Logistics Tracking Card */}
+                {details &&
+                  (details.courierName ||
+                    details.trackingNumber ||
+                    details.status === ReturnStatus.PickupScheduled ||
+                    details.status === ReturnStatus.InTransit ||
+                    details.status === ReturnStatus.DeliveredToWarehouse) && (
+                    <div className="rounded-xl border border-teal/20 bg-teal/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-medium text-xs! sm:text-sm! text-teal">
+                          <Truck size={16} />
+                          <span>Reverse Courier & Tracking</span>
+                        </div>
+                        <Badge variant="teal">
+                          {ReturnStatusLabels[details.status]}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs!">
+                        <div>
+                          <span className="text-[10px]! uppercase text-ink-soft block font-medium">Carrier</span>
+                          <span className="font-medium text-ink">{details.courierName || "To be scheduled"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px]! uppercase text-ink-soft block font-medium">Reverse AWB</span>
+                          {details.trackingNumber ? (
+                            <div className="flex items-center gap-1 font-mono font-bold text-ink">
+                              <span>{details.trackingNumber}</span>
+                              {details.trackingUrl && (
+                                <a
+                                  href={details.trackingUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-teal hover:underline inline-flex items-center ml-1"
+                                  title="Track Package"
+                                >
+                                  <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-ink-soft">Pending</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px]! uppercase text-ink-soft block font-medium">
+                            {details.deliveredToWarehouseOn ? "Delivered to Hub" : details.pickedUpOn ? "Picked Up On" : "Pickup Date"}
+                          </span>
+                          <span className="font-medium text-ink">
+                            {details.deliveredToWarehouseOn
+                              ? formatDateTime(details.deliveredToWarehouseOn)
+                              : details.pickedUpOn
+                              ? formatDateTime(details.pickedUpOn)
+                              : details.pickupScheduledDate
+                              ? formatDateTime(details.pickupScheduledDate)
+                              : "Scheduled soon"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 {/* Request Overview Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-ink/10 bg-ivory-dim p-4">
@@ -393,6 +476,35 @@ export function CustomerReturnDetailModal({
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
+      )}
+
+      {/* Return Packing Slip Printable Modal */}
+      {details && (
+        <ReturnPackingSlipModal
+          open={showPackingSlip}
+          onOpenChange={setShowPackingSlip}
+          data={{
+            returnNumber: details.returnNumber,
+            orderNumber: details.orderNumber,
+            createdOn: details.createdOn,
+            approvedOn: details.approvedOn,
+            courierName: details.courierName,
+            trackingNumber: details.trackingNumber,
+            pickupScheduledDate: details.pickupScheduledDate,
+            items: details.items.map((i) => ({
+              id: i.id,
+              productName: i.productName,
+              variantName: i.variantName,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              refundAmount: i.refundAmount,
+            })),
+            totalRefundAmount: details.totalRefundAmount,
+            reverseShippingDeduction: details.reverseShippingDeduction,
+            netRefundAmount: details.netRefundAmount,
+            reasonText: ReturnReasonLabels[details.reason],
+          }}
+        />
       )}
     </Dialog.Root>
   );

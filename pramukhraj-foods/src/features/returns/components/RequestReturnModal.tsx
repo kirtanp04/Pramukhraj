@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { returnsApi } from "../api/returns.api";
 import {
   ReturnReason,
@@ -332,14 +333,15 @@ export function RequestReturnModal({
                     {eligibility.items.map((item) => {
                       const isSelected = Boolean(selectedItems[item.orderItemId]);
                       const currentQty = selectedItems[item.orderItemId] || 1;
-                      const isReturnable = item.returnableQuantity > 0;
+                      const isProductReturnable = item.isReturnable ?? true;
+                      const isReturnable = isProductReturnable && item.returnableQuantity > 0;
 
                       return (
                         <div
                           key={item.orderItemId}
                           className={`rounded-xl border p-3 transition-colors ${
                             !isReturnable
-                              ? "border-ink/5 bg-ink/5 opacity-50 cursor-not-allowed"
+                              ? "border-ink/5 bg-ink/5 opacity-60 cursor-not-allowed"
                               : isSelected
                               ? "border-oxblood/40 bg-oxblood/5"
                               : "border-ink/10 bg-ivory hover:border-ink/20"
@@ -352,7 +354,7 @@ export function RequestReturnModal({
                                 disabled={!isReturnable}
                                 checked={isSelected}
                                 onChange={() => toggleItem(item.orderItemId)}
-                                className="mt-1 h-4 w-4 rounded border-ink/20 text-oxblood focus:ring-oxblood"
+                                className="mt-1 h-4 w-4 rounded border-ink/20 text-oxblood focus:ring-oxblood disabled:opacity-40"
                               />
                               <div>
                                 <h5 className="font-medium text-ink text-xs! sm:text-sm!">
@@ -361,14 +363,23 @@ export function RequestReturnModal({
                                 <p className="text-[11px]! text-ink-soft">
                                   Variant: {item.variantName} • Unit Price: {formatINR(item.unitPrice)}
                                 </p>
-                                <p className="text-[11px]! text-emerald-700 mt-0.5">
-                                  Refund per unit: {formatINR(item.refundPerItem)}
-                                </p>
-                                {!isReturnable && (
+                                {isReturnable && (
+                                  <p className="text-[11px]! text-emerald-700 mt-0.5">
+                                    Refund per unit: {formatINR(item.refundPerItem)}
+                                  </p>
+                                )}
+                                {!isProductReturnable ? (
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <Badge variant="oxblood" className="text-[10px]!">Non-Returnable</Badge>
+                                    <span className="text-[11px]! text-oxblood">
+                                      {item.nonReturnableReason || "Non-returnable consumable item"}
+                                    </span>
+                                  </div>
+                                ) : item.returnableQuantity <= 0 ? (
                                   <p className="text-[11px]! text-oxblood mt-0.5 font-medium">
                                     Already returned in full
                                   </p>
-                                )}
+                                ) : null}
                               </div>
                             </div>
 

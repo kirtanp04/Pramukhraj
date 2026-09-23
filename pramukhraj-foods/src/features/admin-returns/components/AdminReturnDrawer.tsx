@@ -11,6 +11,10 @@ import {
   ShieldAlert,
   Loader2,
   X,
+  Truck,
+  Navigation,
+  ExternalLink,
+  Printer,
 } from "lucide-react";
 import { formatDateTime, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
@@ -27,6 +31,7 @@ import {
   InspectionOutcome,
   InspectionOutcomeLabels,
 } from "@/features/returns/types";
+import { ReturnPackingSlipModal } from "@/features/returns/components/ReturnPackingSlipModal";
 import type {
   AdminReturnDetails,
   AdminItemInspectionInput,
@@ -55,6 +60,9 @@ export function AdminReturnDrawer({
   const [rejectOpen, setRejectOpen] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [schedulePickupOpen, setSchedulePickupOpen] = useState(false);
+  const [updateTrackingOpen, setUpdateTrackingOpen] = useState(false);
+  const [showPackingSlip, setShowPackingSlip] = useState(false);
 
   // Form states
   const [reverseDeduction, setReverseDeduction] = useState<number>(0);
@@ -63,6 +71,15 @@ export function AdminReturnDrawer({
   const [inspectionNotes, setInspectionNotes] = useState("");
   const [inspectionItems, setInspectionItems] = useState<AdminItemInspectionInput[]>([]);
   const [refundSpeed, setRefundSpeed] = useState<string>("normal");
+
+  // Reverse Logistics Form state
+  const [courierName, setCourierName] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
+  const [pickupScheduledDate, setPickupScheduledDate] = useState("");
+  const [pickupNotes, setPickupNotes] = useState("");
+  const [targetTrackingStatus, setTargetTrackingStatus] = useState<ReturnStatus>(ReturnStatus.InTransit);
+  const [trackingNotes, setTrackingNotes] = useState("");
 
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -87,6 +104,14 @@ export function AdminReturnDrawer({
               outcome: it.inspectionStatus === InspectionOutcome.Pending ? InspectionOutcome.Passed : it.inspectionStatus,
               restockInventory: it.restockInventory ?? true,
             }))
+          );
+          setCourierName(res.courierName || "");
+          setTrackingNumber(res.trackingNumber || "");
+          setTrackingUrl(res.trackingUrl || "");
+          setPickupScheduledDate(
+            res.pickupScheduledDate
+              ? new Date(res.pickupScheduledDate).toISOString().slice(0, 16)
+              : ""
           );
         } else {
           setError("Return request details not found.");
@@ -199,6 +224,61 @@ export function AdminReturnDrawer({
     }
   };
 
+  const handleSchedulePickup = async () => {
+    if (!returnId) return;
+    if (!courierName.trim() || !trackingNumber.trim()) {
+      setActionError("Please provide both courier name and tracking/AWB number.");
+      return;
+    }
+    setIsProcessingAction(true);
+    setActionError("");
+    try {
+      const res = await adminReturnsApi.schedulePickup(returnId, {
+        courierName: courierName.trim(),
+        trackingNumber: trackingNumber.trim(),
+        trackingUrl: trackingUrl.trim() || undefined,
+        pickupScheduledDate: pickupScheduledDate ? new Date(pickupScheduledDate).toISOString() : undefined,
+        notes: pickupNotes.trim() || undefined,
+      });
+      if (res && res.success) {
+        setSchedulePickupOpen(false);
+        fetchDetails();
+        if (onUpdated) onUpdated();
+      } else {
+        setActionError(res?.message || "Failed to schedule reverse pickup.");
+      }
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Failed to schedule reverse pickup.");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleUpdateTracking = async (statusOverride?: ReturnStatus) => {
+    if (!returnId) return;
+    const statusToApply = statusOverride ?? targetTrackingStatus;
+    setIsProcessingAction(true);
+    setActionError("");
+    try {
+      const res = await adminReturnsApi.updateTracking(returnId, {
+        status: statusToApply,
+        notes: trackingNotes.trim() || undefined,
+      });
+      if (res && res.success) {
+        setUpdateTrackingOpen(false);
+        setTrackingNotes("");
+        fetchDetails();
+        if (onUpdated) onUpdated();
+      } else {
+        setActionError(res?.message || "Failed to update tracking status.");
+      }
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Tracking update failed.");
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   return (
     <>
       <AdminDrawer
@@ -233,6 +313,21 @@ export function AdminReturnDrawer({
 
               {/* Action buttons based on status */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Print RMA Slip */}
+                {details.status !== ReturnStatus.Requested &&
+                  details.status !== ReturnStatus.Rejected &&
+                  details.status !== ReturnStatus.Cancelled && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowPackingSlip(true)}
+                      className="text-xs! gap-1.5"
+                    >
+                      <Printer size={13} />
+                      <span>Print RMA Slip</span>
+                    </Button>
+                  )}
+
                 {details.status === ReturnStatus.Requested && (
                   <>
                     <Button
@@ -262,12 +357,60 @@ export function AdminReturnDrawer({
                   </>
                 )}
 
+                {details.status === ReturnStatus.Approved && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      setActionError("");
+                      setSchedulePickupOpen(true);
+                    }}
+                    className="text-xs! gap-1.5 bg-teal hover:bg-teal-deep text-white"
+                  >
+                    <Truck size={13} />
+                    <span>Schedule Pickup</span>
+                  </Button>
+                )}
+
+                {details.status === ReturnStatus.PickupScheduled && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      setActionError("");
+                      setTargetTrackingStatus(ReturnStatus.InTransit);
+                      setUpdateTrackingOpen(true);
+                    }}
+                    className="text-xs! gap-1.5 bg-teal hover:bg-teal-deep text-white"
+                  >
+                    <Navigation size={13} />
+                    <span>Mark In Transit</span>
+                  </Button>
+                )}
+
+                {details.status === ReturnStatus.InTransit && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      setActionError("");
+                      setTargetTrackingStatus(ReturnStatus.DeliveredToWarehouse);
+                      setUpdateTrackingOpen(true);
+                    }}
+                    className="text-xs! gap-1.5 bg-teal hover:bg-teal-deep text-white"
+                  >
+                    <Truck size={13} />
+                    <span>Mark Delivered</span>
+                  </Button>
+                )}
+
                 {(details.status === ReturnStatus.Approved ||
+                  details.status === ReturnStatus.PickupScheduled ||
                   details.status === ReturnStatus.InTransit ||
                   details.status === ReturnStatus.DeliveredToWarehouse) && (
                   <Button
                     size="sm"
-                    variant="primary"
+                    variant={details.status === ReturnStatus.DeliveredToWarehouse ? "primary" : "outline"}
                     onClick={() => {
                       setActionError("");
                       setInspectOpen(true);
@@ -295,6 +438,102 @@ export function AdminReturnDrawer({
                 )}
               </div>
             </div>
+
+            {/* Reverse Logistics Tracking Overview Card */}
+            {(details.courierName ||
+              details.trackingNumber ||
+              details.status === ReturnStatus.PickupScheduled ||
+              details.status === ReturnStatus.InTransit ||
+              details.status === ReturnStatus.DeliveredToWarehouse) && (
+              <div className="rounded-2xl border border-teal/20 bg-teal/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-medium text-xs! sm:text-sm! text-teal">
+                    <Truck size={16} />
+                    <span>Reverse Courier & Tracking Logistics</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActionError("");
+                        setSchedulePickupOpen(true);
+                      }}
+                      className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
+                    >
+                      {details.courierName ? "Edit Courier" : "Assign Courier"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActionError("");
+                        setTargetTrackingStatus(
+                          details.status === ReturnStatus.PickupScheduled
+                            ? ReturnStatus.InTransit
+                            : ReturnStatus.DeliveredToWarehouse
+                        );
+                        setUpdateTrackingOpen(true);
+                      }}
+                      className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
+                    >
+                      Update Status
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs!">
+                  <div>
+                    <span className="text-ink-soft block text-[11px]! uppercase font-medium">Courier / Carrier</span>
+                    <span className="font-medium text-ink">{details.courierName || "Unassigned"}</span>
+                  </div>
+                  <div>
+                    <span className="text-ink-soft block text-[11px]! uppercase font-medium">Reverse AWB</span>
+                    {details.trackingNumber ? (
+                      <div className="flex items-center gap-1 font-mono font-bold text-ink">
+                        <span>{details.trackingNumber}</span>
+                        {details.trackingUrl && (
+                          <a
+                            href={details.trackingUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-teal hover:underline inline-flex items-center ml-1"
+                            title="Open tracking link"
+                          >
+                            <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-ink-soft">Pending generation</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-ink-soft block text-[11px]! uppercase font-medium">Pickup Scheduled</span>
+                    <span className="font-medium text-ink">
+                      {details.pickupScheduledDate ? formatDateTime(details.pickupScheduledDate) : "Not scheduled"}
+                    </span>
+                  </div>
+                </div>
+
+                {(details.pickedUpOn || details.deliveredToWarehouseOn) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs! pt-2 border-t border-teal/10">
+                    {details.pickedUpOn && (
+                      <div>
+                        <span className="text-ink-soft block text-[11px]! uppercase font-medium">Carrier Picked Up</span>
+                        <span className="font-medium text-ink">{formatDateTime(details.pickedUpOn)}</span>
+                      </div>
+                    )}
+                    {details.deliveredToWarehouseOn && (
+                      <div>
+                        <span className="text-ink-soft block text-[11px]! uppercase font-medium">Delivered to Warehouse</span>
+                        <span className="font-medium text-ink">{formatDateTime(details.deliveredToWarehouseOn)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Customer Information */}
             <div className="rounded-2xl border border-ink/10 bg-ivory p-4 space-y-3">
@@ -895,6 +1134,238 @@ export function AdminReturnDrawer({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {/* ─── SCHEDULE REVERSE PICKUP MODAL ───────────────────────── */}
+      <Dialog.Root open={schedulePickupOpen} onOpenChange={setSchedulePickupOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
+          <Dialog.Content
+            aria-describedby={modalDescId}
+            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+              <div className="flex items-center gap-2 text-teal">
+                <Truck size={18} />
+                <Dialog.Title className="font-display font-semibold text-ink text-base!">
+                  Schedule Reverse Pickup
+                </Dialog.Title>
+              </div>
+              <Dialog.Close asChild>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-full">
+                  <X size={13} />
+                </Button>
+              </Dialog.Close>
+            </div>
+
+            <div className="space-y-3.5 py-4 text-xs!">
+              {actionError && (
+                <div className="rounded-lg bg-oxblood/10 p-2.5 text-oxblood">
+                  {actionError}
+                </div>
+              )}
+
+              <p id={modalDescId} className="text-ink-soft text-[11px]!">
+                Assign the reverse logistics courier partner and generate or input the tracking AWB code.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">
+                  Courier / Logistics Partner <span className="text-oxblood">*</span>
+                </label>
+                <input
+                  type="text"
+                  list="carrier-suggestions"
+                  value={courierName}
+                  onChange={(e) => setCourierName(e.target.value)}
+                  placeholder="e.g. Blue Dart, Delhivery, DTDC, Xpressbees"
+                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                />
+                <datalist id="carrier-suggestions">
+                  <option value="Blue Dart" />
+                  <option value="Delhivery" />
+                  <option value="DTDC Express" />
+                  <option value="Xpressbees" />
+                  <option value="Shadowfax" />
+                  <option value="Ekart Logistics" />
+                </datalist>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">
+                  Reverse AWB / Tracking Code <span className="text-oxblood">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  placeholder="e.g. BD123456789IN"
+                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 font-mono text-ink outline-none focus:border-oxblood text-xs!"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">Tracking Web URL (Optional)</label>
+                <input
+                  type="url"
+                  value={trackingUrl}
+                  onChange={(e) => setTrackingUrl(e.target.value)}
+                  placeholder="https://track.carrier.com/..."
+                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">Scheduled Pickup Date &amp; Time (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={pickupScheduledDate}
+                  onChange={(e) => setPickupScheduledDate(e.target.value)}
+                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">Special Instructions / Dispatch Notes</label>
+                <textarea
+                  rows={2}
+                  value={pickupNotes}
+                  onChange={(e) => setPickupNotes(e.target.value)}
+                  placeholder="Package notes, pickup window details..."
+                  className="w-full rounded-xl border border-ink/15 bg-ivory p-2.5 text-ink outline-none focus:border-oxblood resize-none text-xs!"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink/10 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSchedulePickupOpen(false)}
+                className="text-xs!"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSchedulePickup}
+                disabled={isProcessingAction}
+                className="text-xs! bg-teal hover:bg-teal-deep text-white"
+              >
+                {isProcessingAction ? "Scheduling..." : "Confirm Schedule"}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* ─── UPDATE REVERSE TRACKING STATUS MODAL ─────────────────── */}
+      <Dialog.Root open={updateTrackingOpen} onOpenChange={setUpdateTrackingOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
+          <Dialog.Content
+            aria-describedby={modalDescId}
+            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+              <div className="flex items-center gap-2 text-teal">
+                <Navigation size={18} />
+                <Dialog.Title className="font-display font-semibold text-ink text-base!">
+                  Update Reverse Tracking Status
+                </Dialog.Title>
+              </div>
+              <Dialog.Close asChild>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-full">
+                  <X size={13} />
+                </Button>
+              </Dialog.Close>
+            </div>
+
+            <div className="space-y-4 py-4 text-xs!">
+              {actionError && (
+                <div className="rounded-lg bg-oxblood/10 p-2.5 text-oxblood">
+                  {actionError}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">New Tracking Status</label>
+                <select
+                  value={targetTrackingStatus}
+                  onChange={(e) => setTargetTrackingStatus(Number(e.target.value) as ReturnStatus)}
+                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-xs! font-medium outline-none focus:border-oxblood"
+                >
+                  <option value={ReturnStatus.InTransit}>In Transit (Carrier Picked Up Package)</option>
+                  <option value={ReturnStatus.DeliveredToWarehouse}>Delivered to Warehouse (Arrived at Hub)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium text-ink">Tracking / Milestones Note (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={trackingNotes}
+                  onChange={(e) => setTrackingNotes(e.target.value)}
+                  placeholder="e.g. Scanned at Ahmedabad hub, package in good physical shape..."
+                  className="w-full rounded-xl border border-ink/15 bg-ivory p-2.5 text-ink outline-none focus:border-oxblood resize-none text-xs!"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink/10 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUpdateTrackingOpen(false)}
+                className="text-xs!"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleUpdateTracking()}
+                disabled={isProcessingAction}
+                className="text-xs! bg-teal hover:bg-teal-deep text-white"
+              >
+                {isProcessingAction ? "Updating..." : "Update Status"}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* ─── RETURN PACKING SLIP PRINTABLE MODAL ────────────────── */}
+      {details && (
+        <ReturnPackingSlipModal
+          open={showPackingSlip}
+          onOpenChange={setShowPackingSlip}
+          data={{
+            returnNumber: details.returnNumber,
+            orderNumber: details.orderNumber,
+            createdOn: details.createdOn,
+            approvedOn: details.approvedOn,
+            courierName: details.courierName,
+            trackingNumber: details.trackingNumber,
+            pickupScheduledDate: details.pickupScheduledDate,
+            customerName: details.customerName,
+            customerEmail: details.customerEmail,
+            customerPhone: details.customerPhone,
+            items: details.items.map((i) => ({
+              id: i.id,
+              productName: i.productName,
+              variantName: i.variantName,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              refundAmount: i.refundAmount,
+            })),
+            totalRefundAmount: details.totalRefundAmount,
+            reverseShippingDeduction: details.reverseShippingDeduction,
+            netRefundAmount: details.netRefundAmount,
+            reasonText: ReturnReasonLabels[details.reason],
+          }}
+        />
+      )}
 
       {/* Lightbox for Image Preview */}
       {selectedPhoto && (

@@ -57,6 +57,21 @@ public sealed class ReturnRequest
 
     public DateTime? CompletedOn { get; set; }
 
+    [MaxLength(100)]
+    public string? CourierName { get; set; }
+
+    [MaxLength(100)]
+    public string? TrackingNumber { get; set; }
+
+    [MaxLength(500)]
+    public string? TrackingUrl { get; set; }
+
+    public DateTime? PickupScheduledDate { get; set; }
+
+    public DateTime? PickedUpOn { get; set; }
+
+    public DateTime? DeliveredToWarehouseOn { get; set; }
+
     [MaxLength(64), ConcurrencyCheck]
     public string ConcurrencyStamp { get; set; } = Guid.NewGuid().ToString("N");
 

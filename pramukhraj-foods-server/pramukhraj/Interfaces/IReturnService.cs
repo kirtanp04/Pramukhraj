@@ -17,6 +17,8 @@ public interface IReturnService
     Task<ApiResponse<AdminReturnDetailsResponse>> GetAdminReturnDetailsAsync(Guid returnId, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> ApproveReturnAsync(Guid returnId, AdminApproveReturnRequest request, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> RejectReturnAsync(Guid returnId, AdminRejectReturnRequest request, CancellationToken ct = default);
+    Task<ApiResponse<AdminReturnDetailsResponse>> SchedulePickupAsync(Guid returnId, ScheduleReversePickupRequest request, CancellationToken ct = default);
+    Task<ApiResponse<AdminReturnDetailsResponse>> UpdateReverseTrackingStatusAsync(Guid returnId, UpdateReverseTrackingRequest request, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> InspectReturnAsync(Guid returnId, AdminInspectReturnRequest request, CancellationToken ct = default);
 }
 

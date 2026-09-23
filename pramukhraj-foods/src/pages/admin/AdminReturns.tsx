@@ -30,6 +30,7 @@ const initialCounts: AdminReturnStatusCounts = {
   requested: 0,
   approved: 0,
   rejected: 0,
+  pickupScheduled: 0,
   inTransit: 0,
   deliveredToWarehouse: 0,
   inspectionPassed: 0,
@@ -264,6 +265,21 @@ export function AdminReturns() {
           }`}
         >
           Approved ({statusCounts.approved})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter(String(ReturnStatus.PickupScheduled));
+            setPage(1);
+          }}
+          className={`rounded-full px-3 py-1 text-xs! font-medium transition-colors ${
+            statusFilter === String(ReturnStatus.PickupScheduled)
+              ? "bg-teal text-white"
+              : "bg-ivory-dim text-ink-soft hover:bg-ink/5"
+          }`}
+        >
+          Pickup Scheduled ({statusCounts.pickupScheduled ?? 0})
         </button>
 
         <button

@@ -101,6 +101,12 @@ export interface AdminReturnDetails {
   media: CustomerReturnMedia[];
   timeline: AdminReturnTimeline[];
   refund: AdminRefundDetail | null;
+  courierName?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  pickupScheduledDate?: string | null;
+  pickedUpOn?: string | null;
+  deliveredToWarehouseOn?: string | null;
 }
 
 export interface AdminReturnStatusCounts {
@@ -108,6 +114,7 @@ export interface AdminReturnStatusCounts {
   requested: number;
   approved: number;
   rejected: number;
+  pickupScheduled: number;
   inTransit: number;
   deliveredToWarehouse: number;
   inspectionPassed: number;
@@ -148,4 +155,18 @@ export interface AdminInspectReturnPayload {
 export interface AdminProcessRefundPayload {
   refundSpeed?: "normal" | "optimum" | string;
 }
+
+export interface ScheduleReversePickupRequest {
+  courierName: string;
+  trackingNumber: string;
+  trackingUrl?: string;
+  pickupScheduledDate?: string;
+  notes?: string;
+}
+
+export interface UpdateReverseTrackingRequest {
+  status: ReturnStatus;
+  notes?: string;
+}
+
 

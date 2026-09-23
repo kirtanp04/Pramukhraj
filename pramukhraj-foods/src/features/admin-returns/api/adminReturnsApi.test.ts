@@ -48,6 +48,12 @@ describe("Admin Returns ApiPath generation", () => {
     expect(ApiPath.admin.returns.processRefund(dummyReturnId)).toBe(
       `admin/returns/${dummyReturnId}/process-refund`
     );
+    expect(ApiPath.admin.returns.schedulePickup(dummyReturnId)).toBe(
+      `admin/returns/${dummyReturnId}/schedule-pickup`
+    );
+    expect(ApiPath.admin.returns.updateTracking(dummyReturnId)).toBe(
+      `admin/returns/${dummyReturnId}/update-tracking`
+    );
   });
 });
 

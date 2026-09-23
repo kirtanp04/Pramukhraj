@@ -8,6 +8,8 @@ import type {
   AdminRejectReturnPayload,
   AdminInspectReturnPayload,
   AdminProcessRefundPayload,
+  ScheduleReversePickupRequest,
+  UpdateReverseTrackingRequest,
 } from "../types";
 
 export const adminReturnsApi = {
@@ -38,6 +40,18 @@ export const adminReturnsApi = {
   processRefund: (returnId: string, payload: AdminProcessRefundPayload) =>
     apiPostResponse<AdminReturnDetails>(
       ApiPath.admin.returns.processRefund(returnId),
+      payload
+    ),
+
+  schedulePickup: (returnId: string, payload: ScheduleReversePickupRequest) =>
+    apiPostResponse<AdminReturnDetails>(
+      ApiPath.admin.returns.schedulePickup(returnId),
+      payload
+    ),
+
+  updateTracking: (returnId: string, payload: UpdateReverseTrackingRequest) =>
+    apiPostResponse<AdminReturnDetails>(
+      ApiPath.admin.returns.updateTracking(returnId),
       payload
     ),
 };

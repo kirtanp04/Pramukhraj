@@ -277,7 +277,7 @@ namespace pramukhraj.Database
             {
                 b.Property(c => c.CreatedOn).HasDefaultValueSql("now()");
                 b.Property(c => c.UpdatedOn).HasDefaultValueSql("now()");
-
+                b.Property(c => c.IsReturnable).HasDefaultValue(true);
             });
 
             // --- Product Configurations ---
@@ -285,6 +285,7 @@ namespace pramukhraj.Database
             {
                 b.Property(p => p.CreatedOn).HasDefaultValueSql("now()");
                 b.Property(p => p.UpdatedOn).HasDefaultValueSql("now()");
+                b.Property(p => p.IsReturnable).HasDefaultValue(true);
 
                 // Prevent accidentally deleting all products if a category is deleted
                 b.HasOne(p => p.Category)

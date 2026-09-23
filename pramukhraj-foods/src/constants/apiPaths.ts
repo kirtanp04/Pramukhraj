@@ -348,6 +348,8 @@ const AdminApiPaths = {
     reject: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/reject`,
     inspect: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/inspect`,
     processRefund: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/process-refund`,
+    schedulePickup: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/schedule-pickup`,
+    updateTracking: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/update-tracking`,
   },
 };
 
