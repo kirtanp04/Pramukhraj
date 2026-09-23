@@ -323,6 +323,12 @@ namespace pramukhraj.Extensions
             services.AddScoped<IAdminShipmentService, AdminShipmentService>();
             services.AddScoped<IAdminLogService, AdminLogService>();
             services.AddScoped<IAdminSalesService, AdminSalesService>();
+            services.AddScoped<IReturnService, ReturnService>();
+            services.AddHttpClient<IRefundService, RefundService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.razorpay.com/v1/");
+                client.Timeout = TimeSpan.FromSeconds(20);
+            });
             services.AddScoped<IServiceManager, ServiceManager>();
 
             return services;
@@ -374,6 +380,10 @@ namespace pramukhraj.Extensions
             services.AddTransient<FluentValidation.IValidator<StoreSettingsWriteRequest>, Validators.Settings.StoreSettingsWriteRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<DTOs.Order.PlaceOrderRequest>, Validators.Order.PlaceOrderRequestValidator>();
             services.AddTransient<FluentValidation.IValidator<DTOs.Order.VerifyRazorpayPaymentRequest>, Validators.Order.VerifyRazorpayPaymentRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Return.CreateReturnRequest>, Validators.Return.CreateReturnRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Return.AdminApproveReturnRequest>, Validators.Return.AdminApproveReturnRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Return.AdminRejectReturnRequest>, Validators.Return.AdminRejectReturnRequestValidator>();
+            services.AddTransient<FluentValidation.IValidator<DTOs.Return.AdminInspectReturnRequest>, Validators.Return.AdminInspectReturnRequestValidator>();
             services.AddScoped<IValidatorManager, ValidatorManager>();
 
             return services;

@@ -53,4 +53,8 @@ public interface IValidatorManager
     IValidator<StoreSettingsWriteRequest> StoreSettingsWriteRequest { get; }
     IValidator<PlaceOrderRequest> PlaceOrderRequest { get; }
     IValidator<VerifyRazorpayPaymentRequest> VerifyRazorpayPaymentRequest { get; }
+    IValidator<pramukhraj.DTOs.Return.CreateReturnRequest> CreateReturnRequest { get; }
+    IValidator<pramukhraj.DTOs.Return.AdminApproveReturnRequest> AdminApproveReturnRequest { get; }
+    IValidator<pramukhraj.DTOs.Return.AdminRejectReturnRequest> AdminRejectReturnRequest { get; }
+    IValidator<pramukhraj.DTOs.Return.AdminInspectReturnRequest> AdminInspectReturnRequest { get; }
 }

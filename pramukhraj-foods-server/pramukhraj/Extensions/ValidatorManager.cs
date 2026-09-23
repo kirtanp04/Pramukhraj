@@ -54,7 +54,11 @@ public sealed class ValidatorManager : IValidatorManager
         IValidator<ApplyCheckoutCouponRequest> applyCheckoutCouponRequest,
         IValidator<StoreSettingsWriteRequest> storeSettingsWriteRequest,
         IValidator<PlaceOrderRequest> placeOrderRequest,
-        IValidator<VerifyRazorpayPaymentRequest> verifyRazorpayPaymentRequest)
+        IValidator<VerifyRazorpayPaymentRequest> verifyRazorpayPaymentRequest,
+        IValidator<pramukhraj.DTOs.Return.CreateReturnRequest> createReturnRequest,
+        IValidator<pramukhraj.DTOs.Return.AdminApproveReturnRequest> adminApproveReturnRequest,
+        IValidator<pramukhraj.DTOs.Return.AdminRejectReturnRequest> adminRejectReturnRequest,
+        IValidator<pramukhraj.DTOs.Return.AdminInspectReturnRequest> adminInspectReturnRequest)
     {
         RegisterRequest = registerRequest;
         LoginRequest = loginRequest;
@@ -90,6 +94,10 @@ public sealed class ValidatorManager : IValidatorManager
         StoreSettingsWriteRequest = storeSettingsWriteRequest;
         PlaceOrderRequest = placeOrderRequest;
         VerifyRazorpayPaymentRequest = verifyRazorpayPaymentRequest;
+        CreateReturnRequest = createReturnRequest;
+        AdminApproveReturnRequest = adminApproveReturnRequest;
+        AdminRejectReturnRequest = adminRejectReturnRequest;
+        AdminInspectReturnRequest = adminInspectReturnRequest;
     }
 
     public IValidator<RegisterRequest> RegisterRequest { get; }
@@ -126,4 +134,8 @@ public sealed class ValidatorManager : IValidatorManager
     public IValidator<StoreSettingsWriteRequest> StoreSettingsWriteRequest { get; }
     public IValidator<PlaceOrderRequest> PlaceOrderRequest { get; }
     public IValidator<VerifyRazorpayPaymentRequest> VerifyRazorpayPaymentRequest { get; }
+    public IValidator<pramukhraj.DTOs.Return.CreateReturnRequest> CreateReturnRequest { get; }
+    public IValidator<pramukhraj.DTOs.Return.AdminApproveReturnRequest> AdminApproveReturnRequest { get; }
+    public IValidator<pramukhraj.DTOs.Return.AdminRejectReturnRequest> AdminRejectReturnRequest { get; }
+    public IValidator<pramukhraj.DTOs.Return.AdminInspectReturnRequest> AdminInspectReturnRequest { get; }
 }
