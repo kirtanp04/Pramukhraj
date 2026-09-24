@@ -14,6 +14,7 @@ using pramukhraj.Entities.Checkout;
 using pramukhraj.Entities.Settings;
 using pramukhraj.Entities.Order;
 using pramukhraj.Entities.Shipment;
+using pramukhraj.Entities.Return;
 
 namespace pramukhraj.Database
 {
@@ -64,6 +65,11 @@ namespace pramukhraj.Database
         public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
         public DbSet<Shipment> Shipments => Set<Shipment>();
         public DbSet<ShipmentActivity> ShipmentActivities => Set<ShipmentActivity>();
+        public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
+        public DbSet<ReturnItem> ReturnItems => Set<ReturnItem>();
+        public DbSet<ReturnMedia> ReturnMedia => Set<ReturnMedia>();
+        public DbSet<ReturnStatusHistory> ReturnStatusHistories => Set<ReturnStatusHistory>();
+        public DbSet<RefundRecord> RefundRecords => Set<RefundRecord>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -271,7 +277,7 @@ namespace pramukhraj.Database
             {
                 b.Property(c => c.CreatedOn).HasDefaultValueSql("now()");
                 b.Property(c => c.UpdatedOn).HasDefaultValueSql("now()");
-
+                b.Property(c => c.IsReturnable).HasDefaultValue(true);
             });
 
             // --- Product Configurations ---
@@ -279,6 +285,7 @@ namespace pramukhraj.Database
             {
                 b.Property(p => p.CreatedOn).HasDefaultValueSql("now()");
                 b.Property(p => p.UpdatedOn).HasDefaultValueSql("now()");
+                b.Property(p => p.IsReturnable).HasDefaultValue(true);
 
                 // Prevent accidentally deleting all products if a category is deleted
                 b.HasOne(p => p.Category)
@@ -687,6 +694,89 @@ namespace pramukhraj.Database
                 provider.HasIndex(x => x.ProviderKey)
                     .IsUnique()
                     .HasDatabaseName("IX_ProviderCredentials_ProviderKey");
+            });
+
+            builder.Entity<ReturnRequest>(entity =>
+            {
+                entity.ToTable("ReturnRequests");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.ReturnNumber).HasMaxLength(40).IsRequired();
+                entity.HasIndex(x => x.ReturnNumber).IsUnique().HasDatabaseName("IX_ReturnRequests_ReturnNumber");
+                entity.HasIndex(x => x.OrderId).HasDatabaseName("IX_ReturnRequests_OrderId");
+                entity.HasIndex(x => new { x.CustomerId, x.CreatedOn }).HasDatabaseName("IX_ReturnRequests_CustomerId_CreatedOn");
+                entity.HasIndex(x => x.Status).HasDatabaseName("IX_ReturnRequests_Status");
+
+                entity.Property(x => x.TotalRefundAmount).HasPrecision(18, 2);
+                entity.Property(x => x.ReverseShippingDeduction).HasPrecision(18, 2);
+                entity.Property(x => x.NetRefundAmount).HasPrecision(18, 2);
+
+                entity.HasOne(x => x.Order)
+                    .WithMany(o => o.Returns)
+                    .HasForeignKey(x => x.OrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(x => x.Items)
+                    .WithOne(i => i.ReturnRequest)
+                    .HasForeignKey(i => i.ReturnRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(x => x.Media)
+                    .WithOne(m => m.ReturnRequest)
+                    .HasForeignKey(m => m.ReturnRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(x => x.StatusHistory)
+                    .WithOne(h => h.ReturnRequest)
+                    .HasForeignKey(h => h.ReturnRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(x => x.Refund)
+                    .WithOne(r => r.ReturnRequest)
+                    .HasForeignKey<RefundRecord>(r => r.ReturnRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ReturnItem>(entity =>
+            {
+                entity.ToTable("ReturnItems");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.UnitPrice).HasPrecision(18, 2);
+                entity.Property(x => x.RefundAmount).HasPrecision(18, 2);
+
+                entity.HasOne(x => x.OrderItem)
+                    .WithMany()
+                    .HasForeignKey(x => x.OrderItemId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<ReturnMedia>(entity =>
+            {
+                entity.ToTable("ReturnMedia");
+                entity.HasKey(x => x.Id);
+            });
+
+            builder.Entity<ReturnStatusHistory>(entity =>
+            {
+                entity.ToTable("ReturnStatusHistories");
+                entity.HasKey(x => x.Id);
+            });
+
+            builder.Entity<RefundRecord>(entity =>
+            {
+                entity.ToTable("RefundRecords");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.IdempotencyKey).IsUnique().HasDatabaseName("IX_RefundRecords_IdempotencyKey");
+                entity.HasIndex(x => x.ProviderRefundId).IsUnique().HasDatabaseName("IX_RefundRecords_ProviderRefundId");
+
+                entity.HasOne(x => x.Order)
+                    .WithMany()
+                    .HasForeignKey(x => x.OrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.Payment)
+                    .WithMany()
+                    .HasForeignKey(x => x.PaymentId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

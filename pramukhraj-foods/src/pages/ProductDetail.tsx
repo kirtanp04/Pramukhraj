@@ -120,13 +120,28 @@ export function ProductDetail() {
           </div>
 
           <div className="mt-7 grid grid-cols-1 gap-3 rounded-card bg-ivory-dim p-4 sm:grid-cols-3">
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs!">
               <Truck size={16} className="shrink-0 text-oxblood" /> {product.shippingTime}
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <RotateCcw size={16} className="shrink-0 text-oxblood" /> {product.returnPolicy}
+            <div className="flex items-center gap-2 text-xs!">
+              <RotateCcw
+                size={16}
+                className={cn(
+                  "shrink-0",
+                  product.isReturnable === false ? "text-oxblood" : "text-emerald-700"
+                )}
+              />
+              {product.isReturnable === false ? (
+                <span className="font-medium text-oxblood">
+                  Non-Returnable (Food Safety)
+                </span>
+              ) : (
+                <span className="text-ink">
+                  {product.returnPolicy || "7-Day Easy Returns"}
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs!">
               <ShieldCheck size={16} className="shrink-0 text-oxblood" /> 100% authentic, sealed packaging
             </div>
           </div>

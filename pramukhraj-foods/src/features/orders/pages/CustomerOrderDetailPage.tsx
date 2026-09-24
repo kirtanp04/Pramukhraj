@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -9,6 +9,8 @@ import {
   RefreshCw,
   XCircle,
   CreditCard,
+  RotateCcw,
+  Info,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +23,9 @@ import { ShipmentTrackingCard } from "../components/ShipmentTrackingCard";
 import { OrderAddressCard } from "../components/OrderAddressCard";
 import { OrderPaymentSummary } from "../components/OrderPaymentSummary";
 import { BillOfSupplyReceiptModal } from "../components/BillOfSupplyReceiptModal";
+import { returnsApi } from "@/features/returns/api/returns.api";
+import type { ReturnEligibility } from "@/features/returns/types";
+import { RequestReturnModal } from "@/features/returns/components/RequestReturnModal";
 
 export function CustomerOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -29,6 +34,25 @@ export function CustomerOrderDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [actionError, setActionError] = useState<string>("");
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [eligibility, setEligibility] = useState<ReturnEligibility | null>(null);
+
+  // Fetch return eligibility when order is loaded and confirmed
+  useEffect(() => {
+    if (!orderId || !order) return;
+    if (order.orderStatus.toLowerCase() !== "confirmed" && order.shipmentStatus?.toLowerCase() !== "delivered") {
+      return;
+    }
+
+    returnsApi
+      .getEligibility(orderId)
+      .then((res) => {
+        if (res) setEligibility(res);
+      })
+      .catch(() => {
+        // Non-fatal if returns are disabled or not applicable
+      });
+  }, [orderId, order]);
 
   const handleCancelOrder = async () => {
     if (!orderId) return;
@@ -104,6 +128,18 @@ export function CustomerOrderDetailPage() {
             >
               <FileCheck size={13} className="text-oxblood" />
               <span>Bill of Supply / Receipt</span>
+            </Button>
+          )}
+
+          {eligibility?.isEligible && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReturnModalOpen(true)}
+              className="text-xs! gap-1.5 text-turmeric-deep border-turmeric/40 hover:bg-turmeric/10"
+            >
+              <RotateCcw size={13} />
+              <span>Request Return</span>
             </Button>
           )}
 
@@ -193,6 +229,43 @@ export function CustomerOrderDetailPage() {
         </div>
       </div>
 
+      {/* Return Eligibility Banner */}
+      {eligibility?.isEligible && (
+        <div className="rounded-2xl border border-turmeric/30 bg-turmeric/10 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-turmeric/20 text-turmeric-deep shrink-0">
+              <RotateCcw size={18} />
+            </div>
+            <div>
+              <h4 className="font-display font-medium text-ink text-sm! sm:text-base!">
+                This order is eligible for Return / Refund
+              </h4>
+              <p className="text-xs! text-ink-soft">
+                {eligibility.returnWindowExpiresOn
+                  ? `Return window valid until ${formatDateTime(eligibility.returnWindowExpiresOn)}`
+                  : `Return window: ${eligibility.returnWindowDays} day(s)`}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => setReturnModalOpen(true)}
+            className="text-xs! gap-1.5"
+          >
+            <RotateCcw size={14} />
+            <span>Request Return</span>
+          </Button>
+        </div>
+      )}
+
+      {eligibility && !eligibility.isEligible && eligibility.deliveredOn && (
+        <div className="rounded-xl border border-ink/10 bg-ivory-dim p-3.5 text-xs! text-ink-soft flex items-center gap-2">
+          <Info size={15} className="shrink-0 text-ink-soft" />
+          <span>{eligibility.ineligibilityReason ?? "Returns are not applicable for this order."}</span>
+        </div>
+      )}
+
       {/* Fulfillment Milestone Timeline */}
       <OrderStatusTimeline
         orderStatus={order.orderStatus}
@@ -250,6 +323,17 @@ export function CustomerOrderDetailPage() {
         order={order}
         open={receiptOpen}
         onOpenChange={setReceiptOpen}
+      />
+
+      {/* Return Request Modal */}
+      <RequestReturnModal
+        orderId={order.orderId}
+        orderNumber={order.orderNumber}
+        open={returnModalOpen}
+        onOpenChange={setReturnModalOpen}
+        onSuccess={() => {
+          reload();
+        }}
       />
     </div>
   );

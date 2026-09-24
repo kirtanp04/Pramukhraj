@@ -8,6 +8,7 @@ using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Sales;
 using pramukhraj.Entities.Order;
+using pramukhraj.Entities.Return;
 using pramukhraj.Interfaces;
 
 namespace pramukhraj.Services;
@@ -69,10 +70,26 @@ public sealed class AdminSalesService(
             prevQuery = prevQuery.Where(o => o.Status == OrderStatus.Confirmed);
         }
 
-        var prevRevenue = await prevQuery.SumAsync(o => (decimal?)o.GrandTotal, cancellationToken) ?? 0m;
+        var prevRevenueFromOrders = await prevQuery.SumAsync(o => (decimal?)o.GrandTotal, cancellationToken) ?? 0m;
+        var prevRefundsPaise = await db.RefundRecords.AsNoTracking()
+            .Where(r => r.Status == RefundStatus.Processed && (r.SettledOn ?? r.CreatedOn) >= prevStart && (r.SettledOn ?? r.CreatedOn) <= prevEnd)
+            .SumAsync(r => (decimal?)r.AmountPaise, cancellationToken) ?? 0m;
+        var prevRevenue = Math.Max(0m, prevRevenueFromOrders - (prevRefundsPaise / 100m));
+
+        // 2b. Fetch Current Period Refunds
+        var refundsInPeriod = await db.RefundRecords.AsNoTracking()
+            .Where(r => r.Status == RefundStatus.Processed && (r.SettledOn ?? r.CreatedOn) >= start && (r.SettledOn ?? r.CreatedOn) <= end)
+            .ToListAsync(cancellationToken);
+        var totalRefunds = refundsInPeriod.Sum(r => (decimal)r.AmountPaise / 100m);
+
+        // 2c. Fetch Current Period Return Requests Count
+        var totalReturnsCount = await db.ReturnRequests.AsNoTracking()
+            .Where(r => r.CreatedOn >= start && r.CreatedOn <= end)
+            .CountAsync(cancellationToken);
 
         // 3. Calculate Summary Financials
-        var netRevenue = orders.Sum(o => o.GrandTotal);
+        var grossSalesFromOrders = orders.Sum(o => o.GrandTotal);
+        var netRevenue = Math.Max(0m, grossSalesFromOrders - totalRefunds);
         var totalOrders = orders.Count;
         var aov = totalOrders > 0 ? Math.Round(netRevenue / totalOrders, 2) : 0m;
         var totalItemsSold = orders.Sum(o => o.Items.Sum(i => i.Quantity));
@@ -82,6 +99,7 @@ public sealed class AdminSalesService(
         var shippingFees = orders.Sum(o => o.ShippingAmount);
         var paymentProcessingFees = orders.Sum(o => o.PaymentServiceTaxAmount);
         var grossSales = orders.Sum(o => o.Items.Sum(i => i.UnitPrice * i.Quantity));
+        var returnRatePercent = totalOrders > 0 ? Math.Round(((decimal)totalReturnsCount / totalOrders) * 100m, 1) : 0m;
 
         // Growth %
         var growthPercent = 0m;
@@ -120,7 +138,10 @@ public sealed class AdminSalesService(
             PaymentProcessingFeesCollected: paymentProcessingFees,
             RepeatCustomerRatePercent: repeatCustomerRate,
             PreviousPeriodRevenue: prevRevenue,
-            RevenueGrowthPercent: growthPercent
+            RevenueGrowthPercent: growthPercent,
+            TotalRefunds: totalRefunds,
+            TotalReturnsCount: totalReturnsCount,
+            ReturnRatePercent: returnRatePercent
         );
 
         // 4. Build Timeline Points
@@ -282,6 +303,9 @@ public sealed class AdminSalesService(
         sb.AppendLine($"Coupon Discounts (INR),{data?.Summary.CouponDiscounts:F2}");
         sb.AppendLine($"Shipping Fees Collected (INR),{data?.Summary.ShippingFeesCollected:F2}");
         sb.AppendLine($"Payment Processing Fees Collected (INR),{data?.Summary.PaymentProcessingFeesCollected:F2}");
+        sb.AppendLine($"Total Refunds (INR),{data?.Summary.TotalRefunds:F2}");
+        sb.AppendLine($"Total Return Requests,{data?.Summary.TotalReturnsCount}");
+        sb.AppendLine($"Return Rate (%),{data?.Summary.ReturnRatePercent:F1}%");
         sb.AppendLine($"Repeat Customer Rate (%),{data?.Summary.RepeatCustomerRatePercent:F1}%");
         sb.AppendLine($"Previous Period Revenue (INR),{data?.Summary.PreviousPeriodRevenue:F2}");
         sb.AppendLine($"Revenue Growth vs Previous Period (%),{data?.Summary.RevenueGrowthPercent:F1}%");
@@ -598,16 +622,75 @@ public sealed class AdminSalesService(
         ApplyCardBorders(ws1.Range("E6:F7"));
         ApplyCardBorders(ws1.Range("G6:I7"));
 
+        // Row 8-9: Returns & Refunds KPI Cards
+        // Card: Total Refunds Issued (Columns A-C)
+        ws1.Range("A8:C8").Merge();
+        ws1.Cell("A8").Value = "TOTAL REFUNDS ISSUED";
+        ws1.Range("A8:C8").Style.Font.Bold = true;
+        ws1.Range("A8:C8").Style.Font.FontSize = 8.5;
+        ws1.Range("A8:C8").Style.Font.FontColor = XLColor.FromHtml("#991B1B");
+        ws1.Range("A8:C8").Style.Fill.BackgroundColor = XLColor.FromHtml("#FEE2E2");
+        ws1.Range("A8:C8").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws1.Range("A9:C9").Merge();
+        ws1.Cell("A9").Value = data?.Summary.TotalRefunds ?? 0m;
+        ws1.Range("A9:C9").Style.Font.Bold = true;
+        ws1.Range("A9:C9").Style.Font.FontSize = 11;
+        ws1.Range("A9:C9").Style.Font.FontColor = XLColor.FromHtml("#991B1B");
+        ws1.Range("A9:C9").Style.Fill.BackgroundColor = XLColor.FromHtml("#FEF2F2");
+        ws1.Range("A9:C9").Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
+        ws1.Range("A9:C9").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        // Card: Return Requests Count (Columns D-F)
+        ws1.Range("D8:F8").Merge();
+        ws1.Cell("D8").Value = "TOTAL RETURN REQUESTS";
+        ws1.Range("D8:F8").Style.Font.Bold = true;
+        ws1.Range("D8:F8").Style.Font.FontSize = 8.5;
+        ws1.Range("D8:F8").Style.Font.FontColor = XLColor.FromHtml("#854D0E");
+        ws1.Range("D8:F8").Style.Fill.BackgroundColor = XLColor.FromHtml("#FEF08A");
+        ws1.Range("D8:F8").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws1.Range("D9:F9").Merge();
+        ws1.Cell("D9").Value = data?.Summary.TotalReturnsCount ?? 0;
+        ws1.Range("D9:F9").Style.Font.Bold = true;
+        ws1.Range("D9:F9").Style.Font.FontSize = 11;
+        ws1.Range("D9:F9").Style.Font.FontColor = XLColor.FromHtml("#854D0E");
+        ws1.Range("D9:F9").Style.Fill.BackgroundColor = XLColor.FromHtml("#FEFCE8");
+        ws1.Range("D9:F9").Style.NumberFormat.Format = "#,##0";
+        ws1.Range("D9:F9").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        // Card: Return Rate % (Columns G-I)
+        ws1.Range("G8:I8").Merge();
+        ws1.Cell("G8").Value = "RETURN RATE (%)";
+        ws1.Range("G8:I8").Style.Font.Bold = true;
+        ws1.Range("G8:I8").Style.Font.FontSize = 8.5;
+        ws1.Range("G8:I8").Style.Font.FontColor = XLColor.FromHtml("#C2410C");
+        ws1.Range("G8:I8").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFEDD5");
+        ws1.Range("G8:I8").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws1.Range("G9:I9").Merge();
+        ws1.Cell("G9").Value = (data?.Summary.ReturnRatePercent ?? 0m) / 100m;
+        ws1.Range("G9:I9").Style.Font.Bold = true;
+        ws1.Range("G9:I9").Style.Font.FontSize = 11;
+        ws1.Range("G9:I9").Style.Font.FontColor = XLColor.FromHtml("#C2410C");
+        ws1.Range("G9:I9").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFF7ED");
+        ws1.Range("G9:I9").Style.NumberFormat.Format = "0.0%";
+        ws1.Range("G9:I9").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ApplyCardBorders(ws1.Range("A8:C9"));
+        ApplyCardBorders(ws1.Range("D8:F9"));
+        ApplyCardBorders(ws1.Range("G8:I9"));
+
         // 5. Timeline Ledger Table
-        ws1.Cell("A9").Value = "SALES LEDGER OVER TIME";
-        ws1.Cell("A9").Style.Font.Bold = true;
-        ws1.Cell("A9").Style.Font.FontSize = 11;
-        ws1.Cell("A9").Style.Font.FontColor = darkNavy;
+        ws1.Cell("A11").Value = "SALES LEDGER OVER TIME";
+        ws1.Cell("A11").Style.Font.Bold = true;
+        ws1.Cell("A11").Style.Font.FontSize = 11;
+        ws1.Cell("A11").Style.Font.FontColor = darkNavy;
 
         string[] ledgerHeaders = ["Period", "Orders", "Items Sold", "Gross Sales (INR)", "Discounts (INR)", "Shipping (INR)", "Payment Fees (INR)", "Net Revenue (INR)", "Avg Order Value (INR)"];
         for (int i = 0; i < ledgerHeaders.Length; i++)
         {
-            var cell = ws1.Cell(10, i + 1);
+            var cell = ws1.Cell(12, i + 1);
             cell.Value = ledgerHeaders[i];
             cell.Style.Font.Bold = true;
             cell.Style.Font.FontSize = 9.5;
@@ -616,9 +699,10 @@ public sealed class AdminSalesService(
             cell.Style.Alignment.Horizontal = i == 0 ? XLAlignmentHorizontalValues.Left : XLAlignmentHorizontalValues.Right;
             cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         }
-        ws1.Row(10).Height = 26;
+        ws1.Row(12).Height = 26;
 
-        int rowIdx = 11;
+        const int startRowIdx = 13;
+        int rowIdx = startRowIdx;
         if (data?.Timeline != null && data.Timeline.Count > 0)
         {
             foreach (var pt in data.Timeline)
@@ -673,25 +757,25 @@ public sealed class AdminSalesService(
             totalRow.Cell(1).Value = "TOTAL";
             totalRow.Cell(1).Style.Font.Bold = true;
 
-            totalRow.Cell(2).FormulaA1 = $"SUM(B11:B{rowIdx - 1})";
+            totalRow.Cell(2).FormulaA1 = $"SUM(B{startRowIdx}:B{rowIdx - 1})";
             totalRow.Cell(2).Style.NumberFormat.Format = "#,##0";
 
-            totalRow.Cell(3).FormulaA1 = $"SUM(C11:C{rowIdx - 1})";
+            totalRow.Cell(3).FormulaA1 = $"SUM(C{startRowIdx}:C{rowIdx - 1})";
             totalRow.Cell(3).Style.NumberFormat.Format = "#,##0";
 
-            totalRow.Cell(4).FormulaA1 = $"SUM(D11:D{rowIdx - 1})";
+            totalRow.Cell(4).FormulaA1 = $"SUM(D{startRowIdx}:D{rowIdx - 1})";
             totalRow.Cell(4).Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
 
-            totalRow.Cell(5).FormulaA1 = $"SUM(E11:E{rowIdx - 1})";
+            totalRow.Cell(5).FormulaA1 = $"SUM(E{startRowIdx}:E{rowIdx - 1})";
             totalRow.Cell(5).Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
 
-            totalRow.Cell(6).FormulaA1 = $"SUM(F11:F{rowIdx - 1})";
+            totalRow.Cell(6).FormulaA1 = $"SUM(F{startRowIdx}:F{rowIdx - 1})";
             totalRow.Cell(6).Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
 
-            totalRow.Cell(7).FormulaA1 = $"SUM(G11:G{rowIdx - 1})";
+            totalRow.Cell(7).FormulaA1 = $"SUM(G{startRowIdx}:G{rowIdx - 1})";
             totalRow.Cell(7).Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
 
-            totalRow.Cell(8).FormulaA1 = $"SUM(H11:H{rowIdx - 1})";
+            totalRow.Cell(8).FormulaA1 = $"SUM(H{startRowIdx}:H{rowIdx - 1})";
             totalRow.Cell(8).Style.Font.Bold = true;
             totalRow.Cell(8).Style.Font.FontColor = oxblood;
             totalRow.Cell(8).Style.NumberFormat.Format = "[$₹-en-IN] #,##0.00";
@@ -716,7 +800,7 @@ public sealed class AdminSalesService(
             ws1.Range(rowIdx, 1, rowIdx, 9).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
-        ws1.Columns().AdjustToContents(11, 40);
+        ws1.Columns().AdjustToContents(startRowIdx, 40);
 
         // ═══════════════════════════════════════════════════════════════════════════
         // SHEET 2: Product Breakdown

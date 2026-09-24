@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -41,6 +41,7 @@ namespace pramukhraj.Entities.Product
             public bool IsTrending { get; set; }
             public bool IsNewArrival { get; set; }
             public bool IsActive { get; set; } = true;
+            public bool IsReturnable { get; set; } = true;
 
             [MaxLength(100)]
             public string CountryOfOrigin { get; set; } = "India";

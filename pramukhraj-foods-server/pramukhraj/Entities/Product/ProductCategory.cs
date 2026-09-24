@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -35,6 +35,7 @@ namespace pramukhraj.Entities.Product
         public int DisplayOrder { get; set; }
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsReturnable { get; set; } = true;
 
         [MaxLength(255)]
         public string? MetaTitle { get; set; }

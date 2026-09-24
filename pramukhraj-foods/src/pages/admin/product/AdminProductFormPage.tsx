@@ -37,6 +37,7 @@ const DEFAULT_VALUES: ProductFormValues = {
   isTrending: false,
   isNewArrival: false,
   isActive: true,
+  isReturnable: true,
   countryOfOrigin: 'India',
   isVegetarian: true,
   shelfLife: '',

@@ -13,6 +13,7 @@ namespace pramukhraj.DTOs.Product
         public bool IsTrending { get; set; }
         public bool IsNewArrival { get; set; }
         public bool IsActive { get; set; }
+        public bool IsReturnable { get; set; } = true;
         public string CountryOfOrigin { get; set; } = string.Empty;
         public bool IsVegetarian { get; set; }
         public string ShelfLife { get; set; } = string.Empty;
@@ -63,5 +64,6 @@ namespace pramukhraj.DTOs.Product
         public int DisplayOrder { get; set; }
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; }
+        public bool IsReturnable { get; set; } = true;
     }
 }

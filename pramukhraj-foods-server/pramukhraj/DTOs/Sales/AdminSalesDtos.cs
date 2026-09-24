@@ -22,7 +22,10 @@ public sealed record AdminSalesSummaryDto(
     decimal PaymentProcessingFeesCollected,
     decimal RepeatCustomerRatePercent,
     decimal PreviousPeriodRevenue,
-    decimal RevenueGrowthPercent
+    decimal RevenueGrowthPercent,
+    decimal TotalRefunds = 0,
+    int TotalReturnsCount = 0,
+    decimal ReturnRatePercent = 0
 );
 
 public sealed record AdminSalesTimelinePointDto(

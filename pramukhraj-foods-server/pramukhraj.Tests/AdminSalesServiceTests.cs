@@ -7,6 +7,7 @@ using pramukhraj.DTOs.Sales;
 using pramukhraj.Entities.Customer;
 using pramukhraj.Entities.Order;
 using pramukhraj.Entities.Product;
+using pramukhraj.Entities.Return;
 using pramukhraj.Interfaces;
 using pramukhraj.Services;
 using Xunit;
@@ -312,7 +313,10 @@ public sealed class AdminSalesServiceTests
         Assert.Equal("NET REVENUE", ws1.Cell("A4").GetString());
         Assert.Equal(1500d, ws1.Cell("A5").GetDouble());
         Assert.Equal("PAYMENT GATEWAY FEES", ws1.Cell("E6").GetString());
-        Assert.Equal("Payment Fees (INR)", ws1.Cell(10, 7).GetString());
+        Assert.Equal("TOTAL REFUNDS ISSUED", ws1.Cell("A8").GetString());
+        Assert.Equal("TOTAL RETURN REQUESTS", ws1.Cell("D8").GetString());
+        Assert.Equal("RETURN RATE (%)", ws1.Cell("G8").GetString());
+        Assert.Equal("Payment Fees (INR)", ws1.Cell(12, 7).GetString());
     }
 
     [Fact]
@@ -356,6 +360,70 @@ public sealed class AdminSalesServiceTests
         Assert.Contains("SALES REPORT SUMMARY", csvContent);
         Assert.Contains("SALES LEDGER OVER TIME", csvContent);
         Assert.DoesNotContain("Tax", csvContent);
+    }
+
+    [Fact]
+    public async Task GetSalesReportAsync_deducts_processed_refunds_and_calculates_returns_metrics()
+    {
+        await using var fixture = await AdminSalesServiceFixture.CreateAsync();
+        var customer = CreateCustomer("Refund Test Customer", "+919111122222");
+        fixture.Db.Customers.Add(customer);
+
+        var now = DateTime.UtcNow;
+        var order1 = CreateOrder(customer.Id, "ORD-REF-001", OrderStatus.Confirmed, 1000m, now.AddDays(-2));
+        var order2 = CreateOrder(customer.Id, "ORD-REF-002", OrderStatus.Confirmed, 500m, now.AddDays(-1));
+        fixture.Db.Orders.AddRange(order1, order2);
+
+        // Add a return request
+        var returnReq = new ReturnRequest
+        {
+            Id = Guid.NewGuid(),
+            ReturnNumber = "RET-REF-001",
+            OrderId = order1.Id,
+            CustomerId = customer.Id,
+            Status = ReturnStatus.Approved,
+            TotalRefundAmount = 300m,
+            NetRefundAmount = 300m,
+            CreatedOn = now.AddDays(-1)
+        };
+        fixture.Db.ReturnRequests.Add(returnReq);
+
+        // Add a processed refund of 300 INR (30000 paise)
+        var refund = new RefundRecord
+        {
+            Id = Guid.NewGuid(),
+            ReturnRequestId = returnReq.Id,
+            OrderId = order1.Id,
+            PaymentId = Guid.NewGuid(),
+            IdempotencyKey = Guid.NewGuid().ToString("N"),
+            ProviderRefundId = "rfnd_test_123",
+            AmountPaise = 30000,
+            Status = RefundStatus.Processed,
+            CreatedOn = now.AddDays(-1),
+            SettledOn = now.AddDays(-1)
+        };
+        fixture.Db.RefundRecords.Add(refund);
+        await fixture.Db.SaveChangesAsync();
+
+        var request = new AdminSalesReportRequest(
+            StartDate: now.AddDays(-7),
+            EndDate: now,
+            Status: "Confirmed",
+            Granularity: "day"
+        );
+
+        var response = await fixture.Service.GetSalesReportAsync(request);
+
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
+        var summary = response.Data.Summary;
+
+        // Total orders = 2, Gross revenue = 1500, Refund = 300, Net revenue = 1200
+        Assert.Equal(2, summary.TotalOrders);
+        Assert.Equal(300m, summary.TotalRefunds);
+        Assert.Equal(1200m, summary.NetRevenue);
+        Assert.Equal(1, summary.TotalReturnsCount);
+        Assert.Equal(50.0m, summary.ReturnRatePercent); // 1 return / 2 orders = 50%
     }
 
     private static Customer CreateCustomer(string fullName, string phone) => new()

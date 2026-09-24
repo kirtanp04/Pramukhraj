@@ -34,4 +34,5 @@ export interface ProductCategoryDetailsResponse {
   displayOrder: number;
   isFeatured: boolean;
   isActive: boolean;
+  isReturnable?: boolean;
 }

@@ -185,6 +185,13 @@ export function Step1BasicInfo({
             checked={watch('isNewArrival')}
             onCheckedChange={(v) => setValue('isNewArrival', v)}
           />
+        
+          <ToggleField
+            label="Allow Returns"
+            description="Customers can submit return/refund requests for this product"
+            checked={watch('isReturnable')}
+            onCheckedChange={(v) => setValue('isReturnable', v)}
+          />
         </div>
       </section>
     </div>

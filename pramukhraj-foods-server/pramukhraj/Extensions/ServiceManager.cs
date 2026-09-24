@@ -50,6 +50,8 @@ namespace pramukhraj.Extensions
         private readonly Lazy<IAdminShipmentService> _AdminShipmentService;
         private readonly Lazy<IAdminLogService> _AdminLogService;
         private readonly Lazy<IAdminSalesService> _AdminSalesService;
+        private readonly Lazy<IReturnService> _ReturnService;
+        private readonly Lazy<IRefundService> _RefundService;
 
       
         public ServiceManager(
@@ -85,7 +87,9 @@ namespace pramukhraj.Extensions
             IAdminPaymentService adminPaymentService,
             IAdminShipmentService adminShipmentService,
             IAdminLogService adminLogService,
-            IAdminSalesService adminSalesService
+            IAdminSalesService adminSalesService,
+            IReturnService returnService,
+            IRefundService refundService
             )
         {
           
@@ -131,6 +135,8 @@ namespace pramukhraj.Extensions
             _AdminShipmentService = new Lazy<IAdminShipmentService>(() => adminShipmentService);
             _AdminLogService = new Lazy<IAdminLogService>(() => adminLogService);
             _AdminSalesService = new Lazy<IAdminSalesService>(() => adminSalesService);
+            _ReturnService = new Lazy<IReturnService>(() => returnService);
+            _RefundService = new Lazy<IRefundService>(() => refundService);
         }
 
         public IProductService ProductService => _ProductService.Value;
@@ -166,6 +172,8 @@ namespace pramukhraj.Extensions
         public IAdminShipmentService AdminShipmentService => _AdminShipmentService.Value;
         public IAdminLogService AdminLogService => _AdminLogService.Value;
         public IAdminSalesService AdminSalesService => _AdminSalesService.Value;
+        public IReturnService ReturnService => _ReturnService.Value;
+        public IRefundService RefundService => _RefundService.Value;
       
     }
 }

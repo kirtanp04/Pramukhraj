@@ -61,6 +61,7 @@ export interface Product {
   countryOfOrigin: string
   manufacturer: string
   returnPolicy: string
+  isReturnable?: boolean
   shippingTime: string
   relatedProductIds: string[]
   reviews: Review[]

@@ -108,6 +108,7 @@ export const productSchema = z.object({
   isTrending: z.boolean(),
   isNewArrival: z.boolean(),
   isActive: z.boolean(),
+  isReturnable: z.boolean(),
 
   // Step 2 — Details
 
@@ -154,6 +155,7 @@ export const STEP_FIELDS: Record<number, (keyof ProductFormValues)[]> = {
     "isTrending",
     "isNewArrival",
     "isActive",
+    "isReturnable",
   ],
   2: [
     "countryOfOrigin",
@@ -182,6 +184,7 @@ export interface AdminProductList {
   isTrending: boolean | null;
   isNewArrival: boolean | null;
   isActive: boolean | null;
+  isReturnable?: boolean | null;
   shelfLife:string;
   createdOn: string;
   imageUrl: string; // empty string will come
@@ -214,6 +217,7 @@ export interface ProductDetailsResponse {
   isTrending: boolean;
   isNewArrival: boolean;
   isActive: boolean;
+  isReturnable?: boolean;
   countryOfOrigin: string;
   isVegetarian: boolean;
   shelfLife: string;

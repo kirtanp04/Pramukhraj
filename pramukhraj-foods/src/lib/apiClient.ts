@@ -55,6 +55,7 @@ apiClient.interceptors.request.use(
       "customer/addresses",
       "customer/checkout",
       "customer/orders",
+      "customer/returns",
     ].some(path => config.url?.includes(path));
     const customerPublicRequest =
       customerAuthRequest &&

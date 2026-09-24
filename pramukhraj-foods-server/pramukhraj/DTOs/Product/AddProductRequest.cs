@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace pramukhraj.DTOs.Product
 {
@@ -15,6 +15,7 @@ namespace pramukhraj.DTOs.Product
         public bool IsTrending { get; set; }
         public bool IsNewArrival { get; set; }
         public bool IsActive { get; set; }
+        public bool IsReturnable { get; set; } = true;
 
         // Details
         public string CountryOfOrigin { get; set; } = string.Empty;
@@ -69,6 +70,7 @@ namespace pramukhraj.DTOs.Product
         public int DisplayOrder { get; set; }
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsReturnable { get; set; } = true;
     }
 
     public class AdminProductList
@@ -82,6 +84,7 @@ namespace pramukhraj.DTOs.Product
         public bool? IsTrending { get; set; }
         public bool? IsNewArrival { get; set; }
         public bool? IsActive { get; set; }
+        public bool? IsReturnable { get; set; } = true;
         public bool? IsCategoryActive { get; set; }
         public string ShelfLife { get; set; } = string.Empty;
         public string CreatedOn { get; set; } = string.Empty;

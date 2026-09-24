@@ -147,6 +147,7 @@ namespace pramukhraj.Services
                     IsTrending = request.IsTrending,
                     IsNewArrival = request.IsNewArrival,
                     IsActive = request.IsActive,
+                    IsReturnable = request.IsReturnable,
 
                     CountryOfOrigin = request.CountryOfOrigin?.Trim() ?? "",
                     IsVegetarian = request.IsVegetarian,
@@ -407,6 +408,7 @@ namespace pramukhraj.Services
                                         IsTrending = entity.IsTrending,
                                         IsNewArrival = entity.IsNewArrival,
                                         IsActive = entity.IsActive,
+                                        IsReturnable = entity.IsReturnable,
                                         CountryOfOrigin = entity.CountryOfOrigin,
                                         IsVegetarian = entity.IsVegetarian,
                                         ShelfLife = entity.ShelfLife,
@@ -699,6 +701,7 @@ namespace pramukhraj.Services
                 product.IsTrending = request.IsTrending;
                 product.IsNewArrival = request.IsNewArrival;
                 product.IsActive = request.IsActive;
+                product.IsReturnable = request.IsReturnable;
 
                 product.CountryOfOrigin =
                     request.CountryOfOrigin?.Trim() ?? string.Empty;
@@ -1060,6 +1063,7 @@ namespace pramukhraj.Services
                     DisplayOrder = request.DisplayOrder,
                     IsFeatured = request.IsFeatured,
                     IsActive = request.IsActive,
+                    IsReturnable = request.IsReturnable,
 
                     MetaTitle = ProductHelper.GenerateMetaTitle(
                         categoryName),
@@ -1210,7 +1214,8 @@ namespace pramukhraj.Services
                         ImageUrl = entity.ImageUrl,
                         DisplayOrder = entity.DisplayOrder,
                         IsFeatured = entity.IsFeatured,
-                        IsActive = entity.IsActive
+                        IsActive = entity.IsActive,
+                        IsReturnable = entity.IsReturnable
                     })
                     .SingleOrDefaultAsync(token),
                     CacheExpiration,
@@ -1450,6 +1455,9 @@ namespace pramukhraj.Services
 
                 category.IsActive =
                     request.IsActive;
+
+                category.IsReturnable =
+                    request.IsReturnable;
 
                 // Do not modify CreatedOn
                 category.UpdatedOn = currentTime;
@@ -1776,6 +1784,7 @@ namespace pramukhraj.Services
                         Imageurl = string.Empty,
                         IsActive = category.IsActive,
                         IsFeatured = category.IsFeatured,
+                        IsReturnable = category.IsReturnable,
                         ProductCount = _db.Products.Count(product =>
                             product.CategoryId == category.Id),
                         Slug = category.Slug,
@@ -2021,6 +2030,7 @@ namespace pramukhraj.Services
                            Id = product.Id.ToString(),
                            Name = product.Name,
                            IsActive = product.IsActive,
+                           IsReturnable = product.IsReturnable,
                            Slug = product.Slug,
                            CreatedOn = product.CreatedOn.AddMinutes(-timeZoneOffset).ToString("yyyy-MM-dd HH:mm:ss"),
                            CategoryName = product.Category.Name,

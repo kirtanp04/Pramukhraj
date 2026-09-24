@@ -112,6 +112,7 @@ export function AdminCategoryFormPage() {
         displayOrder: values.displayOrder,
         isFeatured: values.isFeatured,
         isActive: values.isActive,
+        isReturnable: values.isReturnable,
       }
 
       const response = isEditing && isValidGuid(id)
@@ -243,33 +244,6 @@ export function AdminCategoryFormPage() {
                   className={inputCls(!!errors.displayOrder)}
                 />
               </FormField>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Controller
-                  name="isFeatured"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleField
-                      label="Featured Category"
-                      description="Highlight this category on the storefront."
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  )}
-                />
-                <Controller
-                  name="isActive"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleField
-                      label="Active"
-                      description="Make this category available immediately."
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
             </section>
 
             <section className="space-y-3" aria-labelledby="category-image-heading">
@@ -296,6 +270,47 @@ export function AdminCategoryFormPage() {
                 )}
               />
             </section>
+
+            <div className="col-span-full border-t border-ink/10 pt-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Controller
+                  name="isFeatured"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleField
+                      label="Featured Category"
+                      description="Highlight this category on the storefront."
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Controller
+                  name="isActive"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleField
+                      label="Active"
+                      description="Make this category available immediately."
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Controller
+                  name="isReturnable"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleField
+                      label="Allow Returns Default"
+                      description="Default products in this category to be returnable."
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
