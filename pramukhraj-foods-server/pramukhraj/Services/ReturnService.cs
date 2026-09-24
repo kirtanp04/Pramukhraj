@@ -21,6 +21,7 @@ public sealed class ReturnService(
     IHttpContextAccessor httpContextAccessor,
     IAdminNotificationService adminNotifications,
     IEmailService emailService,
+    IShiprocketFulfillmentService shiprocketService,
     ILogger<ReturnService> logger) : IReturnService
 {
     // ==========================================
@@ -126,7 +127,6 @@ public sealed class ReturnService(
         if (request is null || request.Items is null || request.Items.Count == 0)
             return ApiResponse<CustomerReturnDetailsResponse>.Fail("At least one item must be selected for return.", 400);
 
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
         try
         {
             var order = await db.Orders
@@ -205,7 +205,9 @@ public sealed class ReturnService(
                 Status = ReturnStatus.Requested,
                 Reason = request.Reason,
                 Resolution = request.Resolution,
-                CustomerComments = request.CustomerComments.Trim(),
+                CustomerComments = (request.CustomerComments ?? string.Empty).Trim().Length > 1000
+                    ? (request.CustomerComments ?? string.Empty).Trim()[..1000]
+                    : (request.CustomerComments ?? string.Empty).Trim(),
                 TotalRefundAmount = totalRefundAmount,
                 ReverseShippingDeduction = 0m,
                 NetRefundAmount = totalRefundAmount,
@@ -237,7 +239,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = ReturnStatus.Requested,
                 Note = "Return request initiated by customer.",
@@ -246,7 +247,6 @@ public sealed class ReturnService(
 
             db.ReturnRequests.Add(returnRequest);
             await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
 
             logger.LogInformation("Return request {ReturnNumber} created successfully for OrderId={OrderId}, CustomerId={CustomerId}", returnNumber, orderId, customerId);
 
@@ -293,7 +293,6 @@ public sealed class ReturnService(
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            await tx.RollbackAsync(ct);
             logger.LogError(ex, "Failed to create return request for OrderId={OrderId}, CustomerId={CustomerId}", orderId, customerId);
             return ApiResponse<CustomerReturnDetailsResponse>.Fail("Failed to submit return request. Please try again.", 500);
         }
@@ -406,7 +405,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = ReturnStatus.Cancelled,
                 Note = "Return request cancelled by customer.",
@@ -598,7 +596,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = ReturnStatus.Approved,
                 Note = $"Return approved by {adminInfo.Data.UserName}. Reverse shipping fee: ₹{deduction:F2}. Net refund: ₹{returnRequest.NetRefundAmount:F2}.",
@@ -690,7 +687,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = ReturnStatus.Rejected,
                 Note = $"Return rejected by {adminInfo.Data.UserName}: {request.RejectionReason.Trim()}",
@@ -793,7 +789,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = ReturnStatus.PickupScheduled,
                 Note = note,
@@ -836,7 +831,169 @@ public sealed class ReturnService(
         }
     }
 
+    public async Task<ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>> GetReverseCouriersAsync(
+        Guid returnId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var returnRequest = await db.ReturnRequests.AsNoTracking()
+                .Include(r => r.Order).ThenInclude(o => o.Addresses)
+                .Include(r => r.Order).ThenInclude(o => o.Items)
+                .Include(r => r.Items)
+                .SingleOrDefaultAsync(r => r.Id == returnId, ct);
+
+            if (returnRequest is null)
+                return ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>.Fail("Return request was not found.", 404);
+
+            var shippingAddress = returnRequest.Order.Addresses.FirstOrDefault(a => a.Type == "Shipping")
+                ?? returnRequest.Order.Addresses.FirstOrDefault();
+
+            if (shippingAddress is null || string.IsNullOrWhiteSpace(shippingAddress.PostalCode))
+                return ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>.Fail("Customer postal code is missing from original order shipping address.", 400);
+
+            var totalWeight = returnRequest.Items.Sum(ri =>
+            {
+                var matchedOrder = returnRequest.Order.Items.FirstOrDefault(oi => oi.Id == ri.OrderItemId);
+                var unitW = matchedOrder is not null ? (matchedOrder.Weight > 0 ? (matchedOrder.Weight >= 5m ? matchedOrder.Weight / 1000m : matchedOrder.Weight) : 0.25m) : 0.25m;
+                return unitW * Math.Max(1, ri.Quantity);
+            });
+            totalWeight = Math.Max(0.2m, totalWeight);
+
+            var couriers = await shiprocketService.GetReverseCouriersAsync(shippingAddress.PostalCode, totalWeight, ct);
+            return ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>.Ok(couriers,
+                couriers.Count > 0 ? $"Found {couriers.Count} available reverse delivery partners." : "No reverse delivery partners found for this route.");
+        }
+        catch (ShiprocketProviderException spEx)
+        {
+            logger.LogWarning(spEx, "Shiprocket serviceability error for ReturnId={ReturnId}", returnId);
+            return ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>.Fail(spEx.Message, spEx.StatusCode);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to retrieve reverse couriers for ReturnId={ReturnId}", returnId);
+            return ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>.Fail("Unable to fetch available delivery partners from Shiprocket.", 500);
+        }
+    }
+
+    public async Task<ApiResponse<AdminReturnDetailsResponse>> BookShiprocketReversePickupAsync(
+        Guid returnId,
+        BookReversePickupRequest request,
+        CancellationToken ct = default)
+    {
+        var adminInfo = Common.Common.GetAdminClaimInfo(httpContextAccessor);
+        if (!adminInfo.Success || adminInfo.Data is null || !Guid.TryParse(adminInfo.Data.Id, out var adminId))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Admin authentication required.", 401);
+
+        try
+        {
+            var returnRequest = await db.ReturnRequests
+                .Include(r => r.Order).ThenInclude(o => o.Addresses)
+                .Include(r => r.Order).ThenInclude(o => o.Items)
+                .Include(r => r.Items)
+                .Include(r => r.Media)
+                .Include(r => r.StatusHistory)
+                .Include(r => r.Refund)
+                .SingleOrDefaultAsync(r => r.Id == returnId, ct);
+
+            if (returnRequest is null)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("Return request was not found.", 404);
+
+            if (returnRequest.Status != ReturnStatus.Approved && returnRequest.Status != ReturnStatus.PickupScheduled)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail($"Reverse pickup can only be booked for Approved returns (current status: '{returnRequest.Status}').", 400);
+
+            var bookingResult = await shiprocketService.BookReversePickupAsync(returnRequest, request.CourierCompanyId, ct);
+            if (!bookingResult.Success)
+            {
+                return ApiResponse<AdminReturnDetailsResponse>.Fail($"Shiprocket booking failed: {bookingResult.Message ?? "Unknown provider error."}", 400);
+            }
+
+            var now = DateTime.UtcNow;
+            var courier = !string.IsNullOrWhiteSpace(bookingResult.CourierName)
+                ? bookingResult.CourierName
+                : (!string.IsNullOrWhiteSpace(request.CourierName) ? request.CourierName.Trim() : "Shiprocket Reverse Logistics");
+
+            var awb = !string.IsNullOrWhiteSpace(bookingResult.AwbCode)
+                ? bookingResult.AwbCode
+                : (bookingResult.ProviderShipmentId > 0 ? $"SR-RET-{bookingResult.ProviderShipmentId}" : $"SR-RET-{now:yyyyMMddHHmmss}");
+
+            var trackingUrl = !string.IsNullOrWhiteSpace(bookingResult.AwbCode)
+                ? $"https://shiprocket.co/tracking/{bookingResult.AwbCode}"
+                : null;
+
+            returnRequest.CourierName = courier;
+            returnRequest.TrackingNumber = awb;
+            returnRequest.TrackingUrl = trackingUrl;
+            returnRequest.PickupScheduledDate = request.PickupScheduledDate ?? now.AddDays(1);
+            returnRequest.Status = ReturnStatus.PickupScheduled;
+            returnRequest.UpdatedOn = now;
+            returnRequest.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+
+            var note = $"Reverse pickup booked via Shiprocket with {returnRequest.CourierName}. AWB: {returnRequest.TrackingNumber}.";
+            if (returnRequest.PickupScheduledDate.HasValue)
+                note += $" Scheduled Date: {returnRequest.PickupScheduledDate.Value:yyyy-MM-dd}.";
+            if (!string.IsNullOrWhiteSpace(request.Notes))
+                note += $" Note: {request.Notes.Trim()}";
+
+            returnRequest.StatusHistory.Add(new ReturnStatusHistory
+            {
+                ReturnRequestId = returnRequest.Id,
+                Status = ReturnStatus.PickupScheduled,
+                Note = note,
+                ActorAdminId = adminId,
+                ActorAdminName = adminInfo.Data.UserName,
+                CreatedOn = now
+            });
+
+            db.AdminActions.Add(new AdminAction
+            {
+                Id = Guid.NewGuid(),
+                AdminId = adminId,
+                AdminName = adminInfo.Data.UserName ?? "Admin",
+                Module = AdminActionModules.StoreSettings,
+                Action = AdminActionTypes.Update,
+                EntityName = $"Return {returnRequest.ReturnNumber}",
+                Description = $"Booked Shiprocket reverse pickup: {courier}, AWB: {awb}",
+                CreatedOn = now
+            });
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Shiprocket reverse pickup booked for Return {ReturnNumber}. Courier: {Courier}, AWB: {AWB}", returnRequest.ReturnNumber, returnRequest.CourierName, returnRequest.TrackingNumber);
+
+            var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Reverse Pickup Scheduled - #{returnRequest.ReturnNumber}",
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>A reverse pickup has been scheduled for your return request <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}) via <strong>{returnRequest.CourierName}</strong>.</p><p><strong>Tracking Number (AWB):</strong> {returnRequest.TrackingNumber}" + (returnRequest.PickupScheduledDate.HasValue ? $"<br/><strong>Pickup Date:</strong> {returnRequest.PickupScheduledDate.Value:dd MMM yyyy}" : "") + "</p><p>Please keep the package safely packed and hand it over to the pickup executive.</p>",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nA reverse pickup has been scheduled for your return #{returnRequest.ReturnNumber}.\nCourier: {returnRequest.CourierName}\nAWB: {returnRequest.TrackingNumber}\nPlease hand over the package to the pickup executive."), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send pickup scheduled email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
+            return ApiResponse<AdminReturnDetailsResponse>.Ok(
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
+                "Reverse pickup successfully booked with Shiprocket.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to book reverse pickup for ReturnId={ReturnId}", returnId);
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Unable to book reverse pickup with Shiprocket.", 500);
+        }
+    }
+
     public async Task<ApiResponse<AdminReturnDetailsResponse>> UpdateReverseTrackingStatusAsync(
+
         Guid returnId,
         UpdateReverseTrackingRequest request,
         CancellationToken ct = default)
@@ -896,7 +1053,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = returnRequest.Status,
                 Note = note,
@@ -1025,7 +1181,6 @@ public sealed class ReturnService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = returnRequest.Status,
                 Note = $"Quality control inspection completed by {adminInfo.Data.UserName}. Status: {returnRequest.Status}. Note: {request.InspectionNotes}",
@@ -1048,6 +1203,306 @@ public sealed class ReturnService(
             logger.LogError(ex, "Failed to record inspection for ReturnId={ReturnId}", returnId);
             return ApiResponse<AdminReturnDetailsResponse>.Fail("Unable to record inspection result.", 500);
         }
+    }
+
+    public async Task<ApiResponse<AdminReturnDetailsResponse>> FulfillReplacementOrderAsync(
+        Guid returnId,
+        AdminFulfillReplacementRequest request,
+        CancellationToken ct = default)
+    {
+        var adminInfo = Common.Common.GetAdminClaimInfo(httpContextAccessor);
+        if (!adminInfo.Success || adminInfo.Data is null || !Guid.TryParse(adminInfo.Data.Id, out var adminId))
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Admin authentication required.", 401);
+
+        try
+        {
+            var returnRequest = await db.ReturnRequests
+                .Include(r => r.Order)
+                    .ThenInclude(o => o.Addresses)
+                .Include(r => r.Order)
+                    .ThenInclude(o => o.Items)
+                .Include(r => r.Items)
+                .Include(r => r.StatusHistory)
+                .Include(r => r.Refund)
+                .Include(r => r.Media)
+                .FirstOrDefaultAsync(r => r.Id == returnId, ct);
+
+            if (returnRequest is null)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("Return request was not found.", 404);
+
+            if (returnRequest.Resolution != ReturnResolution.Replacement)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("Only return requests with 'Replacement' resolution can be fulfilled with a replacement order.", 400);
+
+            if (returnRequest.ReplacementOrderId.HasValue)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail($"A replacement order ({returnRequest.ReplacementOrderNumber}) has already been generated for this return.", 400);
+
+            var eligibleStatuses = new[]
+            {
+                ReturnStatus.Approved,
+                ReturnStatus.DeliveredToWarehouse,
+                ReturnStatus.InspectionPassed
+            };
+
+            if (!eligibleStatuses.Contains(returnRequest.Status))
+                return ApiResponse<AdminReturnDetailsResponse>.Fail($"Cannot fulfill replacement for a return in status '{returnRequest.Status}'. Return must be Approved or InspectionPassed.", 400);
+
+            var itemsToReplace = returnRequest.Items
+                .Where(i => i.InspectionStatus != InspectionOutcome.Failed)
+                .ToList();
+
+            if (itemsToReplace.Count == 0)
+                return ApiResponse<AdminReturnDetailsResponse>.Fail("No return items passed inspection to fulfill replacement.", 400);
+
+            var originalOrder = returnRequest.Order;
+            var now = DateTime.UtcNow;
+            var adminName = adminInfo.Data.UserName?.Trim() ?? "Admin";
+
+            var shortStamp = now.ToString("yyyyMMddHHmmss");
+            var randSuffix = Random.Shared.Next(100, 999);
+            var repOrderNumber = $"ORD-REP-{shortStamp}-{randSuffix}";
+            var repOrderId = Guid.NewGuid();
+
+            var replacementOrder = new Order
+            {
+                Id = repOrderId,
+                CustomerId = returnRequest.CustomerId,
+                CheckoutSessionId = Guid.NewGuid(),
+                OrderNumber = repOrderNumber,
+                IdempotencyKey = $"REP-{returnRequest.Id:N}",
+                Status = OrderStatus.Confirmed,
+                CustomerNote = string.IsNullOrWhiteSpace(request?.Notes)
+                    ? $"Replacement order for RMA #{returnRequest.ReturnNumber}"
+                    : $"Replacement order for RMA #{returnRequest.ReturnNumber}. Notes: {request.Notes.Trim()}",
+                Subtotal = 0m,
+                ItemDiscountAmount = 0m,
+                CouponDiscountAmount = 0m,
+                TaxAmount = 0m,
+                ProductTaxAmount = 0m,
+                PaymentServiceTaxAmount = 0m,
+                ProductTaxRatePercent = 0m,
+                PaymentServiceTaxRatePercent = 0m,
+                ShippingAmount = 0m,
+                ProviderShippingCost = 0m,
+                GrandTotal = 0m,
+                Currency = originalOrder.Currency,
+                CreatedOn = now,
+                UpdatedOn = now,
+                PaymentExpiresOn = now.AddDays(30),
+                Items = new List<OrderItem>(),
+                Addresses = new List<OrderAddress>()
+            };
+
+            foreach (var retItem in itemsToReplace)
+            {
+                var origItem = originalOrder.Items.FirstOrDefault(oi => oi.Id == retItem.OrderItemId);
+                var orderItem = new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = repOrderId,
+                    ProductId = origItem?.ProductId ?? Guid.Empty,
+                    ProductVariantId = retItem.ProductVariantId,
+                    ProductName = retItem.ProductName,
+                    ProductSlug = origItem?.ProductSlug ?? string.Empty,
+                    VariantName = retItem.VariantName,
+                    Sku = origItem?.Sku ?? string.Empty,
+                    HsnCode = origItem?.HsnCode,
+                    Weight = origItem?.Weight ?? 0m,
+                    WeightUnit = origItem?.WeightUnit ?? "g",
+                    Quantity = retItem.Quantity,
+                    UnitPrice = 0m,
+                    UnitMrp = origItem?.UnitMrp ?? retItem.UnitPrice,
+                    TaxPercentage = 0m,
+                    TaxableAmount = 0m,
+                    DiscountAmount = 0m,
+                    TaxAmount = 0m,
+                    LineTotal = 0m
+                };
+                replacementOrder.Items.Add(orderItem);
+            }
+
+            var origShippingAddress = originalOrder.Addresses.FirstOrDefault(a => a.Type.Equals("Shipping", StringComparison.OrdinalIgnoreCase))
+                ?? originalOrder.Addresses.FirstOrDefault();
+
+            if (origShippingAddress is not null)
+            {
+                replacementOrder.Addresses.Add(new OrderAddress
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = repOrderId,
+                    Type = "Shipping",
+                    RecipientName = origShippingAddress.RecipientName,
+                    MobileNumber = origShippingAddress.MobileNumber,
+                    Email = origShippingAddress.Email,
+                    AddressLine1 = origShippingAddress.AddressLine1,
+                    AddressLine2 = origShippingAddress.AddressLine2,
+                    Landmark = origShippingAddress.Landmark,
+                    City = origShippingAddress.City,
+                    State = origShippingAddress.State,
+                    PostalCode = origShippingAddress.PostalCode,
+                    Country = origShippingAddress.Country
+                });
+            }
+
+            db.Orders.Add(replacementOrder);
+            db.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                OrderId = repOrderId,
+                Status = OrderStatus.Confirmed,
+                Note = $"Replacement order created from Return RMA #{returnRequest.ReturnNumber}.",
+                CreatedOn = now
+            });
+
+            returnRequest.ReplacementOrderId = repOrderId;
+            returnRequest.ReplacementOrderNumber = repOrderNumber;
+            returnRequest.Status = ReturnStatus.RefundCompleted;
+            returnRequest.CompletedOn = now;
+            returnRequest.UpdatedOn = now;
+            returnRequest.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+
+            returnRequest.StatusHistory.Add(new ReturnStatusHistory
+            {
+                ReturnRequestId = returnRequest.Id,
+                Status = ReturnStatus.RefundCompleted,
+                Note = $"Replacement order #{repOrderNumber} created and confirmed by {adminName}." +
+                    (string.IsNullOrWhiteSpace(request?.Notes) ? "" : $" Notes: {request.Notes.Trim()}"),
+                ActorAdminId = adminId,
+                ActorAdminName = adminName,
+                CreatedOn = now
+            });
+
+            db.AdminActions.Add(new AdminAction
+            {
+                Id = Guid.NewGuid(),
+                AdminId = adminId,
+                AdminName = adminName,
+                Module = AdminActionModules.StoreSettings,
+                Action = AdminActionTypes.Update,
+                EntityName = $"Return {returnRequest.ReturnNumber}",
+                Description = $"Created replacement order #{repOrderNumber} for return #{returnRequest.ReturnNumber}.",
+                CreatedOn = now
+            });
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Replacement order {OrderNumber} created for return {ReturnNumber}", repOrderNumber, returnRequest.ReturnNumber);
+
+            var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+
+            if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                try
+                {
+                    var itemsList = string.Join("", itemsToReplace.Select(i => $"<li>{i.ProductName} ({i.VariantName}) x {i.Quantity}</li>"));
+                    var htmlBody = $@"<p>Dear {customer.FullName ?? "Customer"},</p>
+<p>Your replacement order for return request <strong>#{returnRequest.ReturnNumber}</strong> (Original Order #{originalOrder.OrderNumber}) has been confirmed!</p>
+<p><strong>Replacement Order Number:</strong> {repOrderNumber}</p>
+<p><strong>Items:</strong></p>
+<ul>{itemsList}</ul>
+<p>Your replacement order is now being processed and will be shipped to your registered delivery address.</p>
+<p>Thank you for shopping with Pramukhraj Foods!</p>";
+
+                    var textBody = $"Dear {customer.FullName ?? "Customer"},\n\nYour replacement order #{repOrderNumber} for return #{returnRequest.ReturnNumber} has been confirmed and queued for fulfillment.\n\nThank you,\nPramukhraj Foods";
+
+                    await emailService.SendAsync(new EmailMessage(
+                        customer.Email,
+                        customer.FullName ?? "Customer",
+                        $"Replacement Order Confirmed - #{repOrderNumber}",
+                        htmlBody,
+                        textBody), ct);
+                }
+                catch (Exception emailEx)
+                {
+                    logger.LogWarning(emailEx, "Failed to send replacement confirmation email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                }
+            }
+
+            return ApiResponse<AdminReturnDetailsResponse>.Ok(
+                MapAdminReturnDetails(returnRequest, originalOrder.OrderNumber, customer),
+                $"Replacement order #{repOrderNumber} successfully generated.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fulfill replacement order for ReturnId={ReturnId}", returnId);
+            return ApiResponse<AdminReturnDetailsResponse>.Fail("Unable to fulfill replacement order.", 500);
+        }
+    }
+
+    public async Task<byte[]> ExportReturnsCsvAsync(
+        AdminReturnFilterRequest filter,
+        CancellationToken ct = default)
+    {
+        var query = db.ReturnRequests
+            .Include(r => r.Order)
+            .Include(r => r.Items)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (filter.Status.HasValue)
+            query = query.Where(r => r.Status == filter.Status.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
+        {
+            var search = filter.SearchQuery.Trim();
+            query = query.Where(r =>
+                EF.Functions.ILike(r.ReturnNumber, $"%{search}%") ||
+                EF.Functions.ILike(r.Order.OrderNumber, $"%{search}%"));
+        }
+
+        if (filter.StartDate.HasValue)
+            query = query.Where(r => r.CreatedOn >= filter.StartDate.Value);
+
+        if (filter.EndDate.HasValue)
+            query = query.Where(r => r.CreatedOn <= filter.EndDate.Value);
+
+        var returns = await query
+            .OrderByDescending(r => r.CreatedOn)
+            .ToListAsync(ct);
+
+        var customerIds = returns.Select(r => r.CustomerId).Distinct().ToList();
+        var customerMap = await db.Customers
+            .AsNoTracking()
+            .Where(c => customerIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, ct);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Return Number,Order Number,Customer Name,Customer Email,Customer Phone,Status,Reason,Resolution,Item Count,Total Refund (INR),Deductions (INR),Net Refund (INR),Courier,Tracking Number,Replacement Order,Created On,Completed On");
+
+        foreach (var r in returns)
+        {
+            customerMap.TryGetValue(r.CustomerId, out var cust);
+            var custName = EscapeCsv(cust?.FullName ?? "Customer");
+            var custEmail = EscapeCsv(cust?.Email ?? "");
+            var custPhone = EscapeCsv(cust?.MobileNumber ?? "");
+            var status = r.Status.ToString();
+            var reason = EscapeCsv(r.Reason.ToString());
+            var resolution = r.Resolution.ToString();
+            var itemCount = r.Items.Sum(i => i.Quantity);
+            var totalRefund = r.TotalRefundAmount.ToString("F2");
+            var deductions = r.ReverseShippingDeduction.ToString("F2");
+            var netRefund = r.NetRefundAmount.ToString("F2");
+            var courier = EscapeCsv(r.CourierName ?? "");
+            var tracking = EscapeCsv(r.TrackingNumber ?? "");
+            var repOrder = EscapeCsv(r.ReplacementOrderNumber ?? "");
+            var created = r.CreatedOn.ToString("yyyy-MM-dd HH:mm:ss");
+            var completed = r.CompletedOn.HasValue ? r.CompletedOn.Value.ToString("yyyy-MM-dd HH:mm:ss") : "";
+
+            sb.AppendLine($"{r.ReturnNumber},{r.Order.OrderNumber},{custName},{custEmail},{custPhone},{status},{reason},{resolution},{itemCount},{totalRefund},{deductions},{netRefund},{courier},{tracking},{repOrder},{created},{completed}");
+        }
+
+        var preamble = System.Text.Encoding.UTF8.GetPreamble();
+        var content = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return preamble.Concat(content).ToArray();
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        if (value.Contains(',') || value.Contains('\"') || value.Contains('\n') || value.Contains('\r'))
+        {
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        }
+        return value;
     }
 
     // ==========================================
@@ -1148,7 +1603,9 @@ public sealed class ReturnService(
             PickedUpOn: r.PickedUpOn,
             DeliveredToWarehouseOn: r.DeliveredToWarehouseOn,
             ReceivedOn: r.ReceivedOn,
-            InspectedOn: r.InspectedOn);
+            InspectedOn: r.InspectedOn,
+            ReplacementOrderId: r.ReplacementOrderId,
+            ReplacementOrderNumber: r.ReplacementOrderNumber);
 
     private static AdminReturnDetailsResponse MapAdminReturnDetails(ReturnRequest r, string orderNumber, Customer? customer) =>
         new(
@@ -1187,5 +1644,7 @@ public sealed class ReturnService(
             TrackingUrl: r.TrackingUrl,
             PickupScheduledDate: r.PickupScheduledDate,
             PickedUpOn: r.PickedUpOn,
-            DeliveredToWarehouseOn: r.DeliveredToWarehouseOn);
+            DeliveredToWarehouseOn: r.DeliveredToWarehouseOn,
+            ReplacementOrderId: r.ReplacementOrderId,
+            ReplacementOrderNumber: r.ReplacementOrderNumber);
 }

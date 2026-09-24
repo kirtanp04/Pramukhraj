@@ -20,5 +20,9 @@ public interface IReturnService
     Task<ApiResponse<AdminReturnDetailsResponse>> SchedulePickupAsync(Guid returnId, ScheduleReversePickupRequest request, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> UpdateReverseTrackingStatusAsync(Guid returnId, UpdateReverseTrackingRequest request, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> InspectReturnAsync(Guid returnId, AdminInspectReturnRequest request, CancellationToken ct = default);
+    Task<ApiResponse<AdminReturnDetailsResponse>> FulfillReplacementOrderAsync(Guid returnId, AdminFulfillReplacementRequest request, CancellationToken ct = default);
+    Task<ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>> GetReverseCouriersAsync(Guid returnId, CancellationToken ct = default);
+    Task<ApiResponse<AdminReturnDetailsResponse>> BookShiprocketReversePickupAsync(Guid returnId, BookReversePickupRequest request, CancellationToken ct = default);
+    Task<byte[]> ExportReturnsCsvAsync(AdminReturnFilterRequest filter, CancellationToken ct = default);
 }
 

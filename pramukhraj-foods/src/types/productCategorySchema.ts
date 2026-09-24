@@ -51,6 +51,7 @@ export const productCategorySchema = z.object({
     .min(0, 'Display order cannot be negative.'),
   isFeatured: z.boolean(),
   isActive: z.boolean(),
+  isReturnable: z.boolean(),
 })
 
 export type AddProductCategoryRequest = z.infer<typeof productCategorySchema>
@@ -62,4 +63,5 @@ export const DEFAULT_PRODUCT_CATEGORY_VALUES: AddProductCategoryRequest = {
   displayOrder: 0,
   isFeatured: false,
   isActive: true,
+  isReturnable: true,
 }

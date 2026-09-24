@@ -104,3 +104,16 @@ public sealed class UpdateReverseTrackingRequestValidator : AbstractValidator<Up
     }
 }
 
+public sealed class BookReversePickupRequestValidator : AbstractValidator<BookReversePickupRequest>
+{
+    public BookReversePickupRequestValidator()
+    {
+        RuleFor(x => x.CourierName)
+            .MaximumLength(100).WithMessage("Courier name cannot exceed 100 characters.");
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000).WithMessage("Notes cannot exceed 1000 characters.");
+    }
+}
+
+

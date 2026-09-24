@@ -1,5 +1,5 @@
 import { ApiPath } from "@/constants/apiPaths";
-import { apiGet, apiPostResponse } from "@/lib/apiClient";
+import { apiClient, apiGet, apiPostResponse } from "@/lib/apiClient";
 import type {
   AdminReturnFilterParams,
   AdminReturnListPage,
@@ -10,6 +10,9 @@ import type {
   AdminProcessRefundPayload,
   ScheduleReversePickupRequest,
   UpdateReverseTrackingRequest,
+  AdminFulfillReplacementPayload,
+  ReverseCourierOption,
+  BookReversePickupPayload,
 } from "../types";
 
 export const adminReturnsApi = {
@@ -49,9 +52,34 @@ export const adminReturnsApi = {
       payload
     ),
 
+  getCouriers: (returnId: string) =>
+    apiGet<ReverseCourierOption[]>(ApiPath.admin.returns.couriers(returnId)),
+
+  bookPickup: (returnId: string, payload: BookReversePickupPayload) =>
+    apiPostResponse<AdminReturnDetails>(
+      ApiPath.admin.returns.bookPickup(returnId),
+      payload
+    ),
+
   updateTracking: (returnId: string, payload: UpdateReverseTrackingRequest) =>
+
     apiPostResponse<AdminReturnDetails>(
       ApiPath.admin.returns.updateTracking(returnId),
       payload
     ),
+
+  fulfillReplacement: (
+    returnId: string,
+    payload: AdminFulfillReplacementPayload
+  ) =>
+    apiPostResponse<AdminReturnDetails>(
+      ApiPath.admin.returns.fulfillReplacement(returnId),
+      payload
+    ),
+
+  exportCsv: async (filter?: AdminReturnFilterParams): Promise<Blob> => {
+    const url = ApiPath.admin.returns.export(filter);
+    const response = await apiClient.get(url, { responseType: "blob" });
+    return response.data as Blob;
+  },
 };

@@ -1,4 +1,4 @@
-﻿namespace pramukhraj.DTOs.Product
+namespace pramukhraj.DTOs.Product
 {
     public class ProductCategoryRequestResponse
     {
@@ -13,6 +13,7 @@
             public string Slug { get; set; } = string.Empty;
             public bool? IsActive { get; set; } 
             public bool? IsFeatured { get; set; } 
+            public bool? IsReturnable { get; set; } = true;
             public string CreatedOn { get; set; } = string.Empty;
         }
 

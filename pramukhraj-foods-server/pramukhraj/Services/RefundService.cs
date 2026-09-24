@@ -184,7 +184,6 @@ public sealed class RefundService(
 
             returnRequest.StatusHistory.Add(new ReturnStatusHistory
             {
-                Id = Guid.NewGuid(),
                 ReturnRequestId = returnRequest.Id,
                 Status = returnRequest.Status,
                 Note = $"Refund of ₹{returnRequest.NetRefundAmount:F2} processed via Razorpay. Reference: {providerRefundId}. Status: {refundStatus}.",

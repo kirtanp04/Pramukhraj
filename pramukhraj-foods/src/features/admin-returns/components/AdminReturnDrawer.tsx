@@ -15,6 +15,10 @@ import {
   Navigation,
   ExternalLink,
   Printer,
+  RotateCcw,
+  Zap,
+  RefreshCw,
+  Star,
 } from "lucide-react";
 import { formatDateTime, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
@@ -27,6 +31,7 @@ import {
   ReturnStatusLabels,
   ReturnStatusBadgeVariants,
   ReturnReasonLabels,
+  ReturnResolution,
   ReturnResolutionLabels,
   InspectionOutcome,
   InspectionOutcomeLabels,
@@ -35,7 +40,9 @@ import { ReturnPackingSlipModal } from "@/features/returns/components/ReturnPack
 import type {
   AdminReturnDetails,
   AdminItemInspectionInput,
+  ReverseCourierOption,
 } from "../types";
+
 
 interface AdminReturnDrawerProps {
   returnId: string | null;
@@ -62,10 +69,12 @@ export function AdminReturnDrawer({
   const [refundOpen, setRefundOpen] = useState(false);
   const [schedulePickupOpen, setSchedulePickupOpen] = useState(false);
   const [updateTrackingOpen, setUpdateTrackingOpen] = useState(false);
+  const [replacementOpen, setReplacementOpen] = useState(false);
   const [showPackingSlip, setShowPackingSlip] = useState(false);
 
   // Form states
   const [reverseDeduction, setReverseDeduction] = useState<number>(0);
+  const [replacementNotes, setReplacementNotes] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [inspectionNotes, setInspectionNotes] = useState("");
@@ -73,6 +82,11 @@ export function AdminReturnDrawer({
   const [refundSpeed, setRefundSpeed] = useState<string>("normal");
 
   // Reverse Logistics Form state
+  const [courierMode, setCourierMode] = useState<"shiprocket" | "manual">("shiprocket");
+  const [availableCouriers, setAvailableCouriers] = useState<ReverseCourierOption[]>([]);
+  const [isLoadingCouriers, setIsLoadingCouriers] = useState(false);
+  const [selectedCourierId, setSelectedCourierId] = useState<number | null>(null);
+  const [courierFetchError, setCourierFetchError] = useState("");
   const [courierName, setCourierName] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
@@ -80,6 +94,7 @@ export function AdminReturnDrawer({
   const [pickupNotes, setPickupNotes] = useState("");
   const [targetTrackingStatus, setTargetTrackingStatus] = useState<ReturnStatus>(ReturnStatus.InTransit);
   const [trackingNotes, setTrackingNotes] = useState("");
+
 
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -224,6 +239,93 @@ export function AdminReturnDrawer({
     }
   };
 
+  const handleFulfillReplacement = async () => {
+    if (!returnId) return;
+    setIsProcessingAction(true);
+    setActionError("");
+    try {
+      const res = await adminReturnsApi.fulfillReplacement(returnId, {
+        notes: replacementNotes.trim() || undefined,
+      });
+      if (res && res.success) {
+        setReplacementOpen(false);
+        setReplacementNotes("");
+        fetchDetails();
+        if (onUpdated) onUpdated();
+      } else {
+        setActionError(res?.message || "Failed to generate replacement order.");
+      }
+    } catch (err: unknown) {
+      setActionError(
+        err instanceof Error ? err.message : "Fulfill replacement failed."
+      );
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const fetchShiprocketCouriers = async () => {
+    if (!returnId) return;
+    setIsLoadingCouriers(true);
+    setCourierFetchError("");
+    try {
+      const res = await adminReturnsApi.getCouriers(returnId);
+      if (res && Array.isArray(res) && res.length > 0) {
+        setAvailableCouriers(res);
+        const recommended = res.find((c) => c.isRecommended) || res[0];
+        setSelectedCourierId(recommended.courierCompanyId);
+      } else {
+        setAvailableCouriers([]);
+        setCourierFetchError("No serviceable Shiprocket delivery partners found for this route. You can switch to manual entry.");
+      }
+    } catch (err: unknown) {
+      setAvailableCouriers([]);
+      setCourierFetchError(err instanceof Error ? err.message : "Unable to reach Shiprocket. Please enter courier details manually.");
+    } finally {
+      setIsLoadingCouriers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (schedulePickupOpen && returnId) {
+      setCourierMode("shiprocket");
+      fetchShiprocketCouriers();
+    }
+  }, [schedulePickupOpen, returnId]);
+
+  const handleBookShiprocketPickup = async () => {
+    if (!returnId) return;
+    const selected = availableCouriers.find((c) => c.courierCompanyId === selectedCourierId);
+    setIsProcessingAction(true);
+    setActionError("");
+    try {
+      const res = await adminReturnsApi.bookPickup(returnId, {
+        courierCompanyId: selectedCourierId || undefined,
+        courierName: selected?.courierName || undefined,
+        pickupScheduledDate: pickupScheduledDate ? new Date(pickupScheduledDate).toISOString() : undefined,
+        notes: pickupNotes.trim() || undefined,
+      });
+      if (res && res.success) {
+        setSchedulePickupOpen(false);
+        fetchDetails();
+        if (onUpdated) onUpdated();
+      } else {
+        setActionError(res?.message || "Failed to book reverse pickup via Shiprocket.");
+      }
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown> | Error | null;
+      const msg =
+        (e && typeof e === "object" && "message" in e && typeof (e as Record<string, unknown>).message === "string"
+          ? (e as Record<string, unknown>).message as string
+          : null) ||
+        (err instanceof Error ? err.message : null) ||
+        "Failed to book reverse pickup via Shiprocket.";
+      setActionError(msg);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   const handleSchedulePickup = async () => {
     if (!returnId) return;
     if (!courierName.trim() || !trackingNumber.trim()) {
@@ -248,11 +350,19 @@ export function AdminReturnDrawer({
         setActionError(res?.message || "Failed to schedule reverse pickup.");
       }
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to schedule reverse pickup.");
+      const e = err as Record<string, unknown> | Error | null;
+      const msg =
+        (e && typeof e === "object" && "message" in e && typeof (e as Record<string, unknown>).message === "string"
+          ? (e as Record<string, unknown>).message as string
+          : null) ||
+        (err instanceof Error ? err.message : null) ||
+        "Failed to schedule reverse pickup.";
+      setActionError(msg);
     } finally {
       setIsProcessingAction(false);
     }
   };
+
 
   const handleUpdateTracking = async (statusOverride?: ReturnStatus) => {
     if (!returnId) return;
@@ -404,13 +514,10 @@ export function AdminReturnDrawer({
                   </Button>
                 )}
 
-                {(details.status === ReturnStatus.Approved ||
-                  details.status === ReturnStatus.PickupScheduled ||
-                  details.status === ReturnStatus.InTransit ||
-                  details.status === ReturnStatus.DeliveredToWarehouse) && (
+                {details.status === ReturnStatus.DeliveredToWarehouse && (
                   <Button
                     size="sm"
-                    variant={details.status === ReturnStatus.DeliveredToWarehouse ? "primary" : "outline"}
+                    variant="primary"
                     onClick={() => {
                       setActionError("");
                       setInspectOpen(true);
@@ -422,22 +529,72 @@ export function AdminReturnDrawer({
                   </Button>
                 )}
 
-                {details.status === ReturnStatus.InspectionPassed && (
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => {
-                      setActionError("");
-                      setRefundOpen(true);
-                    }}
-                    className="text-xs! gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
-                  >
-                    <CreditCard size={13} />
-                    <span>Execute Razorpay Refund</span>
-                  </Button>
-                )}
+
+                {details.status === ReturnStatus.InspectionPassed &&
+                  details.resolution !== ReturnResolution.Replacement && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setActionError("");
+                        setRefundOpen(true);
+                      }}
+                      className="text-xs! gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
+                    >
+                      <CreditCard size={13} />
+                      <span>Execute Razorpay Refund</span>
+                    </Button>
+                  )}
+
+                {details.resolution === ReturnResolution.Replacement &&
+                  !details.replacementOrderId &&
+                  (details.status === ReturnStatus.InspectionPassed ||
+                    details.status === ReturnStatus.Approved ||
+                    details.status === ReturnStatus.DeliveredToWarehouse) && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setActionError("");
+                        setReplacementOpen(true);
+                      }}
+                      className="text-xs! gap-1.5 bg-blue-700 hover:bg-blue-800 text-white"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Fulfill Replacement</span>
+                    </Button>
+                  )}
               </div>
             </div>
+
+            {/* Replacement Order Card */}
+            {details.replacementOrderNumber && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/30 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-medium text-xs! sm:text-sm!">
+                    <RotateCcw size={16} />
+                    <span>Replacement Order Created & Confirmed</span>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="border-blue-400 text-blue-800 dark:text-blue-300 font-mono font-semibold text-[11px]!"
+                  >
+                    ₹0 Fulfill
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs!">
+                  <span className="text-ink-soft">
+                    Linked Replacement Order:{" "}
+                    <span className="font-mono font-bold text-ink">
+                      #{details.replacementOrderNumber}
+                    </span>
+                  </span>
+                  <span className="text-[11px]! text-blue-700 dark:text-blue-400">
+                    Dispatched to customer delivery address
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Reverse Logistics Tracking Overview Card */}
             {(details.courierName ||
@@ -451,35 +608,43 @@ export function AdminReturnDrawer({
                     <Truck size={16} />
                     <span>Reverse Courier & Tracking Logistics</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setActionError("");
-                        setSchedulePickupOpen(true);
-                      }}
-                      className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
-                    >
-                      {details.courierName ? "Edit Courier" : "Assign Courier"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setActionError("");
-                        setTargetTrackingStatus(
-                          details.status === ReturnStatus.PickupScheduled
-                            ? ReturnStatus.InTransit
-                            : ReturnStatus.DeliveredToWarehouse
-                        );
-                        setUpdateTrackingOpen(true);
-                      }}
-                      className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
-                    >
-                      Update Status
-                    </Button>
-                  </div>
+                  {details.status !== ReturnStatus.DeliveredToWarehouse &&
+                    details.status !== ReturnStatus.InspectionPassed &&
+                    details.status !== ReturnStatus.InspectionFailed &&
+                    details.status !== ReturnStatus.RefundInitiated &&
+                    details.status !== ReturnStatus.RefundCompleted &&
+                    details.status !== ReturnStatus.Cancelled &&
+                    details.status !== ReturnStatus.Closed && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActionError("");
+                          setSchedulePickupOpen(true);
+                        }}
+                        className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
+                      >
+                        {details.courierName ? "Edit Courier" : "Assign Courier"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActionError("");
+                          setTargetTrackingStatus(
+                            details.status === ReturnStatus.PickupScheduled
+                              ? ReturnStatus.InTransit
+                              : ReturnStatus.DeliveredToWarehouse
+                          );
+                          setUpdateTrackingOpen(true);
+                        }}
+                        className="text-xs! h-7 px-2.5 border-teal/30 text-teal hover:bg-teal/10"
+                      >
+                        Update Status
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs!">
@@ -1135,13 +1300,132 @@ export function AdminReturnDrawer({
         </Dialog.Portal>
       </Dialog.Root>
 
+      {/* ─── FULFILL REPLACEMENT ORDER MODAL ───────────────────────── */}
+      <Dialog.Root open={replacementOpen} onOpenChange={setReplacementOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
+          <Dialog.Content
+            aria-describedby={modalDescId}
+            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <RotateCcw size={18} />
+                <Dialog.Title className="font-display font-semibold text-ink text-base!">
+                  Generate Replacement Order
+                </Dialog.Title>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplacementOpen(false)}
+                className="rounded-lg p-1 text-ink-soft hover:bg-ink/5 hover:text-ink transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 text-xs!">
+              {actionError && (
+                <div className="rounded-lg bg-oxblood/10 p-3 text-oxblood flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{actionError}</span>
+                </div>
+              )}
+
+              <div className="rounded-xl bg-blue-50/70 dark:bg-blue-950/30 p-3.5 border border-blue-200/60 space-y-2">
+                <p className="font-medium text-blue-900 dark:text-blue-200">
+                  Replacement Fulfillment Overview
+                </p>
+                <p className="text-ink-soft leading-relaxed">
+                  A new zero-cost confirmed order will be generated for customer{" "}
+                  <strong className="text-ink">{details?.customerName}</strong>. The items that passed inspection will be added to the order, and the original shipping address will be cloned.
+                </p>
+              </div>
+
+              {details && (
+                <div className="space-y-2">
+                  <span className="font-medium text-ink block">
+                    Items to Replace:
+                  </span>
+                  <div className="rounded-xl border border-ink/10 divide-y divide-ink/10 overflow-hidden bg-white/50">
+                    {details.items
+                      .filter((i) => i.inspectionStatus !== InspectionOutcome.Failed)
+                      .map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-2.5"
+                        >
+                          <div>
+                            <span className="font-medium text-ink block">
+                              {item.productName}
+                            </span>
+                            <span className="text-[11px]! text-ink-soft">
+                              {item.variantName}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="font-mono text-xs!">
+                            Qty: {item.quantity}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 block font-medium text-ink">
+                  Fulfillment / Warehouse Notes (Optional)
+                </label>
+                <textarea
+                  value={replacementNotes}
+                  onChange={(e) => setReplacementNotes(e.target.value)}
+                  placeholder="e.g. Priority packaging, QC passed batch #401"
+                  rows={3}
+                  className="w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs! text-ink placeholder:text-ink-soft/60 focus:border-oxblood focus:outline-hidden"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink/10 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReplacementOpen(false)}
+                className="text-xs!"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleFulfillReplacement}
+                disabled={isProcessingAction}
+                className="text-xs! bg-blue-700 hover:bg-blue-800 text-white"
+              >
+                {isProcessingAction ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin mr-1" />
+                    Generating Order...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={13} className="mr-1" />
+                    Confirm & Generate Replacement
+                  </>
+                )}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       {/* ─── SCHEDULE REVERSE PICKUP MODAL ───────────────────────── */}
       <Dialog.Root open={schedulePickupOpen} onOpenChange={setSchedulePickupOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto max-h-[88vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <div className="flex items-center gap-2 text-teal">
@@ -1157,7 +1441,37 @@ export function AdminReturnDrawer({
               </Dialog.Close>
             </div>
 
-            <div className="space-y-3.5 py-4 text-xs!">
+            {/* Mode Switcher Tabs */}
+            <div className="pt-3">
+              <div className="flex rounded-xl bg-ink/5 p-1 border border-ink/10">
+                <button
+                  type="button"
+                  onClick={() => setCourierMode("shiprocket")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs! font-medium transition-all ${
+                    courierMode === "shiprocket"
+                      ? "bg-ivory text-ink shadow-xs border border-ink/10 font-semibold"
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  <Zap size={13} className={courierMode === "shiprocket" ? "text-oxblood" : "text-ink-soft"} />
+                  <span>Shiprocket Auto-Book</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCourierMode("manual")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs! font-medium transition-all ${
+                    courierMode === "manual"
+                      ? "bg-ivory text-ink shadow-xs border border-ink/10 font-semibold"
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  <Truck size={13} className={courierMode === "manual" ? "text-teal" : "text-ink-soft"} />
+                  <span>Manual Courier Entry</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 py-3 text-xs! overflow-y-auto flex-1 pr-1">
               {actionError && (
                 <div className="rounded-lg bg-oxblood/10 p-2.5 text-oxblood">
                   {actionError}
@@ -1165,75 +1479,212 @@ export function AdminReturnDrawer({
               )}
 
               <p id={modalDescId} className="text-ink-soft text-[11px]!">
-                Assign the reverse logistics courier partner and generate or input the tracking AWB code.
+                {courierMode === "shiprocket"
+                  ? "Select an available reverse delivery partner integrated with Shiprocket to automatically generate AWB tracking and schedule pickup."
+                  : "Assign the reverse logistics courier partner and manually enter the tracking AWB code."}
               </p>
 
-              <div className="space-y-1.5">
-                <label className="font-medium text-ink">
-                  Courier / Logistics Partner <span className="text-oxblood">*</span>
-                </label>
-                <input
-                  type="text"
-                  list="carrier-suggestions"
-                  value={courierName}
-                  onChange={(e) => setCourierName(e.target.value)}
-                  placeholder="e.g. Blue Dart, Delhivery, DTDC, Xpressbees"
-                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
-                />
-                <datalist id="carrier-suggestions">
-                  <option value="Blue Dart" />
-                  <option value="Delhivery" />
-                  <option value="DTDC Express" />
-                  <option value="Xpressbees" />
-                  <option value="Shadowfax" />
-                  <option value="Ekart Logistics" />
-                </datalist>
-              </div>
+              {courierMode === "shiprocket" ? (
+                <>
+                  {/* Delivery Partner Selection List */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-medium text-ink flex items-center gap-1.5">
+                        <span>Available Delivery Partners</span>
+                        {availableCouriers.length > 0 && (
+                          <Badge variant="outline" className="text-[10px]! px-1.5 py-0 h-4">
+                            {availableCouriers.length} options
+                          </Badge>
+                        )}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={fetchShiprocketCouriers}
+                        disabled={isLoadingCouriers}
+                        className="text-[11px]! flex items-center gap-1 text-teal hover:text-teal-deep font-medium disabled:opacity-50"
+                      >
+                        <RefreshCw size={11} className={isLoadingCouriers ? "animate-spin" : ""} />
+                        <span>Refresh Rates</span>
+                      </button>
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="font-medium text-ink">
-                  Reverse AWB / Tracking Code <span className="text-oxblood">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  placeholder="e.g. BD123456789IN"
-                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 font-mono text-ink outline-none focus:border-oxblood text-xs!"
-                />
-              </div>
+                    {isLoadingCouriers ? (
+                      <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-ink/10 bg-ink/[0.02]">
+                        <Loader2 className="animate-spin text-oxblood mb-2" size={24} />
+                        <p className="text-xs! text-ink font-medium">Checking Shiprocket serviceable couriers...</p>
+                        <p className="text-[11px]! text-ink-soft">Fetching rates and ETDs for customer route</p>
+                      </div>
+                    ) : courierFetchError || availableCouriers.length === 0 ? (
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-50/50 p-3.5 space-y-2">
+                        <div className="flex items-start gap-2 text-amber-800">
+                          <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                          <div className="text-[11px]! leading-relaxed">
+                            {courierFetchError || "No reverse logistics couriers are serviceable for this route at the moment."}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCourierMode("manual")}
+                          className="text-xs! w-full justify-center bg-white"
+                        >
+                          Switch to Manual Courier Entry
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {availableCouriers.map((courier) => {
+                          const isSelected = selectedCourierId === courier.courierCompanyId;
+                          return (
+                            <div
+                              key={courier.courierCompanyId}
+                              onClick={() => setSelectedCourierId(courier.courierCompanyId)}
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                                isSelected
+                                  ? "border-teal bg-teal/5 ring-1 ring-teal/30 shadow-xs"
+                                  : "border-ink/10 hover:border-ink/20 hover:bg-ink/[0.02]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                    isSelected ? "border-teal bg-teal" : "border-ink/30"
+                                  }`}
+                                >
+                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-ink text-xs!">{courier.courierName}</span>
+                                    {courier.isRecommended && (
+                                      <Badge variant="teal" className="text-[10px]! px-1.5 py-0 h-4 bg-teal text-white">
+                                        Recommended
+                                      </Badge>
+                                    )}
 
-              <div className="space-y-1.5">
-                <label className="font-medium text-ink">Tracking Web URL (Optional)</label>
-                <input
-                  type="url"
-                  value={trackingUrl}
-                  onChange={(e) => setTrackingUrl(e.target.value)}
-                  placeholder="https://track.carrier.com/..."
-                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
-                />
-              </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 text-ink-soft text-[11px]!">
+                                    <span>
+                                      {courier.estimatedDeliveryDays
+                                        ? `Est. ${courier.estimatedDeliveryDays} days`
+                                        : "Standard Delivery"}
+                                    </span>
+                                    {courier.rating && courier.rating > 0 && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="flex items-center gap-0.5 text-amber-700 font-medium">
+                                          <Star size={10} className="fill-amber-500 text-amber-500" />
+                                          {courier.rating.toFixed(1)}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-display font-semibold text-oxblood text-sm!">
+                                  ₹{courier.freightCharge.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="font-medium text-ink">Scheduled Pickup Date &amp; Time (Optional)</label>
-                <input
-                  type="datetime-local"
-                  value={pickupScheduledDate}
-                  onChange={(e) => setPickupScheduledDate(e.target.value)}
-                  className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
-                />
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">Scheduled Pickup Date &amp; Time (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      value={pickupScheduledDate}
+                      onChange={(e) => setPickupScheduledDate(e.target.value)}
+                      className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                    />
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="font-medium text-ink">Special Instructions / Dispatch Notes</label>
-                <textarea
-                  rows={2}
-                  value={pickupNotes}
-                  onChange={(e) => setPickupNotes(e.target.value)}
-                  placeholder="Package notes, pickup window details..."
-                  className="w-full rounded-xl border border-ink/15 bg-ivory p-2.5 text-ink outline-none focus:border-oxblood resize-none text-xs!"
-                />
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">Special Instructions / Dispatch Notes</label>
+                    <textarea
+                      rows={2}
+                      value={pickupNotes}
+                      onChange={(e) => setPickupNotes(e.target.value)}
+                      placeholder="Package notes, pickup window details..."
+                      className="w-full rounded-xl border border-ink/15 bg-ivory p-2.5 text-ink outline-none focus:border-oxblood resize-none text-xs!"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">
+                      Courier / Logistics Partner <span className="text-oxblood">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      list="carrier-suggestions"
+                      value={courierName}
+                      onChange={(e) => setCourierName(e.target.value)}
+                      placeholder="e.g. Blue Dart, Delhivery, DTDC, Xpressbees"
+                      className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                    />
+                    <datalist id="carrier-suggestions">
+                      <option value="Blue Dart" />
+                      <option value="Delhivery" />
+                      <option value="DTDC Express" />
+                      <option value="Xpressbees" />
+                      <option value="Shadowfax" />
+                      <option value="Ekart Logistics" />
+                    </datalist>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">
+                      Reverse AWB / Tracking Code <span className="text-oxblood">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="e.g. BD123456789IN"
+                      className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 font-mono text-ink outline-none focus:border-oxblood text-xs!"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">Tracking Web URL (Optional)</label>
+                    <input
+                      type="url"
+                      value={trackingUrl}
+                      onChange={(e) => setTrackingUrl(e.target.value)}
+                      placeholder="https://track.carrier.com/..."
+                      className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">Scheduled Pickup Date &amp; Time (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      value={pickupScheduledDate}
+                      onChange={(e) => setPickupScheduledDate(e.target.value)}
+                      className="w-full rounded-xl border border-ink/15 bg-ivory px-3 py-2 text-ink outline-none focus:border-oxblood text-xs!"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-medium text-ink">Special Instructions / Dispatch Notes</label>
+                    <textarea
+                      rows={2}
+                      value={pickupNotes}
+                      onChange={(e) => setPickupNotes(e.target.value)}
+                      placeholder="Package notes, pickup window details..."
+                      className="w-full rounded-xl border border-ink/15 bg-ivory p-2.5 text-ink outline-none focus:border-oxblood resize-none text-xs!"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-ink/10 pt-3">
@@ -1245,19 +1696,46 @@ export function AdminReturnDrawer({
               >
                 Cancel
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSchedulePickup}
-                disabled={isProcessingAction}
-                className="text-xs! bg-teal hover:bg-teal-deep text-white"
-              >
-                {isProcessingAction ? "Scheduling..." : "Confirm Schedule"}
-              </Button>
+              {courierMode === "shiprocket" ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleBookShiprocketPickup}
+                  disabled={isProcessingAction || !selectedCourierId || isLoadingCouriers}
+                  className="text-xs! bg-teal hover:bg-teal-deep text-white gap-1.5"
+                >
+                  {isProcessingAction ? (
+                    <>
+                      <Loader2 className="animate-spin" size={13} />
+                      <span>Booking with Shiprocket...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={13} />
+                      <span>
+                        {selectedCourierId && availableCouriers.find((c) => c.courierCompanyId === selectedCourierId)
+                          ? `Book with ${availableCouriers.find((c) => c.courierCompanyId === selectedCourierId)?.courierName}`
+                          : "Confirm & Book via Shiprocket"}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSchedulePickup}
+                  disabled={isProcessingAction}
+                  className="text-xs! bg-teal hover:bg-teal-deep text-white"
+                >
+                  {isProcessingAction ? "Scheduling..." : "Confirm Schedule"}
+                </Button>
+              )}
             </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
 
       {/* ─── UPDATE REVERSE TRACKING STATUS MODAL ─────────────────── */}
       <Dialog.Root open={updateTrackingOpen} onOpenChange={setUpdateTrackingOpen}>

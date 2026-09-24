@@ -14,6 +14,7 @@ export function mapProductResponseToForm(product: ProductDetailsResponse): Produ
     isTrending: product.isTrending,
     isNewArrival: product.isNewArrival,
     isActive: product.isActive,
+    isReturnable: product.isReturnable ?? true,
     countryOfOrigin: product.countryOfOrigin,
     isVegetarian: product.isVegetarian,
     shelfLife: product.shelfLife,
@@ -53,5 +54,6 @@ export function mapCategoryResponseToForm(
     displayOrder: category.displayOrder,
     isFeatured: category.isFeatured,
     isActive: category.isActive,
+    isReturnable: category.isReturnable ?? true,
   }
 }

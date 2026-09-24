@@ -220,6 +220,8 @@ export interface CustomerReturnDetails {
   deliveredToWarehouseOn?: string | null;
   receivedOn?: string | null;
   inspectedOn?: string | null;
+  replacementOrderId?: string | null;
+  replacementOrderNumber?: string | null;
 }
 
 // Customer List Page Response

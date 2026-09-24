@@ -47,12 +47,27 @@ public sealed class AdminReturnsController(IServiceManager services) : Controlle
         return StatusCode(response.StatusCode, response);
     }
 
+    [HttpGet("{returnId:guid}/couriers")]
+    public async Task<IActionResult> GetCouriers(Guid returnId, CancellationToken ct)
+    {
+        var response = await services.ReturnService.GetReverseCouriersAsync(returnId, ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
     [HttpPost("{returnId:guid}/schedule-pickup")]
     public async Task<IActionResult> SchedulePickup(Guid returnId, [FromBody] ScheduleReversePickupRequest request, CancellationToken ct)
     {
         var response = await services.ReturnService.SchedulePickupAsync(returnId, request, ct);
         return StatusCode(response.StatusCode, response);
     }
+
+    [HttpPost("{returnId:guid}/book-pickup")]
+    public async Task<IActionResult> BookPickup(Guid returnId, [FromBody] BookReversePickupRequest request, CancellationToken ct)
+    {
+        var response = await services.ReturnService.BookShiprocketReversePickupAsync(returnId, request, ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
 
     [HttpPost("{returnId:guid}/update-tracking")]
     public async Task<IActionResult> UpdateTracking(Guid returnId, [FromBody] UpdateReverseTrackingRequest request, CancellationToken ct)
@@ -66,6 +81,21 @@ public sealed class AdminReturnsController(IServiceManager services) : Controlle
     {
         var response = await services.RefundService.ProcessRefundAsync(returnId, request, ct);
         return StatusCode(response.StatusCode, response);
+    }
+
+    [HttpPost("{returnId:guid}/fulfill-replacement")]
+    public async Task<IActionResult> FulfillReplacement(Guid returnId, [FromBody] AdminFulfillReplacementRequest request, CancellationToken ct)
+    {
+        var response = await services.ReturnService.FulfillReplacementOrderAsync(returnId, request, ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportReturns([FromQuery] AdminReturnFilterRequest filter, CancellationToken ct)
+    {
+        var bytes = await services.ReturnService.ExportReturnsCsvAsync(filter, ct);
+        var filename = $"returns-export-{DateTime.UtcNow:yyyyMMddHHmmss}.csv";
+        return File(bytes, "text/csv; charset=utf-8", filename);
     }
 }
 

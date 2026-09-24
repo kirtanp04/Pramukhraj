@@ -9,6 +9,7 @@ namespace pramukhraj.Entities.Return;
 [Index(nameof(OrderId))]
 [Index(nameof(CustomerId), nameof(CreatedOn))]
 [Index(nameof(Status))]
+[Index(nameof(ReplacementOrderId))]
 public sealed class ReturnRequest
 {
     [Key]
@@ -72,6 +73,11 @@ public sealed class ReturnRequest
 
     public DateTime? DeliveredToWarehouseOn { get; set; }
 
+    public Guid? ReplacementOrderId { get; set; }
+
+    [MaxLength(40)]
+    public string? ReplacementOrderNumber { get; set; }
+
     [MaxLength(64), ConcurrencyCheck]
     public string ConcurrencyStamp { get; set; } = Guid.NewGuid().ToString("N");
 
@@ -130,7 +136,7 @@ public sealed class ReturnMedia
 
     public Guid ReturnRequestId { get; set; }
 
-    [MaxLength(1000)]
+    [Column(TypeName = "text")]
     public string Url { get; set; } = string.Empty;
 
     [MaxLength(255)]

@@ -231,5 +231,80 @@ public sealed class ReturnAndRefundModuleTests
         var result = _updateTrackingValidator.Validate(request);
         Assert.False(result.IsValid);
     }
+
+    [Fact]
+    public void FulfillReplacement_RequestRecord_InitializesProperly()
+    {
+        var request = new AdminFulfillReplacementRequest("Customer requested instant dispatch");
+        Assert.Equal("Customer requested instant dispatch", request.Notes);
+
+        var defaultRequest = new AdminFulfillReplacementRequest();
+        Assert.Null(defaultRequest.Notes);
+    }
+
+    [Fact]
+    public void ReturnRequest_ReplacementTracking_PropertiesBindCorrectly()
+    {
+        var repOrderId = Guid.NewGuid();
+        var r = new ReturnRequest
+        {
+            Id = Guid.NewGuid(),
+            ReturnNumber = "RET-20260923-0001",
+            ReplacementOrderId = repOrderId,
+            ReplacementOrderNumber = "ORD-REP-20260923120000-123"
+        };
+
+        Assert.Equal(repOrderId, r.ReplacementOrderId);
+        Assert.Equal("ORD-REP-20260923120000-123", r.ReplacementOrderNumber);
+    }
+
+    [Fact]
+    public void BookReversePickupRequest_ValidData_PassesValidation()
+    {
+        var validator = new BookReversePickupRequestValidator();
+        var request = new BookReversePickupRequest(
+            CourierCompanyId: 24,
+            CourierName: "Delhivery Reverse",
+            PickupScheduledDate: DateTime.UtcNow.AddDays(1),
+            Notes: "Handle delicate sweets box carefully");
+
+        var result = validator.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void BookReversePickupRequest_ExcessiveCourierName_FailsValidation()
+    {
+        var validator = new BookReversePickupRequestValidator();
+        var request = new BookReversePickupRequest(
+            CourierCompanyId: 10,
+            CourierName: new string('A', 101),
+            Notes: null);
+
+        var result = validator.Validate(request);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(BookReversePickupRequest.CourierName));
+    }
+
+    [Fact]
+    public void ReverseCourierOptionDto_BindsCorrectly()
+    {
+        var dto = new ReverseCourierOptionDto(
+            CourierCompanyId: 45,
+            CourierName: "Blue Dart Surface Reverse",
+            FreightCharge: 125.50m,
+            EstimatedDeliveryDays: 3,
+            EstimatedDeliveryDate: DateTime.UtcNow.AddDays(3),
+            Rating: 4.5m,
+            IsRecommended: true);
+
+        Assert.Equal(45, dto.CourierCompanyId);
+        Assert.Equal("Blue Dart Surface Reverse", dto.CourierName);
+        Assert.Equal(125.50m, dto.FreightCharge);
+        Assert.Equal(3, dto.EstimatedDeliveryDays);
+        Assert.True(dto.IsRecommended);
+    }
 }
+
+
 

@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Eye,
   AlertCircle,
+  Download,
 } from "lucide-react";
 import { DataTable } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
@@ -52,6 +53,44 @@ export function AdminReturns() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await adminReturnsApi.exportCsv({
+        searchQuery: debouncedSearch || undefined,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `returns-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to export returns CSV.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const reasonBreakdown = useMemo(() => {
+    const counts: Record<number, number> = {};
+    returns.forEach((r) => {
+      counts[r.reason] = (counts[r.reason] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([reason, count]) => ({
+        reason: Number(reason),
+        label: ReturnReasonLabels[Number(reason) as keyof typeof ReturnReasonLabels] || "Other",
+        count,
+        percent: returns.length ? Math.round((count / returns.length) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [returns]);
 
   // Debounce search
   useEffect(() => {
@@ -209,15 +248,28 @@ export function AdminReturns() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadData}
-          className="text-xs! gap-1.5"
-        >
-          <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
-          <span>Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            className="text-xs! gap-1.5"
+          >
+            <Download size={13} className={isExporting ? "animate-spin" : ""} />
+            <span>{isExporting ? "Exporting..." : "Export CSV"}</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadData}
+            className="text-xs! gap-1.5"
+          >
+            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* Status Filter Chips */}
@@ -372,6 +424,32 @@ export function AdminReturns() {
           Cancelled ({statusCounts.cancelled})
         </button>
       </div>
+
+      {/* Return Reason Analytics Breakdown */}
+      {reasonBreakdown.length > 0 && (
+        <div className="rounded-2xl border border-ink/10 bg-ivory-dim/60 p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs!">
+            <span className="font-semibold text-ink uppercase tracking-wider text-[11px]!">
+              Defect &amp; Return Reason Distribution
+            </span>
+            <span className="text-ink-soft">
+              {returns.length} return{returns.length === 1 ? "" : "s"} shown
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {reasonBreakdown.map((item) => (
+              <div
+                key={item.reason}
+                className="flex items-center gap-1.5 rounded-lg border border-ink/10 bg-white/80 px-2.5 py-1 text-xs! text-ink"
+              >
+                <span className="font-medium">{item.label}:</span>
+                <span className="font-mono font-bold text-oxblood">{item.count}</span>
+                <span className="text-[10px]! text-ink-soft font-mono">({item.percent}%)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search Input Bar */}
       <div className="flex items-center gap-3">

@@ -349,7 +349,27 @@ const AdminApiPaths = {
     inspect: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/inspect`,
     processRefund: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/process-refund`,
     schedulePickup: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/schedule-pickup`,
+    couriers: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/couriers`,
+    bookPickup: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/book-pickup`,
     updateTracking: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/update-tracking`,
+
+    fulfillReplacement: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/fulfill-replacement`,
+    export: (query?: {
+      status?: number | string;
+      searchQuery?: string;
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (query?.status !== undefined && query.status !== "" && query.status !== "ALL") {
+        params.set("status", String(query.status));
+      }
+      if (query?.searchQuery) params.set("searchQuery", query.searchQuery);
+      if (query?.startDate) params.set("startDate", query.startDate);
+      if (query?.endDate) params.set("endDate", query.endDate);
+      const q = params.toString();
+      return `admin/returns/export${q ? `?${q}` : ""}`;
+    },
   },
 };
 

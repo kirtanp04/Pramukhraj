@@ -107,6 +107,8 @@ export interface AdminReturnDetails {
   pickupScheduledDate?: string | null;
   pickedUpOn?: string | null;
   deliveredToWarehouseOn?: string | null;
+  replacementOrderId?: string | null;
+  replacementOrderNumber?: string | null;
 }
 
 export interface AdminReturnStatusCounts {
@@ -168,5 +170,27 @@ export interface UpdateReverseTrackingRequest {
   status: ReturnStatus;
   notes?: string;
 }
+
+export interface AdminFulfillReplacementPayload {
+  notes?: string;
+}
+
+export interface ReverseCourierOption {
+  courierCompanyId: number;
+  courierName: string;
+  freightCharge: number;
+  estimatedDeliveryDays: number | null;
+  estimatedDeliveryDate: string | null;
+  rating: number | null;
+  isRecommended: boolean;
+}
+
+export interface BookReversePickupPayload {
+  courierCompanyId?: number;
+  courierName?: string;
+  pickupScheduledDate?: string;
+  notes?: string;
+}
+
 
 

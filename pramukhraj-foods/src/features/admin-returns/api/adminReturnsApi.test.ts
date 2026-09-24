@@ -51,9 +51,33 @@ describe("Admin Returns ApiPath generation", () => {
     expect(ApiPath.admin.returns.schedulePickup(dummyReturnId)).toBe(
       `admin/returns/${dummyReturnId}/schedule-pickup`
     );
+    expect(ApiPath.admin.returns.couriers(dummyReturnId)).toBe(
+      `admin/returns/${dummyReturnId}/couriers`
+    );
+    expect(ApiPath.admin.returns.bookPickup(dummyReturnId)).toBe(
+      `admin/returns/${dummyReturnId}/book-pickup`
+    );
     expect(ApiPath.admin.returns.updateTracking(dummyReturnId)).toBe(
       `admin/returns/${dummyReturnId}/update-tracking`
     );
+    expect(ApiPath.admin.returns.fulfillReplacement(dummyReturnId)).toBe(
+      `admin/returns/${dummyReturnId}/fulfill-replacement`
+    );
+
+  });
+
+  it("builds correct export csv endpoint path with filters", () => {
+    const url = ApiPath.admin.returns.export({
+      status: ReturnStatus.RefundCompleted,
+      searchQuery: "ORD-99",
+      startDate: "2026-09-01",
+      endDate: "2026-09-30",
+    });
+    expect(url).toContain("admin/returns/export?");
+    expect(url).toContain(`status=${ReturnStatus.RefundCompleted}`);
+    expect(url).toContain("searchQuery=ORD-99");
+    expect(url).toContain("startDate=2026-09-01");
+    expect(url).toContain("endDate=2026-09-30");
   });
 });
 

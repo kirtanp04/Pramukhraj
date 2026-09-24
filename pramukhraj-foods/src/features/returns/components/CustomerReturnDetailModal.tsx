@@ -219,6 +219,32 @@ export function CustomerReturnDetailModal({
                   </div>
                 )}
 
+                {/* Replacement Order Card */}
+                {details.replacementOrderNumber && (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/30 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-medium text-xs! sm:text-sm!">
+                        <RotateCcw size={16} />
+                        <span>Replacement Order Confirmed</span>
+                      </div>
+                      <Badge variant="outline" className="border-blue-400 text-blue-800 dark:text-blue-300 font-mono font-semibold text-[11px]!">
+                        ₹0 Replacement
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs!">
+                      <span className="text-ink-soft">
+                        Replacement Order:{" "}
+                        <span className="font-mono font-bold text-ink">
+                          #{details.replacementOrderNumber}
+                        </span>
+                      </span>
+                      <span className="text-[11px]! text-blue-700 dark:text-blue-400">
+                        Queued for dispatch to original delivery address
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Reverse Logistics Tracking Card */}
                 {details &&
                   (details.courierName ||

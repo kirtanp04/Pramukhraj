@@ -63,7 +63,9 @@ public sealed record AdminReturnDetailsResponse(
     string? TrackingUrl = null,
     DateTime? PickupScheduledDate = null,
     DateTime? PickedUpOn = null,
-    DateTime? DeliveredToWarehouseOn = null);
+    DateTime? DeliveredToWarehouseOn = null,
+    Guid? ReplacementOrderId = null,
+    string? ReplacementOrderNumber = null);
 
 public sealed record AdminReturnItemDetailDto(
     Guid Id,
@@ -117,6 +119,9 @@ public sealed record AdminItemInspectionResult(
 public sealed record AdminProcessRefundRequest(
     string? RefundSpeed = "normal");
 
+public sealed record AdminFulfillReplacementRequest(
+    string? Notes = null);
+
 public sealed record ScheduleReversePickupRequest(
     string CourierName,
     string TrackingNumber,
@@ -148,4 +153,28 @@ public sealed record AdminReturnListPageResponse(
     int TotalCount,
     int TotalPages,
     AdminReturnStatusCounts StatusCounts);
+
+public sealed record ReverseCourierOptionDto(
+    int CourierCompanyId,
+    string CourierName,
+    decimal FreightCharge,
+    int? EstimatedDeliveryDays,
+    DateTime? EstimatedDeliveryDate,
+    decimal? Rating,
+    bool IsRecommended);
+
+public sealed record BookReversePickupRequest(
+    int? CourierCompanyId = null,
+    string? CourierName = null,
+    DateTime? PickupScheduledDate = null,
+    string? Notes = null);
+
+public sealed record ReverseBookingResult(
+    bool Success,
+    string? AwbCode,
+    string? CourierName,
+    long ProviderOrderId,
+    long ProviderShipmentId,
+    string? Message);
+
 

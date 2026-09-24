@@ -80,7 +80,9 @@ public sealed record CustomerReturnDetailsResponse(
     DateTime? PickedUpOn = null,
     DateTime? DeliveredToWarehouseOn = null,
     DateTime? ReceivedOn = null,
-    DateTime? InspectedOn = null);
+    DateTime? InspectedOn = null,
+    Guid? ReplacementOrderId = null,
+    string? ReplacementOrderNumber = null);
 
 public sealed record CustomerReturnItemDetailDto(
     Guid Id,

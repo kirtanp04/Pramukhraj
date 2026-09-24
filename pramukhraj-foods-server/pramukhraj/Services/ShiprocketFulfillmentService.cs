@@ -5,21 +5,25 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Notifications;
 using pramukhraj.DTOs.ProviderCredentials;
+using pramukhraj.DTOs.Return;
 using pramukhraj.DTOs.Shipment;
 using pramukhraj.Entities.Notifications;
 using pramukhraj.Entities.Order;
 using pramukhraj.Entities.ProviderCredentials;
+using pramukhraj.Entities.Return;
 using pramukhraj.Entities.Shipment;
 using pramukhraj.Interfaces;
 
 namespace pramukhraj.Services;
 
-public sealed class ShiprocketFulfillmentService(
+public sealed partial class ShiprocketFulfillmentService(
+
     HttpClient httpClient,
     AppDbContext db,
     IProviderCredentialService providerCredentialService,
@@ -634,5 +638,387 @@ public sealed class ShiprocketFulfillmentService(
             _ => weight >= 5m ? weight / 1000m : weight
         };
     }
+
+    public async Task<IReadOnlyList<ReverseCourierOptionDto>> GetReverseCouriersAsync(
+        string customerPostalCode,
+        decimal weightKg,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(customerPostalCode))
+            throw new ShiprocketProviderException("Customer postal code is required for courier lookup.", 400);
+
+        var credentials = await GetCredentialsAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(credentials.PickupPostalCode))
+            throw new ShiprocketProviderException("Warehouse pickup postal code is not configured in Shiprocket settings.", 503);
+
+        var chargeableWeight = Math.Max(weightKg, credentials.MinimumChargeableWeightKg > 0 ? credentials.MinimumChargeableWeightKg : 0.5m);
+        var path = string.Create(CultureInfo.InvariantCulture,
+            $"courier/serviceability/?pickup_postcode={customerPostalCode.Trim()}&delivery_postcode={credentials.PickupPostalCode.Trim()}&weight={chargeableWeight:0.###}&cod=0&is_return=1");
+
+        using var response = await SendAuthorizedAsync(HttpMethod.Get, path, null, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("Shiprocket reverse serviceability check failed with HTTP {StatusCode}.", (int)response.StatusCode);
+            return [];
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var couriers = ReadReverseCouriers(doc.RootElement).Where(x => x.FreightCharge > 0).ToList();
+
+        return couriers
+            .GroupBy(x => x.CourierCompanyId)
+            .Select(g => g.OrderBy(x => x.FreightCharge).First())
+            .OrderByDescending(x => x.IsRecommended)
+            .ThenByDescending(x => x.Rating ?? 0)
+            .ThenBy(x => x.FreightCharge)
+            .ToList();
+    }
+
+    public async Task<ReverseBookingResult> BookReversePickupAsync(
+        ReturnRequest returnRequest,
+        int? courierCompanyId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var credentials = await GetCredentialsAsync(cancellationToken);
+            var order = returnRequest.Order;
+            if (order is null)
+                return new ReverseBookingResult(false, null, null, 0, 0, "Associated order was not loaded.");
+
+            var shippingAddress = order.Addresses.FirstOrDefault(a => a.Type == "Shipping")
+                ?? order.Addresses.FirstOrDefault();
+            if (shippingAddress is null)
+                return new ReverseBookingResult(false, null, null, 0, 0, "No customer shipping address was found on order.");
+
+            var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, cancellationToken);
+            var storeSettings = await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, cancellationToken);
+
+            string storeName = "Pramukhraj Foods";
+            string storeAddress = "Ahmedabad, Gujarat";
+            string storeEmail = credentials.Email;
+            string storePhone = "9999999999";
+            string storeCity = "Ahmedabad";
+            string storeState = "Gujarat";
+
+            if (storeSettings is not null && !string.IsNullOrWhiteSpace(storeSettings.SettingsJson))
+            {
+                try
+                {
+                    using var sDoc = JsonDocument.Parse(storeSettings.SettingsJson);
+                    var sRoot = sDoc.RootElement;
+                    if (sRoot.TryGetProperty("storeName", out var sn) && !string.IsNullOrWhiteSpace(sn.GetString()))
+                        storeName = sn.GetString()!;
+                    if (sRoot.TryGetProperty("storeAddress", out var sa) && !string.IsNullOrWhiteSpace(sa.GetString()))
+                        storeAddress = sa.GetString()!;
+                    if (sRoot.TryGetProperty("supportEmail", out var se) && !string.IsNullOrWhiteSpace(se.GetString()))
+                        storeEmail = se.GetString()!;
+                    if (sRoot.TryGetProperty("supportPhoneNumber", out var sp) && !string.IsNullOrWhiteSpace(sp.GetString()))
+                        storePhone = sp.GetString()!;
+                }
+                catch { /* Fall back to defaults */ }
+            }
+
+            var (pickupFirst, pickupLast) = SplitName(customer?.FullName ?? shippingAddress.RecipientName);
+            var pickupEmail = customer?.Email ?? shippingAddress.Email ?? "orders@pramukhrajfoods.com";
+            var pickupPhone = customer?.MobileNumber ?? shippingAddress.MobileNumber ?? "9999999999";
+
+            var totalWeight = returnRequest.Items.Sum(ri =>
+            {
+                var matchedOrder = order.Items.FirstOrDefault(oi => oi.Id == ri.OrderItemId);
+                var unitW = matchedOrder is not null ? ConvertWeightToKg(matchedOrder.Weight, matchedOrder.WeightUnit) : 0.25m;
+                return unitW * Math.Max(1, ri.Quantity);
+            });
+            totalWeight = Math.Max(0.2m, totalWeight);
+
+            var subTotal = returnRequest.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+            // --- Resolve the Shiprocket pickup location ID ---
+            // `pickup_location_id` is required by Shiprocket orders/create/return.
+            // We resolve it from settings/company/pickup and cache it for 24 h.
+            int? pickupLocationId = null;
+            try
+            {
+                var cachedLocId = await cache.GetAsync<int?>("provider:shiprocket:pickup-location-id", cancellationToken);
+                if (cachedLocId.HasValue && cachedLocId.Value > 0)
+                {
+                    pickupLocationId = cachedLocId.Value;
+                }
+                else
+                {
+                    using var locResponse = await SendAuthorizedAsync(HttpMethod.Get, "settings/company/pickup", null, cancellationToken);
+                    if (locResponse.IsSuccessStatusCode)
+                    {
+                        var locJson = await locResponse.Content.ReadAsStringAsync(cancellationToken);
+                        using var locDoc = JsonDocument.Parse(locJson);
+                        if (locDoc.RootElement.TryGetProperty("data", out var locData) &&
+                            locData.TryGetProperty("shipping_address", out var locAddresses) &&
+                            locAddresses.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var addr in locAddresses.EnumerateArray())
+                            {
+                                // prefer the id field; try id, pickup_id, or similar
+                                int? foundId = null;
+                                if (addr.TryGetProperty("id", out var idProp) && idProp.TryGetInt32(out var idVal))
+                                    foundId = idVal;
+                                else if (addr.TryGetProperty("pickup_id", out var pidProp) && pidProp.TryGetInt32(out var pidVal))
+                                    foundId = pidVal;
+
+                                if (foundId.HasValue && foundId.Value > 0)
+                                {
+                                    pickupLocationId = foundId.Value;
+                                    await cache.SetAsync("provider:shiprocket:pickup-location-id", foundId.Value, TimeSpan.FromDays(1), cancellationToken: cancellationToken);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not resolve Shiprocket pickup location ID. Return order will be sent without it.");
+            }
+
+            // Normalise phone numbers — Shiprocket expects numeric strings for phone fields
+            var pickupPhoneNorm = new string(pickupPhone.Where(char.IsDigit).ToArray());
+            if (pickupPhoneNorm.StartsWith("91") && pickupPhoneNorm.Length == 12) pickupPhoneNorm = pickupPhoneNorm[2..];
+            var storePhoneNorm = new string(storePhone.Where(char.IsDigit).ToArray());
+            if (storePhoneNorm.StartsWith("91") && storePhoneNorm.Length == 12) storePhoneNorm = storePhoneNorm[2..];
+
+            // Split store name into first / last
+            var (storeFirst, storeLast) = SplitName(storeName);
+
+            // Determine pincode integers
+            _ = int.TryParse(shippingAddress.PostalCode, out var pin);
+            _ = int.TryParse(credentials.PickupPostalCode, out var whPin);
+
+            var orderItems = returnRequest.Items.Select(item =>
+            {
+                var matched = order.Items.FirstOrDefault(oi => oi.Id == item.OrderItemId);
+                return new
+                {
+                    name = item.ProductName,
+                    sku = matched?.Sku ?? $"SKU-{item.ProductVariantId.ToString("N")[..6]}",
+                    units = item.Quantity,
+                    selling_price = item.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture),
+                    discount = "0.00",
+                    qc_enable = false
+                };
+            }).ToList();
+
+            // Build the return order payload. pickup_location_id is required by Shiprocket.
+            // courier_id is NOT sent here; it goes to courier/assign/awb after the order is created.
+            var returnBodyObj = new Dictionary<string, object?>
+            {
+                ["order_id"]               = returnRequest.ReturnNumber,
+                ["order_date"]             = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+                ["channel_id"]             = "",
+                ["pickup_customer_name"]   = pickupFirst,
+                ["pickup_last_name"]       = pickupLast,
+                ["pickup_address"]         = shippingAddress.AddressLine1,
+                ["pickup_address_2"]       = shippingAddress.AddressLine2 ?? "",
+                ["pickup_city"]            = shippingAddress.City,
+                ["pickup_state"]           = shippingAddress.State,
+                ["pickup_country"]         = "India",
+                ["pickup_pincode"]         = pin,
+                ["pickup_email"]           = pickupEmail,
+                ["pickup_phone"]           = pickupPhoneNorm,
+                ["pickup_isd_code"]        = "91",
+                ["shipping_customer_name"] = storeFirst,
+                ["shipping_last_name"]     = storeLast,
+                ["shipping_address"]       = storeAddress,
+                ["shipping_address_2"]     = "",
+                ["shipping_city"]          = storeCity,
+                ["shipping_state"]         = storeState,
+                ["shipping_country"]       = "India",
+                ["shipping_pincode"]       = whPin,
+                ["shipping_email"]         = storeEmail,
+                ["shipping_phone"]         = storePhoneNorm,
+                ["shipping_isd_code"]      = "91",
+                ["order_items"]            = orderItems,
+                ["payment_method"]         = "PREPAID",
+                ["total_discount"]         = "0.00",
+                ["sub_total"]              = subTotal.ToString("0.00", CultureInfo.InvariantCulture),
+                ["length"]                 = 15,
+                ["breadth"]                = 15,
+                ["height"]                 = 10,
+                ["weight"]                 = Math.Round(totalWeight, 3, MidpointRounding.AwayFromZero).ToString("0.###", CultureInfo.InvariantCulture),
+            };
+
+            if (pickupLocationId.HasValue && pickupLocationId.Value > 0)
+                returnBodyObj["pickup_location_id"] = pickupLocationId.Value;
+
+            using var response = await SendAuthorizedAsync(HttpMethod.Post, "orders/create/return", returnBodyObj, cancellationToken);
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            // Always log the full Shiprocket response for debugging
+            logger.LogInformation("Shiprocket create/return response (HTTP {Status}) for Return {ReturnNumber}: {Response}",
+                (int)response.StatusCode, returnRequest.ReturnNumber, responseJson);
+
+            using var doc = JsonDocument.Parse(responseJson);
+            var root = doc.RootElement;
+
+            long providerOrderId = 0;
+            long providerShipmentId = 0;
+            string? awbCode = null;
+            string? courierName = null;
+
+            if (root.TryGetProperty("order_id", out var oIdProp) && oIdProp.TryGetInt64(out var oId)) providerOrderId = oId;
+            if (root.TryGetProperty("shipment_id", out var sIdProp) && sIdProp.TryGetInt64(out var sId)) providerShipmentId = sId;
+
+            if (root.TryGetProperty("awb_code", out var awbProp) && !string.IsNullOrWhiteSpace(awbProp.GetString()))
+                awbCode = awbProp.GetString();
+            if (root.TryGetProperty("courier_name", out var cnProp) && !string.IsNullOrWhiteSpace(cnProp.GetString()))
+                courierName = cnProp.GetString();
+
+            if (root.TryGetProperty("response", out var resp) && resp.TryGetProperty("data", out var d))
+            {
+                if (d.TryGetProperty("awb_code", out var code) && !string.IsNullOrWhiteSpace(code.GetString()))
+                    awbCode = code.GetString();
+                if (d.TryGetProperty("courier_name", out var cname) && !string.IsNullOrWhiteSpace(cname.GetString()))
+                    courierName = cname.GetString();
+            }
+
+            if (providerShipmentId <= 0 && root.TryGetProperty("data", out var dataObj))
+            {
+                if (dataObj.TryGetProperty("order_id", out var doId) && doId.TryGetInt64(out var doIdVal)) providerOrderId = doIdVal;
+                if (dataObj.TryGetProperty("shipment_id", out var dsId) && dsId.TryGetInt64(out var dsIdVal)) providerShipmentId = dsIdVal;
+                if (dataObj.TryGetProperty("awb_code", out var dawb)) awbCode = dawb.GetString();
+                if (dataObj.TryGetProperty("courier_name", out var dcn)) courierName = dcn.GetString();
+            }
+
+            if (providerShipmentId <= 0)
+            {
+                // Extract detailed field-level validation errors from Shiprocket's 422 response
+                string? errorMsg = root.TryGetProperty("message", out var m) ? m.GetString() : null;
+                if (root.TryGetProperty("errors", out var errs) && errs.ValueKind == JsonValueKind.Object)
+                {
+                    var fieldErrors = errs.EnumerateObject()
+                        .SelectMany(p => p.Value.ValueKind == JsonValueKind.Array
+                            ? p.Value.EnumerateArray().Select(v => $"{p.Name}: {v.GetString()}")
+                            : new[] { $"{p.Name}: {p.Value}" })
+                        .ToList();
+                    if (fieldErrors.Count > 0)
+                        errorMsg = string.Join("; ", fieldErrors);
+                }
+                logger.LogWarning("Shiprocket return order creation failed for Return {ReturnNumber}. Error: {Error}", returnRequest.ReturnNumber, errorMsg);
+                return new ReverseBookingResult(false, null, null, 0, 0, errorMsg ?? "Shiprocket rejected return creation.");
+            }
+
+            // If AWB was not immediately assigned, attempt courier/assign/awb
+            if (string.IsNullOrWhiteSpace(awbCode))
+            {
+                try
+                {
+                    var awbRequest = new
+                    {
+                        shipment_id = providerShipmentId,
+                        courier_id = courierCompanyId.HasValue && courierCompanyId.Value > 0
+                            ? courierCompanyId.Value.ToString(CultureInfo.InvariantCulture)
+                            : string.Empty,
+                        is_return = 1
+                    };
+                    using var awbResponse = await SendAuthorizedAsync(HttpMethod.Post, "courier/assign/awb", awbRequest, cancellationToken);
+                    if (awbResponse.IsSuccessStatusCode)
+                    {
+                        var awbJson = await awbResponse.Content.ReadAsStringAsync(cancellationToken);
+                        using var awbDoc = JsonDocument.Parse(awbJson);
+                        var awbRoot = awbDoc.RootElement;
+                        if (awbRoot.TryGetProperty("response", out var awbResp) && awbResp.TryGetProperty("data", out var awbData))
+                        {
+                            if (awbData.TryGetProperty("awb_code", out var codeProp)) awbCode = codeProp.GetString();
+                            if (awbData.TryGetProperty("courier_name", out var nameProp)) courierName = nameProp.GetString();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Reverse AWB assignment call to Shiprocket failed for shipment {ShipmentId}.", providerShipmentId);
+                }
+            }
+
+            // Attempt pickup generation if AWB is present
+            if (!string.IsNullOrWhiteSpace(awbCode))
+            {
+                try
+                {
+                    var pickupRequest = new { shipment_id = new[] { providerShipmentId } };
+                    using var pickupResponse = await SendAuthorizedAsync(HttpMethod.Post, "courier/generate/pickup", pickupRequest, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Reverse pickup generation call to Shiprocket failed for shipment {ShipmentId}.", providerShipmentId);
+                }
+            }
+
+            return new ReverseBookingResult(true, awbCode, courierName, providerOrderId, providerShipmentId, null);
+        }
+        catch (ShiprocketProviderException spEx)
+        {
+            logger.LogWarning(spEx, "Shiprocket provider exception during reverse booking for Return {ReturnNumber}", returnRequest.ReturnNumber);
+            return new ReverseBookingResult(false, null, null, 0, 0, spEx.Message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error during reverse booking for Return {ReturnNumber}", returnRequest.ReturnNumber);
+            return new ReverseBookingResult(false, null, null, 0, 0, ex.Message);
+        }
+    }
+
+    private static IEnumerable<ReverseCourierOptionDto> ReadReverseCouriers(JsonElement root)
+    {
+        if (!root.TryGetProperty("data", out var data) ||
+            !data.TryGetProperty("available_courier_companies", out var values) ||
+            values.ValueKind != JsonValueKind.Array) yield break;
+
+        foreach (var value in values.EnumerateArray())
+        {
+            var id = Int(value, "courier_company_id");
+            var name = Text(value, "courier_name");
+            var rate = Decimal(value, "rate") ?? Decimal(value, "freight_charge");
+            if (id is null || string.IsNullOrWhiteSpace(name) || rate is null) continue;
+            var etdText = Text(value, "etd");
+            yield return new ReverseCourierOptionDto(
+                id.Value,
+                name,
+                Math.Round(rate.Value, 2, MidpointRounding.AwayFromZero),
+                Int(value, "estimated_delivery_days") ?? FirstInteger(etdText),
+                Date(value, "etd"),
+                Decimal(value, "rating"),
+                Bool(value, "is_recommended") || Bool(value, "recommended_by_shiprocket"));
+        }
+    }
+
+    private static string? Text(JsonElement value, string name) =>
+        value.TryGetProperty(name, out var item) && item.ValueKind == JsonValueKind.String ? item.GetString() : null;
+
+    private static decimal? Decimal(JsonElement value, string name)
+    {
+        if (!value.TryGetProperty(name, out var item)) return null;
+        if (item.ValueKind == JsonValueKind.Number && item.TryGetDecimal(out var number)) return number;
+        return item.ValueKind == JsonValueKind.String && decimal.TryParse(item.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out number) ? number : null;
+    }
+
+    private static int? Int(JsonElement value, string name)
+    {
+        if (!value.TryGetProperty(name, out var item)) return null;
+        if (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var number)) return number;
+        return item.ValueKind == JsonValueKind.String && int.TryParse(item.GetString(), out number) ? number : null;
+    }
+
+    private static bool Bool(JsonElement value, string name) => value.TryGetProperty(name, out var item) &&
+        (item.ValueKind == JsonValueKind.True || (item.ValueKind == JsonValueKind.Number && item.TryGetInt32(out var number) && number == 1));
+
+    private static DateTime? Date(JsonElement value, string name) =>
+        DateTime.TryParse(Text(value, name), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date) ? date.ToUniversalTime() : null;
+
+    private static int? FirstInteger(string? value) => value is not null && NumberRegex().Match(value) is { Success: true } match &&
+        int.TryParse(match.Value, out var number) ? number : null;
+
+    [GeneratedRegex("[0-9]+")]
+    private static partial Regex NumberRegex();
 }
+
 

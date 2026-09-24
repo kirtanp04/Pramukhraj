@@ -158,7 +158,7 @@ namespace pramukhraj.Extensions
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomerAuthorizationResultHandler>();
 
             // CORS - enterprise default policy
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173", "https://bufing-orbit-productivity-divisions.trycloudflare.com" };
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "https://localhost:7136", "http://localhost:5173", "http://192.168.1.5:5173" };
             services.AddCors(options =>
             {
                 options.AddPolicy("EnterpriseCorsPolicy", policy =>
