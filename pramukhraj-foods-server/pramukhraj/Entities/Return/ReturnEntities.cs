@@ -38,6 +38,15 @@ public sealed class ReturnRequest
     public string? RejectionReason { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
+    public decimal ProductRefundAmount { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal ShippingRefundAmount { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal PaymentFeeRefundAmount { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
     public decimal TotalRefundAmount { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]

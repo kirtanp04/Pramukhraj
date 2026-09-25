@@ -66,7 +66,14 @@ describe("Return Enums and Display Mappings", () => {
 
   it("provides labels for all ReturnReason and ReturnResolution values", () => {
     expect(ReturnReasonLabels[ReturnReason.DamagedInTransit]).toBe("Damaged in transit");
+    expect(ReturnReasonLabels[ReturnReason.DefectiveOrExpired]).toBe("Defective or expired product");
     expect(ReturnReasonLabels[ReturnReason.WrongItemReceived]).toBe("Wrong item received");
+    expect(ReturnReasonLabels[ReturnReason.QualityMismatch]).toBe("Quality not as expected");
+    expect(ReturnReasonLabels[ReturnReason.MissingItem]).toBe("Missing item from shipment");
+    expect(ReturnReasonLabels[ReturnReason.LateDelivery]).toBe("Arrived too late");
+    expect(ReturnReasonLabels[ReturnReason.OrderedByMistake]).toBe("Ordered by mistake");
+    expect(ReturnReasonLabels[ReturnReason.PackageTampered]).toBe("Package opened or tampered");
+    expect(ReturnReasonLabels[ReturnReason.TasteNotAsExpected]).toBe("Taste not as expected");
     expect(ReturnResolutionLabels[ReturnResolution.RefundToSource]).toBe(
       "Refund to original payment source"
     );

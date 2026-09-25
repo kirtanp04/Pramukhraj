@@ -385,9 +385,32 @@ export function CustomerReturnDetailModal({
                 {/* Financial Summary */}
                 <div className="rounded-xl border border-ink/10 bg-ivory p-4 space-y-2 text-xs! sm:text-sm!">
                   <div className="flex justify-between text-ink-soft">
-                    <span>Items Total Refund</span>
-                    <span className="font-mono">{formatINR(details.totalRefundAmount)}</span>
+                    <span>Product Items Refund</span>
+                    <span className="font-mono">
+                      {formatINR(
+                        details.productRefundAmount ??
+                          (details.totalRefundAmount -
+                            (details.shippingRefundAmount || 0) -
+                            (details.paymentFeeRefundAmount || 0))
+                      )}
+                    </span>
                   </div>
+                  {(details.shippingRefundAmount ?? 0) > 0 && (
+                    <div className="flex justify-between text-ink-soft">
+                      <span>Original Shipping Refund</span>
+                      <span className="font-mono text-emerald-700">
+                        + {formatINR(details.shippingRefundAmount!)}
+                      </span>
+                    </div>
+                  )}
+                  {(details.paymentFeeRefundAmount ?? 0) > 0 && (
+                    <div className="flex justify-between text-ink-soft">
+                      <span>Payment Fee Refund</span>
+                      <span className="font-mono text-emerald-700">
+                        + {formatINR(details.paymentFeeRefundAmount!)}
+                      </span>
+                    </div>
+                  )}
                   {details.reverseShippingDeduction > 0 && (
                     <div className="flex justify-between text-oxblood">
                       <span>Reverse Shipping Deduction</span>

@@ -1,5 +1,5 @@
 import { ApiPath } from "@/constants/apiPaths";
-import { apiClient, apiGet, apiPostResponse } from "@/lib/apiClient";
+import { apiClient, apiGet, apiPostResponse, apiPutResponse } from "@/lib/apiClient";
 import type {
   AdminReturnFilterParams,
   AdminReturnListPage,
@@ -13,6 +13,8 @@ import type {
   AdminFulfillReplacementPayload,
   ReverseCourierOption,
   BookReversePickupPayload,
+  ReturnReasonPolicy,
+  UpdateReturnReasonPoliciesRequest,
 } from "../types";
 
 export const adminReturnsApi = {
@@ -82,4 +84,13 @@ export const adminReturnsApi = {
     const response = await apiClient.get(url, { responseType: "blob" });
     return response.data as Blob;
   },
+
+  getPolicies: () =>
+    apiGet<ReturnReasonPolicy[]>(ApiPath.admin.returns.policies),
+
+  updatePolicies: (payload: UpdateReturnReasonPoliciesRequest) =>
+    apiPutResponse<ReturnReasonPolicy[]>(
+      ApiPath.admin.returns.updatePolicies,
+      payload
+    ),
 };

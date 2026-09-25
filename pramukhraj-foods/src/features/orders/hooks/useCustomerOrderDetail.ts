@@ -8,32 +8,39 @@ export function useCustomerOrderDetail(orderId?: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
-  const load = useCallback(async () => {
-    if (!orderId) {
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      const response = await ordersApi.getById(orderId);
-      setOrder(response ?? null);
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [orderId]);
+  const load = useCallback(
+    async (isBackground = false) => {
+      if (!orderId) {
+        setIsLoading(false);
+        return;
+      }
+      if (!isBackground) {
+        setIsLoading(true);
+      }
+      setError("");
+      try {
+        const response = await ordersApi.getById(orderId);
+        setOrder(response ?? null);
+      } catch (err) {
+        setError(getApiErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [orderId]
+  );
+
+  const reload = useCallback(() => load(true), [load]);
 
   useEffect(() => {
-    void load();
+    void load(false);
   }, [load]);
 
   return {
     order,
     isLoading,
     error,
-    reload: load,
+    reload,
   };
 }
 

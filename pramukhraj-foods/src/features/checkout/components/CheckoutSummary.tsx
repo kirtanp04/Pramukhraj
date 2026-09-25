@@ -63,7 +63,18 @@ export function CheckoutSummary({
         <Row label="MRP" value={p.mrpTotal} info="The combined maximum retail price of all selected items before product or coupon discounts." />
         <Row label="Product savings" value={-p.itemDiscountAmount} accent info="Savings already included in current product selling prices compared with MRP." />
         <Row label="Coupon" value={-p.couponDiscountAmount} accent info="The discount applied by your active coupon. It is deducted once from the eligible item value." />
-        <Row label="Prepaid shipping" value={p.customerShippingAmount} info="The live prepaid delivery charge for the selected PIN code and best-rated serviceable courier." />
+        <Row
+          label="Prepaid shipping"
+          value={p.customerShippingAmount}
+          customValue={
+            session.shippingAddressId && session.deliveryVerification && !session.deliveryVerification.isDeliverable
+              ? "Unavailable"
+              : !session.shippingAddressId
+              ? "Address required"
+              : undefined
+          }
+          info="The live prepaid delivery charge for the selected PIN code and best-rated serviceable courier."
+        />
         {Boolean(p.paymentServiceTaxAmount && p.paymentServiceTaxAmount > 0) && (
           <Row
             label="Payment processing fee"
@@ -96,12 +107,14 @@ function SummaryInfo({ label, description, value }: { label: string; description
 function Row({
   label,
   value,
+  customValue,
   accent,
   subdued,
   info,
 }: {
   label: string;
   value: number;
+  customValue?: string;
   accent?: boolean;
   subdued?: boolean;
   info: string;
@@ -111,8 +124,10 @@ function Row({
       className={`flex justify-between ${accent ? "text-green-700" : subdued ? "text-ink-soft" : "text-ink-soft"}`}
     >
       <span className="flex items-center gap-1">{label}<SummaryInfo label={label} description={info} value={value} /></span>
-      <span className="font-mono text-ink">
-        {value === 0 && label.includes("shipping")
+      <span className={`font-mono ${customValue === "Unavailable" ? "font-semibold text-oxblood" : "text-ink"}`}>
+        {customValue
+          ? customValue
+          : value === 0 && label.includes("shipping")
           ? "Free"
           : `${value < 0 ? "−" : ""}${formatINR(Math.abs(value))}`}
       </span>

@@ -69,7 +69,13 @@ public sealed record AdminReturnDetailsResponse(
     string? StoreAddress = null,
     string? StoreName = null,
     string? SupportPhone = null,
-    string? SupportEmail = null);
+    string? SupportEmail = null,
+    bool? PolicyRefundProductAmount = null,
+    bool? PolicyRefundShippingAmount = null,
+    bool? PolicyRefundPaymentFee = null,
+    decimal ProductRefundAmount = 0,
+    decimal ShippingRefundAmount = 0,
+    decimal PaymentFeeRefundAmount = 0);
 
 public sealed record AdminReturnItemDetailDto(
     Guid Id,
@@ -180,5 +186,23 @@ public sealed record ReverseBookingResult(
     long ProviderOrderId,
     long ProviderShipmentId,
     string? Message);
+
+public sealed record ReturnReasonPolicyDto(
+    ReturnReason Reason,
+    string ReasonName,
+    bool RefundProductAmount,
+    bool RefundShippingAmount,
+    bool RefundPaymentFee,
+    DateTime UpdatedOn);
+
+public sealed record UpdateReturnReasonPoliciesRequest(
+    List<UpdateReturnReasonPolicyItem> Policies);
+
+public sealed record UpdateReturnReasonPolicyItem(
+    ReturnReason Reason,
+    bool RefundProductAmount,
+    bool RefundShippingAmount,
+    bool RefundPaymentFee);
+
 
 

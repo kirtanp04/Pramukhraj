@@ -32,7 +32,12 @@ export function AdminSettings() {
   const postalCode = watch('storePostalCode') ?? ''
   const country = watch('storeCountry') ?? 'India'
 
-  useEffect(() => () => { mounted.current = false }, [])
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   useEffect(() => {
     const controller = new AbortController()
     async function load() {
@@ -49,7 +54,8 @@ export function AdminSettings() {
           storePostalCode: settings.storePostalCode || '',
           storeCountry: settings.storeCountry || 'India',
           taxRatePercent: finiteOrZero(settings.taxRatePercent),
-          paymentServiceTaxRatePercent: finiteOrZero(settings.paymentServiceTaxRatePercent),
+          paymentProcessingFee: finiteOrZero(settings.paymentProcessingFee ?? settings.paymentServiceTaxRatePercent),
+          paymentServiceTaxRatePercent: finiteOrZero(settings.paymentProcessingFee ?? settings.paymentServiceTaxRatePercent),
           returnWindowDays: finiteOrZero(settings.returnWindowDays),
         })
       } catch (error) {
@@ -83,32 +89,35 @@ export function AdminSettings() {
         storeCountry: cntry,
         storeAddress: formattedAddress,
         taxRatePercent: 0,
-        paymentServiceTaxRatePercent: finiteOrZero(values.paymentServiceTaxRatePercent),
+        paymentProcessingFee: finiteOrZero(values.paymentProcessingFee),
+        paymentServiceTaxRatePercent: finiteOrZero(values.paymentProcessingFee),
         returnWindowDays: Math.round(finiteOrZero(values.returnWindowDays)),
       })
-      if (!mounted.current) return
-      if (response.data) reset({
-        ...response.data,
-        storeAddressLine1: response.data.storeAddressLine1 || '',
-        storeAddressLine2: response.data.storeAddressLine2 || '',
-        storeCity: response.data.storeCity || '',
-        storeState: response.data.storeState || '',
-        storePostalCode: response.data.storePostalCode || '',
-        storeCountry: response.data.storeCountry || 'India',
-        taxRatePercent: finiteOrZero(response.data.taxRatePercent),
-        paymentServiceTaxRatePercent: finiteOrZero(response.data.paymentServiceTaxRatePercent),
-        returnWindowDays: finiteOrZero(response.data.returnWindowDays),
-      })
-      dialog.success(response.message, { title: 'Settings Saved' })
+
+      if (response?.data) {
+        reset({
+          ...response.data,
+          storeAddressLine1: response.data.storeAddressLine1 || '',
+          storeAddressLine2: response.data.storeAddressLine2 || '',
+          storeCity: response.data.storeCity || '',
+          storeState: response.data.storeState || '',
+          storePostalCode: response.data.storePostalCode || '',
+          storeCountry: response.data.storeCountry || 'India',
+          taxRatePercent: finiteOrZero(response.data.taxRatePercent),
+          paymentProcessingFee: finiteOrZero(response.data.paymentProcessingFee ?? response.data.paymentServiceTaxRatePercent),
+          paymentServiceTaxRatePercent: finiteOrZero(response.data.paymentProcessingFee ?? response.data.paymentServiceTaxRatePercent),
+          returnWindowDays: finiteOrZero(response.data.returnWindowDays),
+        })
+      }
+      dialog.success(response?.message || 'Settings saved successfully.', { title: 'Settings Saved' })
     } catch (error) {
-      if (!mounted.current) return
       for (const [field, messages] of Object.entries(getApiValidationErrors(error))) {
         const name = `${field.charAt(0).toLowerCase()}${field.slice(1)}` as keyof StoreSettingsFormValues
         if (name in DEFAULT_STORE_SETTINGS && messages[0]) setError(name, { type: 'server', message: messages[0] })
       }
       dialog.error(getApiErrorMessage(error), { title: 'Could Not Save Settings' })
     } finally {
-      if (mounted.current) setSaving(false)
+      setSaving(false)
     }
   }
 
@@ -221,7 +230,7 @@ export function AdminSettings() {
               </p>
               <ul className="list-disc pl-4 space-y-0.5 text-teal/90">
                 <li>Keep <strong>Tax rate (%)</strong> at <strong>0%</strong> (selling prices are treated as inclusive of all taxes).</li>
-                <li><strong>Payment processing fee (%)</strong>: Can be configured (e.g. 2%) to recover digital payment gateway costs from customers legally as a commercial handling fee (not a tax).</li>
+                <li><strong>Payment processing fee (₹)</strong>: Can be configured as a flat amount (e.g. ₹15 or ₹20) to recover digital payment gateway costs from customers legally as a commercial handling fee (not a tax).</li>
                 <li>The store will automatically issue compliant <strong>Bills of Supply / Order Receipts</strong> instead of Tax Invoices.</li>
               </ul>
             </div>
@@ -231,8 +240,8 @@ export function AdminSettings() {
             <FormField label="Tax rate (%)" htmlFor="tax-rate" hint="Locked at 0.00% (All-inclusive pricing legally enforced under CGST Act Section 32 for unregistered sellers)." required>
               <div className="relative"><input id="tax-rate" type="number" readOnly value={0} className={cn(inputCls(false), 'pr-10 bg-ink/5 text-ink-soft cursor-not-allowed')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
             </FormField>
-            <FormField label="Payment processing fee (%)" htmlFor="payment-service-tax-rate" error={errors.paymentServiceTaxRatePercent?.message} hint="Nominal commercial fee charged to the customer to cover payment gateway expenses (e.g. 2% Razorpay fee). Charged as a service handling fee, not a tax." required>
-              <div className="relative"><input id="payment-service-tax-rate" type="number" min={0} max={10} step="0.01" {...register('paymentServiceTaxRatePercent', { valueAsNumber: true })} className={cn(inputCls(!!errors.paymentServiceTaxRatePercent), 'pr-10')} /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">%</span></div>
+            <FormField label="Payment processing fee (₹)" htmlFor="payment-processing-fee" error={errors.paymentProcessingFee?.message} hint="Flat commercial handling fee charged to the customer per order to cover payment gateway expenses (e.g. ₹15 or ₹20). Enter 0 for no fee. Charged as a service handling fee, not a tax." required>
+              <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">₹</span><input id="payment-processing-fee" type="number" min={0} max={10000} step="0.01" {...register('paymentProcessingFee', { valueAsNumber: true })} className={cn(inputCls(!!errors.paymentProcessingFee), 'pl-9')} placeholder="0.00" /></div>
             </FormField>
             <FormField label="Free shipping minimum (₹)" htmlFor="free-shipping" error={errors.freeShippingMinimumAmount?.message} hint="Applied after coupon discounts. Enter 0 to disable automatic free shipping." required>
               <div className="relative"><span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm! text-ink-soft">₹</span><input id="free-shipping" type="number" min={0} max={10000000} step="0.01" {...register('freeShippingMinimumAmount', { valueAsNumber: true })} className={cn(inputCls(!!errors.freeShippingMinimumAmount), 'pl-9')} /></div>

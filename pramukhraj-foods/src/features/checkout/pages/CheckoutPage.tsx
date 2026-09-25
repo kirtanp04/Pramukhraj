@@ -65,6 +65,11 @@ export function CheckoutPage() {
     : session.warnings;
   const chooseAddress = async (address: CustomerAddress) => {
     setReadyMessage("");
+    const pin = address.postalCode?.trim() || "";
+    if (!/^[1-9][0-9]{5}$/.test(pin)) {
+      setReadyMessage(`The selected address has an invalid PIN code (${pin || "missing"}). Please edit the address with a valid 6-digit Indian PIN code.`);
+      return;
+    }
     try {
       await checkout.chooseAddress(
         address.id,
@@ -255,7 +260,12 @@ export function CheckoutPage() {
               delivery.
             </p>
            
-            <ShippingQuoteCard quote={session.shippingQuote} />
+            <ShippingQuoteCard
+              quote={session.shippingQuote}
+              deliveryVerification={session.deliveryVerification}
+              hasAddress={Boolean(session.shippingAddressId)}
+              isVerifying={checkout.isMutating}
+            />
           </section>
           {warnings.length > 0 && (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-50 p-4">
@@ -292,6 +302,12 @@ export function CheckoutPage() {
                 </p>
               </div>
             </div>
+            {session.shippingAddressId && session.deliveryVerification && !session.deliveryVerification.isDeliverable && (
+              <p role="alert" className="mt-4 flex items-center gap-2 text-sm! font-medium text-amber-200">
+                <AlertTriangle size={17} className="shrink-0" />
+                Delivery to this shipping address is unavailable. Please choose or add a serviceable delivery address.
+              </p>
+            )}
             <Button
               className="mt-5 w-full sm:w-auto"
               variant="secondary"

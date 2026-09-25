@@ -47,24 +47,24 @@ export function ProductCard({ product, className, selectedStatus }: ProductCardP
         )}
         {product.stock === 0 && (
           <div className="absolute inset-0 flex items-center justify-center bg-ink/50">
-            <span className="stamp-badge rounded-full bg-ivory px-3 py-1 text-xs">Out of Stock</span>
+            <span className="stamp-badge rounded-full bg-ivory px-3 py-1 text-xs!">Out of Stock</span>
           </div>
         )}
       </Link>
 
       <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <span className="text-[11px] uppercase tracking-wide text-ink-soft">{product.brand.name}</span>
-        <Link to={`/product/${product.slug}`} className="line-clamp-2 font-display text-[15px] leading-snug hover:text-oxblood">
+        <span className="text-[11px]! uppercase tracking-wide text-ink-soft">{product.brand.name}</span>
+        <Link to={`/product/${product.slug}`} className="line-clamp-2 font-display text-[15px]! leading-snug hover:text-oxblood">
           {product.name}
         </Link>
-        <span className="text-[11px] uppercase tracking-wide text-ink-soft">{product.category.name}</span>
+        <span className="text-[11px]! uppercase tracking-wide text-ink-soft">{product.category.name}</span>
         {/* <Rating value={product.rating} count={product.reviewCount} /> */}
         <div className="mt-1 flex items-baseline gap-2">
-          <span className="font-mono text-base font-semibold text-oxblood">{formatINR(product.price)}</span>
+          <span className="font-mono text-base! font-semibold text-oxblood">{formatINR(product.price)}</span>
           {product.discountPercent > 0 && (
-            <span className="font-mono text-xs text-ink-soft line-through">{formatINR(product.mrp)}</span>
+            <span className="font-mono text-xs! text-ink-soft line-through">{formatINR(product.mrp)}</span>
           )}
-          <span className="text-xs text-ink-soft">/ {product.weight}</span>
+          <span className="text-xs! text-ink-soft">/ {product.weight}</span>
         </div>
         <p className="text-[10px]! text-ink-soft/80">Incl. of all taxes</p>
         <LowStockNotice stock={product.stock} />

@@ -205,7 +205,13 @@ public sealed class RefundService(
             });
 
             await db.SaveChangesAsync(ct);
-            try { cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund processed - invalidating sales cache"); } catch { /* non-fatal */ }
+            try
+            {
+                cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Return items restocked - product cache invalidated");
+                cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Return items restocked - category cache invalidated");
+                cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund processed - invalidating sales cache");
+            }
+            catch { /* non-fatal */ }
             logger.LogInformation("Refund {ProviderRefundId} successfully processed for Return {ReturnNumber}", providerRefundId, returnRequest.ReturnNumber);
 
             return ApiResponse<AdminRefundDetailDto>.Ok(new AdminRefundDetailDto(
@@ -289,7 +295,13 @@ public sealed class RefundService(
                     if (variant is not null) variant.StockQuantity += item.Quantity;
                 }
 
-                try { cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund webhook processed - invalidating sales cache"); } catch { /* non-fatal */ }
+                try
+                {
+                    cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Return items restocked via webhook - product cache invalidated");
+                    cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Return items restocked via webhook - category cache invalidated");
+                    cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Refund webhook processed - invalidating sales cache");
+                }
+                catch { /* non-fatal */ }
 
                 try
                 {

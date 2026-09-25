@@ -28,7 +28,7 @@ public sealed class ProcessPaymentOutboxTask(AppDbContext db, IServiceManager se
                     if (!Guid.TryParse(message.AggregateId, out var id)) throw new InvalidOperationException("Invalid notification outbox aggregate.");
                     var notification = await db.AdminNotifications.AsNoTracking().Where(x => x.Id == id)
                         .Select(x => new AdminNotificationResponse(x.Id, x.Type, x.Severity, x.Title, x.Message, x.EntityType,
-                            x.EntityId, x.ActionUrl, x.MetadataJson, x.CreatedOn, null)).SingleAsync(cancellationToken);
+                            x.EntityId, x.ActionUrl, x.MetadataJson, x.CreatedOn, null, 0, null)).SingleAsync(cancellationToken);
                     await services.AdminNotificationService.PublishAsync(notification, cancellationToken);
                 }
                 else if (message.Type == "CreateShiprocketOrder")

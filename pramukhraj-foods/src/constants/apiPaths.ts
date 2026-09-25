@@ -55,6 +55,7 @@ const CustomerApiPaths = {
     address: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/address`,
     coupon: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/coupon`,
     refresh: (id: string) => `customer/checkout/sessions/${encodeURIComponent(id)}/refresh`,
+    verifyDelivery: "customer/checkout/verify-delivery",
     placeOrder: "customer/checkout/place-order",
   },
   payments: {
@@ -354,6 +355,8 @@ const AdminApiPaths = {
     updateTracking: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/update-tracking`,
 
     fulfillReplacement: (returnId: string) => `admin/returns/${encodeURIComponent(returnId)}/fulfill-replacement`,
+    policies: "admin/returns/policies",
+    updatePolicies: "admin/returns/policies",
     export: (query?: {
       status?: number | string;
       searchQuery?: string;

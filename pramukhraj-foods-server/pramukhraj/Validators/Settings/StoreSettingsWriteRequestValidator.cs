@@ -35,8 +35,9 @@ public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<Store
             .MaximumLength(1000);
         RuleFor(x => x.TaxRatePercent).Equal(0m)
             .WithMessage("As an unregistered business without a GSTIN, Tax Rate must be 0%. All prices must be all-inclusive (CGST Act Section 32).");
-        RuleFor(x => x.PaymentServiceTaxRatePercent).InclusiveBetween(0m, 10m)
-            .WithMessage("Payment processing fee must be between 0% and 10%.");
+        RuleFor(x => x.PaymentProcessingFee ?? x.PaymentServiceTaxRatePercent ?? 0m)
+            .InclusiveBetween(0m, 10_000m)
+            .WithMessage("Payment processing fee must be between ₹0 and ₹10,000.");
         RuleFor(x => x.FreeShippingMinimumAmount).InclusiveBetween(0m, 10_000_000m)
             .WithMessage("Free shipping minimum must be between 0 and 10,000,000.");
         RuleFor(x => x.ReturnWindowDays).InclusiveBetween(0, 365)

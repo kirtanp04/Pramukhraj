@@ -113,6 +113,12 @@ export interface AdminReturnDetails {
   storeAddress?: string | null;
   supportPhone?: string | null;
   supportEmail?: string | null;
+  policyRefundProductAmount?: boolean;
+  policyRefundShippingAmount?: boolean;
+  policyRefundPaymentFee?: boolean;
+  productRefundAmount?: number;
+  shippingRefundAmount?: number;
+  paymentFeeRefundAmount?: number;
 }
 
 export interface AdminReturnStatusCounts {
@@ -195,6 +201,27 @@ export interface BookReversePickupPayload {
   pickupScheduledDate?: string;
   notes?: string;
 }
+
+export interface ReturnReasonPolicy {
+  reason: ReturnReason;
+  reasonName: string;
+  refundProductAmount: boolean;
+  refundShippingAmount: boolean;
+  refundPaymentFee: boolean;
+  updatedOn: string;
+}
+
+export interface UpdateReturnReasonPolicyItem {
+  reason: ReturnReason;
+  refundProductAmount: boolean;
+  refundShippingAmount: boolean;
+  refundPaymentFee: boolean;
+}
+
+export interface UpdateReturnReasonPoliciesRequest {
+  policies: UpdateReturnReasonPolicyItem[];
+}
+
 
 
 

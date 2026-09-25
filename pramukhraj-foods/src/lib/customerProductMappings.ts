@@ -36,7 +36,7 @@ export function toCatalogProduct(product: CustomerProductCardResponse): Product 
     price: product.price,
     mrp: product.mrp,
     discountPercent,
-    stock: product.isInStock ? 1 : 0,
+    stock: product.stockQuantity !== undefined ? product.stockQuantity : (product.isInStock ? 1 : 0),
     weight: `${product.weight} ${product.weightUnit}`.trim(),
     unit: product.weightUnit,
     tags: [],

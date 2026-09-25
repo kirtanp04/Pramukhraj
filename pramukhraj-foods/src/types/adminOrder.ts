@@ -240,6 +240,7 @@ export interface AdminOrderDetail {
   paymentServiceTaxAmount: number
   productTaxRatePercent: number
   paymentServiceTaxRatePercent: number
+  paymentProcessingFee?: number
   grandTotal: number
   currency: string
   couponId: string | null

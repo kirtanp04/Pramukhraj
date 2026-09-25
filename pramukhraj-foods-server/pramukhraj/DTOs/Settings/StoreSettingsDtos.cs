@@ -4,7 +4,7 @@ public sealed record StoreSettingsData(
     string SupportEmail,
     string SupportPhoneNumber,
     decimal? TaxRatePercent,
-    decimal? PaymentServiceTaxRatePercent,
+    decimal? PaymentProcessingFee,
     string StoreAddress,
     string StoreName,
     decimal FreeShippingMinimumAmount,
@@ -14,13 +14,14 @@ public sealed record StoreSettingsData(
     string? StoreCity = null,
     string? StoreState = null,
     string? StorePostalCode = null,
-    string? StoreCountry = "India");
+    string? StoreCountry = "India",
+    decimal? PaymentServiceTaxRatePercent = null);
 
 public sealed record StoreSettingsWriteRequest(
     string SupportEmail,
     string SupportPhoneNumber,
     decimal? TaxRatePercent,
-    decimal? PaymentServiceTaxRatePercent,
+    decimal? PaymentProcessingFee,
     string? StoreAddress,
     string StoreName,
     decimal FreeShippingMinimumAmount,
@@ -31,13 +32,14 @@ public sealed record StoreSettingsWriteRequest(
     string? StoreCity = null,
     string? StoreState = null,
     string? StorePostalCode = null,
-    string? StoreCountry = "India");
+    string? StoreCountry = "India",
+    decimal? PaymentServiceTaxRatePercent = null);
 
 public sealed record StoreSettingsResponse(
     string SupportEmail,
     string SupportPhoneNumber,
     decimal TaxRatePercent,
-    decimal PaymentServiceTaxRatePercent,
+    decimal PaymentProcessingFee,
     string StoreAddress,
     string StoreName,
     decimal FreeShippingMinimumAmount,
@@ -49,5 +51,6 @@ public sealed record StoreSettingsResponse(
     string? StoreCity = null,
     string? StoreState = null,
     string? StorePostalCode = null,
-    string? StoreCountry = "India");
+    string? StoreCountry = "India",
+    decimal PaymentServiceTaxRatePercent = 0m);
 

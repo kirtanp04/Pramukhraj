@@ -1,0 +1,79 @@
+services:
+  # ── 1. PostgreSQL Database Service (Hardened Production) ────────────────────
+  postgres-prod:
+    image: postgres:16-alpine
+    container_name: pramukhraj_db_prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: ${DB_TIMEZONE:-Asia/Kolkata}
+    ports:
+      # Securely bind only to localhost to protect database from external internet
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pramukhraj-prod-net
+
+  # ── 2. Backend Web API (.NET 10 Multi-Stage Minimal Alpine Runtime) ────────
+  backend-prod:
+    build:
+      context: ../pramukhraj-foods-server/pramukhraj
+      dockerfile: Dockerfile
+    container_name: pramukhraj_backend_prod
+    restart: always
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres-prod;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      JwtSettings__Secret: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+      CustomerOtp__HashPepper: ${CUSTOMER_OTP_PEPPER}
+      Encryption__Key: ${ENCRYPTION_KEY}
+      ASPNETCORE_URLS: http://+:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - pramukhraj-prod-net
+
+  # ── 3. Frontend UI (Nginx Alpine Reverse Proxy & Static Host) ─────────────
+  frontend-prod:
+    build:
+      context: ../pramukhraj-foods
+      dockerfile: Dockerfile
+    container_name: pramukhraj_frontend_prod
+    restart: always
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - pramukhraj-prod-net
+
+volumes:
+  pg-prod-data:
+    name: pramukhraj_pg_prod_data
+
+networks:
+  pramukhraj-prod-net:
+    name: pramukhraj-prod-net
+    driver: bridge
