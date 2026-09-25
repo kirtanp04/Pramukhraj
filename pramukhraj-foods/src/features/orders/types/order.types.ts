@@ -108,6 +108,7 @@ export interface CustomerOrderDetail {
   couponCode?: string | null;
   customerNote?: string | null;
   storeName: string;
+  storeAddress?: string | null;
   shippingAddress?: PendingOrderAddress | null;
   billingAddress?: PendingOrderAddress | null;
   items: PendingOrderItem[];

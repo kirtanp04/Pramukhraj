@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Repository conventions
 
 - Read and apply this root `AGENTS.md` before inspecting, planning, or modifying code in every repository task, including new conversations. Re-check it whenever the working directory or task scope changes.

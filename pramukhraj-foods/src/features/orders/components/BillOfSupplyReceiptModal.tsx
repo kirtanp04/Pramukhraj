@@ -73,6 +73,11 @@ export function BillOfSupplyReceiptModal({
                 <p className="text-xs! text-ink-soft mt-0.5">
                   Pure & Authentic Food Products
                 </p>
+                {order.storeAddress && (
+                  <p className="text-[11px]! text-ink-soft mt-0.5 whitespace-pre-line">
+                    Dispatch Facility: {order.storeAddress}
+                  </p>
+                )}
               </div>
               <div className="sm:text-right">
                 <span className="inline-block rounded-md bg-ink/5 px-2.5 py-1 text-xs! font-bold uppercase tracking-wider text-ink border border-ink/10">

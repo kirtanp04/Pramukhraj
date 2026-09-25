@@ -1841,6 +1841,10 @@ export function AdminReturnDrawer({
             reverseShippingDeduction: details.reverseShippingDeduction,
             netRefundAmount: details.netRefundAmount,
             reasonText: ReturnReasonLabels[details.reason],
+            storeName: details.storeName || undefined,
+            storeAddress: details.storeAddress || undefined,
+            supportPhone: details.supportPhone || undefined,
+            supportEmail: details.supportEmail || undefined,
           }}
         />
       )}

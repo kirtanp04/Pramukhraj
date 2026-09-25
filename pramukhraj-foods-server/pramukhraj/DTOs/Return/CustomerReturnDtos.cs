@@ -82,7 +82,11 @@ public sealed record CustomerReturnDetailsResponse(
     DateTime? ReceivedOn = null,
     DateTime? InspectedOn = null,
     Guid? ReplacementOrderId = null,
-    string? ReplacementOrderNumber = null);
+    string? ReplacementOrderNumber = null,
+    string? StoreAddress = null,
+    string? StoreName = null,
+    string? SupportPhone = null,
+    string? SupportEmail = null);
 
 public sealed record CustomerReturnItemDetailDto(
     Guid Id,

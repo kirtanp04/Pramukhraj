@@ -208,7 +208,8 @@ public sealed class CustomerOrderService(
             billingDto,
             itemsDto,
             shipmentDto,
-            canCancel);
+            canCancel,
+            settings.StoreAddress);
 
         return ApiResponse<CustomerOrderDetailResponse>.Ok(response);
     }

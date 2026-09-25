@@ -365,8 +365,9 @@ public sealed class ReturnService(
             if (returnRequest is null)
                 return ApiResponse<CustomerReturnDetailsResponse>.Fail("Return request was not found.", 404);
 
+            var storeSettings = await settingsService.GetCurrentAsync(ct);
             return ApiResponse<CustomerReturnDetailsResponse>.Ok(
-                MapCustomerReturnDetails(returnRequest, returnRequest.Order.OrderNumber));
+                MapCustomerReturnDetails(returnRequest, returnRequest.Order.OrderNumber, storeSettings));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -546,9 +547,10 @@ public sealed class ReturnService(
                 return ApiResponse<AdminReturnDetailsResponse>.Fail("Return request was not found.", 404);
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+            var storeSettings = await settingsService.GetCurrentAsync(ct);
 
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
-                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer));
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -621,16 +623,25 @@ public sealed class ReturnService(
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
 
+            var storeSettings = await settingsService.GetCurrentAsync(ct);
+
             if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
             {
                 try
                 {
+                    var returnFacility = !string.IsNullOrWhiteSpace(storeSettings.StoreAddress)
+                        ? $"<p><strong>Return Facility / Dispatch Address:</strong><br/>{storeSettings.StoreName}<br/>{storeSettings.StoreAddress}</p>"
+                        : "";
+                    var returnFacilityText = !string.IsNullOrWhiteSpace(storeSettings.StoreAddress)
+                        ? $"\n\nReturn Facility / Dispatch Address:\n{storeSettings.StoreName}\n{storeSettings.StoreAddress}"
+                        : "";
+
                     await emailService.SendAsync(new EmailMessage(
                         customer.Email,
                         customer.FullName ?? "Customer",
                         $"Return Request Approved - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} has been <strong>Approved</strong>.</p><p>Please pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.</p>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} has been Approved.\nPlease pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly."), ct);
+                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} has been <strong>Approved</strong>.</p><p>Please pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.</p>{returnFacility}",
+                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} has been Approved.\nPlease pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.{returnFacilityText}"), ct);
                 }
                 catch (Exception emailEx)
                 {
@@ -639,7 +650,7 @@ public sealed class ReturnService(
             }
 
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
-                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings),
                 "Return request approved successfully.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -1572,7 +1583,7 @@ public sealed class ReturnService(
         return $"RMA-{DateTime.UtcNow:yyyyMMddHHmmss}";
     }
 
-    private static CustomerReturnDetailsResponse MapCustomerReturnDetails(ReturnRequest r, string orderNumber) =>
+    private static CustomerReturnDetailsResponse MapCustomerReturnDetails(ReturnRequest r, string orderNumber, DTOs.Settings.StoreSettingsData? storeSettings = null) =>
         new(
             Id: r.Id,
             ReturnNumber: r.ReturnNumber,
@@ -1605,9 +1616,13 @@ public sealed class ReturnService(
             ReceivedOn: r.ReceivedOn,
             InspectedOn: r.InspectedOn,
             ReplacementOrderId: r.ReplacementOrderId,
-            ReplacementOrderNumber: r.ReplacementOrderNumber);
+            ReplacementOrderNumber: r.ReplacementOrderNumber,
+            StoreAddress: storeSettings?.StoreAddress,
+            StoreName: storeSettings?.StoreName,
+            SupportPhone: storeSettings?.SupportPhoneNumber,
+            SupportEmail: storeSettings?.SupportEmail);
 
-    private static AdminReturnDetailsResponse MapAdminReturnDetails(ReturnRequest r, string orderNumber, Customer? customer) =>
+    private static AdminReturnDetailsResponse MapAdminReturnDetails(ReturnRequest r, string orderNumber, Customer? customer, DTOs.Settings.StoreSettingsData? storeSettings = null) =>
         new(
             Id: r.Id,
             ReturnNumber: r.ReturnNumber,
@@ -1646,5 +1661,9 @@ public sealed class ReturnService(
             PickedUpOn: r.PickedUpOn,
             DeliveredToWarehouseOn: r.DeliveredToWarehouseOn,
             ReplacementOrderId: r.ReplacementOrderId,
-            ReplacementOrderNumber: r.ReplacementOrderNumber);
+            ReplacementOrderNumber: r.ReplacementOrderNumber,
+            StoreAddress: storeSettings?.StoreAddress,
+            StoreName: storeSettings?.StoreName,
+            SupportPhone: storeSettings?.SupportPhoneNumber,
+            SupportEmail: storeSettings?.SupportEmail);
 }

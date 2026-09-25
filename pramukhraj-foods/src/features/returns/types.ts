@@ -222,6 +222,10 @@ export interface CustomerReturnDetails {
   inspectedOn?: string | null;
   replacementOrderId?: string | null;
   replacementOrderNumber?: string | null;
+  storeName?: string | null;
+  storeAddress?: string | null;
+  supportPhone?: string | null;
+  supportEmail?: string | null;
 }
 
 // Customer List Page Response

@@ -54,7 +54,8 @@ public sealed record CustomerOrderDetailResponse(
     PendingOrderAddressResponse? BillingAddress,
     IReadOnlyList<PendingOrderItemResponse> Items,
     CustomerOrderShipmentDetailResponse? Shipment,
-    bool CanCancel);
+    bool CanCancel,
+    string? StoreAddress = null);
 
 public sealed record CustomerOrderShipmentDetailResponse(
     Guid ShipmentId,

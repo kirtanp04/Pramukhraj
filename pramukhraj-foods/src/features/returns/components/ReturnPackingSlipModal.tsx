@@ -30,6 +30,10 @@ export interface ReturnPackingSlipData {
   reverseShippingDeduction?: number;
   netRefundAmount?: number;
   reasonText?: string;
+  storeName?: string;
+  storeAddress?: string;
+  supportPhone?: string;
+  supportEmail?: string;
 }
 
 interface ReturnPackingSlipModalProps {
@@ -97,14 +101,14 @@ export function ReturnPackingSlipModal({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-ink/10 pb-5">
               <div>
                 <h1 className="font-display text-2xl! font-bold tracking-tight text-oxblood">
-                  Pramukhraj Foods
+                  {data.storeName || "Pramukhraj Foods"}
                 </h1>
                 <p className="text-xs! text-ink-soft mt-0.5">
                   Pure & Authentic Food Products • Reverse Logistics Facility
                 </p>
-                <p className="text-[11px]! text-ink-soft">
-                  FSSAI Lic. No: 10721026000123 • GSTIN: 24AAACP1234F1Z8
-                </p>
+                {/* <p className="text-[11px]! text-ink-soft">
+                  FSSAI Certified Food Establishment • GST: Unregistered Dealer (CGST Act Sec. 32)
+                </p> */}
               </div>
               <div className="sm:text-right">
                 <span className="inline-block rounded-md bg-ink/5 px-2.5 py-1 text-xs! font-bold uppercase tracking-wider text-ink border border-ink/10">
@@ -212,11 +216,17 @@ export function ReturnPackingSlipModal({
                   <span>Ship To (Central Return Facility)</span>
                 </div>
                 <div className="space-y-0.5 text-ink">
-                  <p className="font-medium">Pramukhraj Foods - QC & Returns Facility</p>
-                  <p className="text-ink-soft">Plot No. 42, GIDC Phase II, Naroda Industrial Estate</p>
-                  <p className="text-ink-soft">Ahmedabad, Gujarat - 382330, India</p>
-                  <p className="text-ink-soft">Contact: +91 79 2281 9900</p>
-                  <p className="text-ink-soft">Email: returns@pramukhrajfoods.com</p>
+                  <p className="font-medium">{data.storeName || "Pramukhraj Foods"} - QC & Returns Facility</p>
+                  {data.storeAddress ? (
+                    <p className="text-ink-soft whitespace-pre-line">{data.storeAddress}</p>
+                  ) : (
+                    <>
+                      <p className="text-ink-soft">Plot No. 42, GIDC Phase II, Naroda Industrial Estate</p>
+                      <p className="text-ink-soft">Ahmedabad, Gujarat - 382330, India</p>
+                    </>
+                  )}
+                  {data.supportPhone && <p className="text-ink-soft">Contact: {data.supportPhone}</p>}
+                  {data.supportEmail && <p className="text-ink-soft">Email: {data.supportEmail}</p>}
                 </div>
               </div>
             </div>
@@ -312,7 +322,7 @@ export function ReturnPackingSlipModal({
                   <strong className="text-ink">Verification:</strong> When the pickup courier arrives, confirm the Reverse AWB number ({data.trackingNumber || "provided via SMS/email"}) before handing over the parcel.
                 </li>
                 <li>
-                  <strong className="text-ink">Quality Inspection (QC):</strong> All returned goods undergo automated QC at our Naroda facility within 24 hours of warehouse arrival before refund settlement is disbursed to your payment method.
+                  <strong className="text-ink">Quality Inspection (QC):</strong> All returned goods undergo automated QC at our warehouse facility within 24 hours of arrival before refund settlement is disbursed to your payment method.
                 </li>
               </ol>
             </div>
@@ -320,10 +330,10 @@ export function ReturnPackingSlipModal({
             {/* Legal / Policy Footer */}
             <div className="border-t border-ink/10 pt-3 text-center text-[10px]! text-ink-soft print:border-ink/20">
               <p>
-                Official Return Merchandise Authorization (RMA) issued by Pramukhraj Foods E-Commerce Portal.
+                Official Return Merchandise Authorization (RMA) issued by {data.storeName || "Pramukhraj Foods"} E-Commerce Portal.
               </p>
               <p className="mt-0.5">
-                Support: care@pramukhrajfoods.com | Helpline: +91 79 2281 9900 (Mon - Sat, 9:00 AM - 6:00 PM IST)
+                Support: {data.supportEmail || "support@pramukhrajfoods.com"} | Helpline: {data.supportPhone || "+91 98765 43210"}
               </p>
             </div>
           </div>

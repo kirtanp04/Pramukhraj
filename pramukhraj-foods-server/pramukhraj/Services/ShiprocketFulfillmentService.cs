@@ -648,12 +648,28 @@ public sealed partial class ShiprocketFulfillmentService(
             throw new ShiprocketProviderException("Customer postal code is required for courier lookup.", 400);
 
         var credentials = await GetCredentialsAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(credentials.PickupPostalCode))
-            throw new ShiprocketProviderException("Warehouse pickup postal code is not configured in Shiprocket settings.", 503);
+        var deliveryPostcode = credentials.PickupPostalCode?.Trim();
+        if (string.IsNullOrWhiteSpace(deliveryPostcode))
+        {
+            var storeSettings = await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, cancellationToken);
+            if (storeSettings is not null && !string.IsNullOrWhiteSpace(storeSettings.SettingsJson))
+            {
+                try
+                {
+                    using var sDoc = JsonDocument.Parse(storeSettings.SettingsJson);
+                    if (sDoc.RootElement.TryGetProperty("storePostalCode", out var spc) && !string.IsNullOrWhiteSpace(spc.GetString()))
+                        deliveryPostcode = spc.GetString()!.Trim();
+                }
+                catch { }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(deliveryPostcode))
+            throw new ShiprocketProviderException("Store destination postal code is not configured in Shiprocket or Store settings.", 503);
 
         var chargeableWeight = Math.Max(weightKg, credentials.MinimumChargeableWeightKg > 0 ? credentials.MinimumChargeableWeightKg : 0.5m);
         var path = string.Create(CultureInfo.InvariantCulture,
-            $"courier/serviceability/?pickup_postcode={customerPostalCode.Trim()}&delivery_postcode={credentials.PickupPostalCode.Trim()}&weight={chargeableWeight:0.###}&cod=0&is_return=1");
+            $"courier/serviceability/?pickup_postcode={customerPostalCode.Trim()}&delivery_postcode={deliveryPostcode}&weight={chargeableWeight:0.###}&cod=0&is_return=1");
 
         using var response = await SendAuthorizedAsync(HttpMethod.Get, path, null, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -701,6 +717,10 @@ public sealed partial class ShiprocketFulfillmentService(
             string storePhone = "9999999999";
             string storeCity = "Ahmedabad";
             string storeState = "Gujarat";
+            string storeAddressLine1 = "";
+            string storeAddressLine2 = "";
+            string storePostalCode = "";
+            string storeCountry = "India";
 
             if (storeSettings is not null && !string.IsNullOrWhiteSpace(storeSettings.SettingsJson))
             {
@@ -712,6 +732,18 @@ public sealed partial class ShiprocketFulfillmentService(
                         storeName = sn.GetString()!;
                     if (sRoot.TryGetProperty("storeAddress", out var sa) && !string.IsNullOrWhiteSpace(sa.GetString()))
                         storeAddress = sa.GetString()!;
+                    if (sRoot.TryGetProperty("storeAddressLine1", out var sal1) && !string.IsNullOrWhiteSpace(sal1.GetString()))
+                        storeAddressLine1 = sal1.GetString()!;
+                    if (sRoot.TryGetProperty("storeAddressLine2", out var sal2) && !string.IsNullOrWhiteSpace(sal2.GetString()))
+                        storeAddressLine2 = sal2.GetString()!;
+                    if (sRoot.TryGetProperty("storeCity", out var sc) && !string.IsNullOrWhiteSpace(sc.GetString()))
+                        storeCity = sc.GetString()!;
+                    if (sRoot.TryGetProperty("storeState", out var ss) && !string.IsNullOrWhiteSpace(ss.GetString()))
+                        storeState = ss.GetString()!;
+                    if (sRoot.TryGetProperty("storePostalCode", out var spc) && !string.IsNullOrWhiteSpace(spc.GetString()))
+                        storePostalCode = spc.GetString()!;
+                    if (sRoot.TryGetProperty("storeCountry", out var scountry) && !string.IsNullOrWhiteSpace(scountry.GetString()))
+                        storeCountry = scountry.GetString()!;
                     if (sRoot.TryGetProperty("supportEmail", out var se) && !string.IsNullOrWhiteSpace(se.GetString()))
                         storeEmail = se.GetString()!;
                     if (sRoot.TryGetProperty("supportPhoneNumber", out var sp) && !string.IsNullOrWhiteSpace(sp.GetString()))
@@ -758,7 +790,6 @@ public sealed partial class ShiprocketFulfillmentService(
                         {
                             foreach (var addr in locAddresses.EnumerateArray())
                             {
-                                // prefer the id field; try id, pickup_id, or similar
                                 int? foundId = null;
                                 if (addr.TryGetProperty("id", out var idProp) && idProp.TryGetInt32(out var idVal))
                                     foundId = idVal;
@@ -792,7 +823,11 @@ public sealed partial class ShiprocketFulfillmentService(
 
             // Determine pincode integers
             _ = int.TryParse(shippingAddress.PostalCode, out var pin);
-            _ = int.TryParse(credentials.PickupPostalCode, out var whPin);
+            int destinationPin = 0;
+            if (!int.TryParse(storePostalCode, out destinationPin) || destinationPin <= 0)
+            {
+                _ = int.TryParse(credentials.PickupPostalCode, out destinationPin);
+            }
 
             var orderItems = returnRequest.Items.Select(item =>
             {
@@ -808,8 +843,7 @@ public sealed partial class ShiprocketFulfillmentService(
                 };
             }).ToList();
 
-            // Build the return order payload. pickup_location_id is required by Shiprocket.
-            // courier_id is NOT sent here; it goes to courier/assign/awb after the order is created.
+            // Build the return order payload using the dedicated store address.
             var returnBodyObj = new Dictionary<string, object?>
             {
                 ["order_id"]               = returnRequest.ReturnNumber,
@@ -828,12 +862,12 @@ public sealed partial class ShiprocketFulfillmentService(
                 ["pickup_isd_code"]        = "91",
                 ["shipping_customer_name"] = storeFirst,
                 ["shipping_last_name"]     = storeLast,
-                ["shipping_address"]       = storeAddress,
-                ["shipping_address_2"]     = "",
+                ["shipping_address"]       = !string.IsNullOrWhiteSpace(storeAddressLine1) ? storeAddressLine1 : storeAddress,
+                ["shipping_address_2"]     = storeAddressLine2,
                 ["shipping_city"]          = storeCity,
                 ["shipping_state"]         = storeState,
-                ["shipping_country"]       = "India",
-                ["shipping_pincode"]       = whPin,
+                ["shipping_country"]       = storeCountry,
+                ["shipping_pincode"]       = destinationPin,
                 ["shipping_email"]         = storeEmail,
                 ["shipping_phone"]         = storePhoneNorm,
                 ["shipping_isd_code"]      = "91",
