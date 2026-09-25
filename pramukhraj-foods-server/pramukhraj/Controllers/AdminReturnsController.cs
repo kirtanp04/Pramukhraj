@@ -97,5 +97,19 @@ public sealed class AdminReturnsController(IServiceManager services) : Controlle
         var filename = $"returns-export-{DateTime.UtcNow:yyyyMMddHHmmss}.csv";
         return File(bytes, "text/csv; charset=utf-8", filename);
     }
+
+    [HttpGet("policies")]
+    public async Task<IActionResult> GetPolicies(CancellationToken ct)
+    {
+        var response = await services.ReturnService.GetReturnReasonPoliciesAsync(ct);
+        return StatusCode(response.StatusCode, response);
+    }
+
+    [HttpPut("policies")]
+    public async Task<IActionResult> UpdatePolicies([FromBody] UpdateReturnReasonPoliciesRequest request, CancellationToken ct)
+    {
+        var response = await services.ReturnService.UpdateReturnReasonPoliciesAsync(request, ct);
+        return StatusCode(response.StatusCode, response);
+    }
 }
 

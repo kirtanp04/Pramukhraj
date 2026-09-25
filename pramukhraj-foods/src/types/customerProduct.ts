@@ -57,6 +57,8 @@ export interface CustomerProductCardResponse {
   mrp: number
   weight: number
   weightUnit: string
+  stockQuantity?: number
+  isLowStock?: boolean
   isInStock: boolean
   isFeatured: boolean
   isBestSeller: boolean

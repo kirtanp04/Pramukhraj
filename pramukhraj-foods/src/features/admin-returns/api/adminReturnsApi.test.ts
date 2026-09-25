@@ -63,7 +63,8 @@ describe("Admin Returns ApiPath generation", () => {
     expect(ApiPath.admin.returns.fulfillReplacement(dummyReturnId)).toBe(
       `admin/returns/${dummyReturnId}/fulfill-replacement`
     );
-
+    expect(ApiPath.admin.returns.policies).toBe("admin/returns/policies");
+    expect(ApiPath.admin.returns.updatePolicies).toBe("admin/returns/policies");
   });
 
   it("builds correct export csv endpoint path with filters", () => {

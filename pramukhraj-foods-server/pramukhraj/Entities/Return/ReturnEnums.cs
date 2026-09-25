@@ -24,7 +24,11 @@ public enum ReturnReason
     WrongItemReceived = 3,
     QualityMismatch = 4,
     MissingItem = 5,
-    Other = 6
+    Other = 6, // Deprecated: Kept for backwards compatibility only; UI exposes explicit reasons
+    LateDelivery = 7,
+    OrderedByMistake = 8,
+    PackageTampered = 9,
+    TasteNotAsExpected = 10
 }
 
 public enum ReturnResolution

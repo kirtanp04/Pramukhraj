@@ -304,6 +304,69 @@ public sealed class ReturnAndRefundModuleTests
         Assert.Equal(3, dto.EstimatedDeliveryDays);
         Assert.True(dto.IsRecommended);
     }
+
+    [Theory]
+    [InlineData(ReturnReason.DamagedInTransit, "Damaged in transit")]
+    [InlineData(ReturnReason.DefectiveOrExpired, "Defective or expired product")]
+    [InlineData(ReturnReason.WrongItemReceived, "Wrong item received")]
+    [InlineData(ReturnReason.QualityMismatch, "Quality not as expected")]
+    [InlineData(ReturnReason.MissingItem, "Missing item from shipment")]
+    [InlineData(ReturnReason.LateDelivery, "Arrived too late")]
+    [InlineData(ReturnReason.OrderedByMistake, "Ordered by mistake")]
+    [InlineData(ReturnReason.PackageTampered, "Package tampered or leaked")]
+    [InlineData(ReturnReason.TasteNotAsExpected, "Taste not as expected")]
+    public void ReturnReason_ResolvesExpectedDisplayNames(ReturnReason reason, string expectedName)
+    {
+        var name = pramukhraj.Services.ReturnService.GetReturnReasonName(reason);
+        Assert.Equal(expectedName, name);
+    }
+
+    [Fact]
+    public void ReturnReasonPolicy_EntityPropertiesAndDefaults()
+    {
+        var policy = new ReturnReasonPolicy
+        {
+            Reason = ReturnReason.LateDelivery,
+            RefundProductAmount = true,
+            RefundShippingAmount = true,
+            RefundPaymentFee = false
+        };
+
+        Assert.Equal(ReturnReason.LateDelivery, policy.Reason);
+        Assert.True(policy.RefundProductAmount);
+        Assert.True(policy.RefundShippingAmount);
+        Assert.False(policy.RefundPaymentFee);
+        Assert.True(policy.UpdatedOn <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void ReturnReasonPolicyDtos_BindProperly()
+    {
+        var item = new UpdateReturnReasonPolicyItem(
+            Reason: ReturnReason.PackageTampered,
+            RefundProductAmount: true,
+            RefundShippingAmount: true,
+            RefundPaymentFee: true);
+
+        var request = new UpdateReturnReasonPoliciesRequest([item]);
+        Assert.Single(request.Policies);
+        Assert.Equal(ReturnReason.PackageTampered, request.Policies[0].Reason);
+        Assert.True(request.Policies[0].RefundPaymentFee);
+
+        var dto = new ReturnReasonPolicyDto(
+            Reason: ReturnReason.OrderedByMistake,
+            ReasonName: "Ordered by mistake",
+            RefundProductAmount: true,
+            RefundShippingAmount: false,
+            RefundPaymentFee: false,
+            UpdatedOn: DateTime.UtcNow);
+
+        Assert.Equal(ReturnReason.OrderedByMistake, dto.Reason);
+        Assert.Equal("Ordered by mistake", dto.ReasonName);
+        Assert.True(dto.RefundProductAmount);
+        Assert.False(dto.RefundShippingAmount);
+        Assert.False(dto.RefundPaymentFee);
+    }
 }
 
 

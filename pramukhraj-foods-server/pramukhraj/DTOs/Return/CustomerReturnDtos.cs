@@ -8,7 +8,10 @@ public sealed record ReturnEligibilityResponse(
     DateTime? DeliveredOn,
     DateTime? ReturnWindowExpiresOn,
     string? IneligibilityReason,
-    IReadOnlyList<EligibleOrderItemDto> Items);
+    IReadOnlyList<EligibleOrderItemDto> Items,
+    decimal OrderShippingAmount = 0,
+    decimal OrderPaymentFeeAmount = 0,
+    IReadOnlyList<ReturnReasonPolicyDto>? Policies = null);
 
 public sealed record EligibleOrderItemDto(
     Guid OrderItemId,
@@ -86,7 +89,10 @@ public sealed record CustomerReturnDetailsResponse(
     string? StoreAddress = null,
     string? StoreName = null,
     string? SupportPhone = null,
-    string? SupportEmail = null);
+    string? SupportEmail = null,
+    decimal ProductRefundAmount = 0,
+    decimal ShippingRefundAmount = 0,
+    decimal PaymentFeeRefundAmount = 0);
 
 public sealed record CustomerReturnItemDetailDto(
     Guid Id,

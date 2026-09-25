@@ -6,11 +6,13 @@ import {
   Eye,
   AlertCircle,
   Download,
+  Sliders,
+  RotateCcw,
 } from "lucide-react";
 import { DataTable } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { formatDateTime, formatINR } from "@/lib/utils";
+import { cn, formatDateTime, formatINR } from "@/lib/utils";
 import { adminReturnsApi } from "@/features/admin-returns/api/adminReturnsApi";
 import {
   ReturnStatus,
@@ -23,6 +25,7 @@ import type {
   AdminReturnStatusCounts,
 } from "@/features/admin-returns/types";
 import { AdminReturnDrawer } from "@/features/admin-returns/components/AdminReturnDrawer";
+import { ReturnReasonPolicyTable } from "@/features/admin-returns/components/ReturnReasonPolicyTable";
 
 const PAGE_SIZE = 15;
 
@@ -54,6 +57,7 @@ export function AdminReturns() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"queue" | "policies">("queue");
 
   const handleExportCsv = async () => {
     setIsExporting(true);
@@ -249,16 +253,18 @@ export function AdminReturns() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCsv}
-            disabled={isExporting}
-            className="text-xs! gap-1.5"
-          >
-            <Download size={13} className={isExporting ? "animate-spin" : ""} />
-            <span>{isExporting ? "Exporting..." : "Export CSV"}</span>
-          </Button>
+          {activeTab === "queue" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+              className="text-xs! gap-1.5"
+            >
+              <Download size={13} className={isExporting ? "animate-spin" : ""} />
+              <span>{isExporting ? "Exporting..." : "Export CSV"}</span>
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -272,8 +278,46 @@ export function AdminReturns() {
         </div>
       </div>
 
-      {/* Status Filter Chips */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-ink/10 pb-3">
+      {/* Top Tab Bar: Returns Queue vs Refund Rules & Policy */}
+      <div className="flex items-center gap-2 border-b border-ink/10">
+        <button
+          type="button"
+          onClick={() => setActiveTab("queue")}
+          className={cn(
+            "inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs! font-semibold whitespace-nowrap transition-colors sm:text-sm!",
+            activeTab === "queue"
+              ? "border-oxblood bg-ivory text-oxblood shadow-xs font-bold"
+              : "border-transparent text-ink-soft hover:border-ink/20 hover:text-ink"
+          )}
+        >
+          <RotateCcw size={14} />
+          <span>Returns Queue</span>
+          <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[11px]! font-mono">
+            {statusCounts.total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("policies")}
+          className={cn(
+            "inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs! font-semibold whitespace-nowrap transition-colors sm:text-sm!",
+            activeTab === "policies"
+              ? "border-oxblood bg-ivory text-oxblood shadow-xs font-bold"
+              : "border-transparent text-ink-soft hover:border-ink/20 hover:text-ink"
+          )}
+        >
+          <Sliders size={14} />
+          <span>Refund Rules &amp; Policy</span>
+        </button>
+      </div>
+
+      {activeTab === "policies" ? (
+        <ReturnReasonPolicyTable />
+      ) : (
+        <>
+          {/* Status Filter Chips */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-ink/10 pb-3">
         <button
           type="button"
           onClick={() => {
@@ -515,6 +559,8 @@ export function AdminReturns() {
             </Button>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Admin Return Slide-over Drawer */}

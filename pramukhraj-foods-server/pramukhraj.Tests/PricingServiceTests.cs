@@ -49,7 +49,7 @@ public sealed class PricingServiceTests
     }
 
     [Fact]
-    public void Calculate_AddsPaymentServiceTaxToProductTaxAndGrandTotal()
+    public void Calculate_AddsFlatPaymentProcessingFeeToGrandTotal()
     {
         var result = _service.Calculate(new PricingCalculationRequest(
             [new PricingLine(Guid.NewGuid(), Guid.NewGuid(), 100m, 100m, 1)],
@@ -57,17 +57,17 @@ public sealed class PricingServiceTests
             20m,
             20m,
             5m,
-            2m));
+            15m));
 
         Assert.Equal(5m, result.ProductTaxAmount);
-        Assert.Equal(2.50m, result.PaymentServiceTaxAmount);
+        Assert.Equal(15m, result.PaymentServiceTaxAmount);
         Assert.Equal(5m, result.TaxAmount);
-        Assert.Equal(127.50m, result.GrandTotal);
-        Assert.Equal(2m, result.PaymentServiceTaxRatePercent);
+        Assert.Equal(140m, result.GrandTotal);
+        Assert.Equal(15m, result.PaymentProcessingFee);
     }
 
     [Fact]
-    public void Calculate_UnregisteredDealer_HasZeroTaxAndCollectsPaymentFee()
+    public void Calculate_UnregisteredDealer_HasZeroTaxAndCollectsFlatPaymentFee()
     {
         var result = _service.Calculate(new PricingCalculationRequest(
             [new PricingLine(Guid.NewGuid(), Guid.NewGuid(), 200m, 250m, 1)],
@@ -75,13 +75,28 @@ public sealed class PricingServiceTests
             83m,
             80m,
             0m,
-            2m));
+            20m));
 
         Assert.Equal(0m, result.ProductTaxAmount);
         Assert.Equal(0m, result.TaxAmount);
-        Assert.Equal(5.66m, result.PaymentServiceTaxAmount);
-        Assert.Equal(288.66m, result.GrandTotal);
+        Assert.Equal(20m, result.PaymentServiceTaxAmount);
+        Assert.Equal(303m, result.GrandTotal);
         Assert.Equal(0m, result.TaxRatePercent);
-        Assert.Equal(2m, result.PaymentServiceTaxRatePercent);
+        Assert.Equal(20m, result.PaymentProcessingFee);
+    }
+
+    [Fact]
+    public void Calculate_FreeOrder_DoesNotCollectPaymentFee()
+    {
+        var result = _service.Calculate(new PricingCalculationRequest(
+            [new PricingLine(Guid.NewGuid(), Guid.NewGuid(), 50m, 50m, 1)],
+            50m, // 100% coupon discount
+            0m,
+            0m,
+            0m,
+            15m));
+
+        Assert.Equal(0m, result.PaymentServiceTaxAmount);
+        Assert.Equal(0m, result.GrandTotal);
     }
 }

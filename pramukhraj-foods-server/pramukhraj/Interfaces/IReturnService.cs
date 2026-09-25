@@ -23,6 +23,8 @@ public interface IReturnService
     Task<ApiResponse<AdminReturnDetailsResponse>> FulfillReplacementOrderAsync(Guid returnId, AdminFulfillReplacementRequest request, CancellationToken ct = default);
     Task<ApiResponse<IReadOnlyList<ReverseCourierOptionDto>>> GetReverseCouriersAsync(Guid returnId, CancellationToken ct = default);
     Task<ApiResponse<AdminReturnDetailsResponse>> BookShiprocketReversePickupAsync(Guid returnId, BookReversePickupRequest request, CancellationToken ct = default);
+    Task<ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>> GetReturnReasonPoliciesAsync(CancellationToken ct = default);
+    Task<ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>> UpdateReturnReasonPoliciesAsync(UpdateReturnReasonPoliciesRequest request, CancellationToken ct = default);
     Task<byte[]> ExportReturnsCsvAsync(AdminReturnFilterRequest filter, CancellationToken ct = default);
 }
 

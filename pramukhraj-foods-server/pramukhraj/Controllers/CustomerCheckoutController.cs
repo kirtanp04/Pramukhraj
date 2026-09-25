@@ -65,4 +65,11 @@ public sealed class CustomerCheckoutController(IServiceManager serviceManager) :
         var response = await serviceManager.CheckoutService.RefreshAsync(checkoutSessionId, cancellationToken);
         return StatusCode(response.StatusCode, response);
     }
+
+    [HttpPost("verify-delivery")]
+    public async Task<IActionResult> VerifyDelivery([FromBody] VerifyDeliveryAddressRequest request, CancellationToken cancellationToken)
+    {
+        var response = await serviceManager.CheckoutService.VerifyDeliveryAddressAsync(request, cancellationToken);
+        return StatusCode(response.StatusCode, response);
+    }
 }

@@ -24,12 +24,34 @@ public sealed partial class ShiprocketRateService(
         ShippingRateRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!IndianPostalCode().IsMatch(request.DeliveryPostalCode))
-            throw new ShiprocketProviderException("The delivery postal code is invalid.", 422);
-        if (request.WeightKg <= 0)
-            throw new ShiprocketProviderException("The shipment weight is invalid.", 422);
+        var result = await VerifyServiceabilityAsync(request, cancellationToken);
+        if (!result.IsDeliverable || result.BestRate is null)
+            throw new ShiprocketProviderException(result.Message, 422);
+        return result.BestRate;
+    }
 
-        var credentials = await GetCredentialsAsync(cancellationToken);
+    public async Task<DeliveryServiceabilityResult> VerifyServiceabilityAsync(
+        ShippingRateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.DeliveryPostalCode) || !IndianPostalCode().IsMatch(request.DeliveryPostalCode.Trim()))
+            return new DeliveryServiceabilityResult(false, "The delivery postal code is invalid. A 6-digit Indian PIN code is required.", request.DeliveryPostalCode, 0, null);
+        if (request.WeightKg <= 0)
+            return new DeliveryServiceabilityResult(false, "The shipment weight is invalid.", request.DeliveryPostalCode, 0, null);
+
+        var postalCode = request.DeliveryPostalCode.Trim();
+
+        ShiprocketProviderCredentials credentials;
+        try
+        {
+            credentials = await GetCredentialsAsync(cancellationToken);
+        }
+        catch (ShiprocketProviderException exception)
+        {
+            logger.LogWarning(exception, "Failed to retrieve Shiprocket credentials during delivery verification.");
+            return new DeliveryServiceabilityResult(false, "Shipping services are temporarily unavailable.", postalCode, 0, null);
+        }
+
         var pickupPostcode = credentials.PickupPostalCode?.Trim();
         if (string.IsNullOrWhiteSpace(pickupPostcode) || !IndianPostalCode().IsMatch(pickupPostcode))
         {
@@ -41,40 +63,73 @@ public sealed partial class ShiprocketRateService(
         }
 
         if (string.IsNullOrWhiteSpace(pickupPostcode) || !IndianPostalCode().IsMatch(pickupPostcode) || credentials.MinimumChargeableWeightKg <= 0)
-            throw new ShiprocketProviderException("Shiprocket pickup settings are incomplete.", 503);
-        var chargeableWeight = NormalizeWeight(request.WeightKg, credentials.MinimumChargeableWeightKg);
-        var path = string.Create(CultureInfo.InvariantCulture,
-            $"courier/serviceability/?pickup_postcode={pickupPostcode}&delivery_postcode={request.DeliveryPostalCode}&weight={chargeableWeight:0.###}&cod=0&declared_value={Math.Max(0, request.DeclaredValue):0.00}");
-        using var response = await SendAuthorizedAsync(path, cancellationToken);
-        if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("Shiprocket serviceability returned status {StatusCode}.", (int)response.StatusCode);
-            throw new ShiprocketProviderException(
-                response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity
-                    ? "Shipping is unavailable for this address or package."
-                    : "Shipping rates are temporarily unavailable. Please try again.",
-                response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity ? 422 : 503);
+            logger.LogWarning("Shiprocket pickup origin postal code is incomplete.");
+            return new DeliveryServiceabilityResult(false, "Shipping pickup settings are incomplete.", postalCode, 0, null);
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        var couriers = ReadCouriers(document.RootElement).Where(x => x.Rate > 0).ToList();
-        if (couriers.Count == 0)
-            throw new ShiprocketProviderException("No prepaid courier is currently serviceable for this postal code.", 422);
+        var chargeableWeight = NormalizeWeight(request.WeightKg, credentials.MinimumChargeableWeightKg);
+        var path = string.Create(CultureInfo.InvariantCulture,
+            $"courier/serviceability/?pickup_postcode={pickupPostcode}&delivery_postcode={postalCode}&weight={chargeableWeight:0.###}&cod=0&declared_value={Math.Max(0, request.DeclaredValue):0.00}");
 
-        var selected = couriers
-            .GroupBy(x => x.Id)
-            .Select(group => group.OrderBy(x => x.Rate).First())
-            .OrderByDescending(x => x.Rating.HasValue)
-            .ThenByDescending(x => x.Rating ?? 0)
-            .ThenByDescending(x => x.ProviderRecommended)
-            .ThenBy(x => x.EstimatedDeliveryDays ?? int.MaxValue)
-            .ThenBy(x => x.Rate)
-            .First();
-        return new ShippingRateResult(
-            selected.Id, selected.Name, selected.Rate, selected.EstimatedDeliveryDays,
-            selected.EstimatedDeliveryDate, selected.Rating, true,
-            DateTime.UtcNow.Add(ShippingDefaults.QuoteLifetime));
+        try
+        {
+            using var response = await SendAuthorizedAsync(path, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Shiprocket serviceability returned status {StatusCode} for delivery postal code {PostalCode}.", (int)response.StatusCode, postalCode);
+                var isAddressError = response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity or HttpStatusCode.NotFound;
+                return new DeliveryServiceabilityResult(
+                    false,
+                    isAddressError
+                        ? $"Delivery is not available to PIN code {postalCode}."
+                        : "Shipping rates are temporarily unavailable. Please try again.",
+                    postalCode,
+                    0,
+                    null);
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var couriers = ReadCouriers(document.RootElement).Where(x => x.Rate > 0).ToList();
+            if (couriers.Count == 0)
+            {
+                return new DeliveryServiceabilityResult(
+                    false,
+                    $"No prepaid delivery partner is currently serviceable for PIN code {postalCode}.",
+                    postalCode,
+                    0,
+                    null);
+            }
+
+            var selected = couriers
+                .GroupBy(x => x.Id)
+                .Select(group => group.OrderBy(x => x.Rate).First())
+                .OrderByDescending(x => x.Rating.HasValue)
+                .ThenByDescending(x => x.Rating ?? 0)
+                .ThenByDescending(x => x.ProviderRecommended)
+                .ThenBy(x => x.EstimatedDeliveryDays ?? int.MaxValue)
+                .ThenBy(x => x.Rate)
+                .First();
+
+            var bestRate = new ShippingRateResult(
+                selected.Id, selected.Name, selected.Rate, selected.EstimatedDeliveryDays,
+                selected.EstimatedDeliveryDate, selected.Rating, true,
+                DateTime.UtcNow.Add(ShippingDefaults.QuoteLifetime));
+
+            return new DeliveryServiceabilityResult(
+                true,
+                $"Delivery is available for PIN code {postalCode}.",
+                postalCode,
+                couriers.Count,
+                bestRate);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Shiprocket serviceability check failed unexpectedly for postal code {PostalCode}.", postalCode);
+            return new DeliveryServiceabilityResult(false, "Shipping rate verification is temporarily unavailable.", postalCode, 0, null);
+        }
     }
 
     private async Task<HttpResponseMessage> SendAuthorizedAsync(string path, CancellationToken cancellationToken)

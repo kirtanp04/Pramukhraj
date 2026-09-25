@@ -11,4 +11,5 @@ public interface ICheckoutService
     Task<ApiResponse<CheckoutSessionResponse>> ApplyCouponAsync(Guid checkoutSessionId, ApplyCheckoutCouponRequest request, CancellationToken cancellationToken = default);
     Task<ApiResponse<CheckoutSessionResponse>> RemoveCouponAsync(Guid checkoutSessionId, CancellationToken cancellationToken = default);
     Task<ApiResponse<CheckoutSessionResponse>> RefreshAsync(Guid checkoutSessionId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<DeliveryVerificationResponse>> VerifyDeliveryAddressAsync(VerifyDeliveryAddressRequest request, CancellationToken cancellationToken = default);
 }

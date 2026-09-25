@@ -11,7 +11,7 @@ export function LowStockNotice({ stock, className }: LowStockNoticeProps) {
 
   return (
     <span
-      className={cn('inline-flex items-center gap-1 text-xs font-semibold text-oxblood', className)}
+      className={cn('inline-flex items-center gap-1 text-xs! font-semibold text-oxblood', className)}
       aria-label={`Low stock. Only ${stock} ${stock === 1 ? 'item' : 'items'} remaining.`}
     >
       <Flame size={13} aria-hidden="true" />

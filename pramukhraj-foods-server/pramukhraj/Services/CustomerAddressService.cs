@@ -243,7 +243,7 @@ public sealed class CustomerAddressService(
             .ToListAsync(cancellationToken);
         if (affectedSessions.Count == 0) return;
         var settings = await storeSettingsService.GetCurrentAsync(cancellationToken);
-        var paymentServiceRate = Math.Clamp(settings.PaymentServiceTaxRatePercent ?? 0m, 0m, 100m);
+        var flatFee = Math.Max(0m, settings.PaymentProcessingFee ?? settings.PaymentServiceTaxRatePercent ?? 0m);
         foreach (var session in affectedSessions)
         {
             if (addressRemoved) session.ShippingAddressId = null;
@@ -251,7 +251,9 @@ public sealed class CustomerAddressService(
             session.CustomerShippingAmount = 0m;
             session.ProviderShippingCost = 0m;
             var discountedGoods = Math.Max(0m, session.Subtotal - session.CouponDiscountAmount);
-            session.PaymentServiceTaxAmount = Math.Round((discountedGoods + session.ProductTaxAmount) * paymentServiceRate / 100m, 2, MidpointRounding.AwayFromZero);
+            session.PaymentServiceTaxAmount = (discountedGoods > 0)
+                ? Math.Round(flatFee, 2, MidpointRounding.AwayFromZero)
+                : 0m;
             session.TaxAmount = session.ProductTaxAmount;
             session.GrandTotal = discountedGoods + session.TaxAmount + session.PaymentServiceTaxAmount;
             session.SelectedCourierId = null; session.SelectedCourierName = null; session.EstimatedDeliveryOn = null;

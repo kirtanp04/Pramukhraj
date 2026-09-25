@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using pramukhraj.Database;
@@ -11,9 +12,11 @@ using pramukhraj.Database;
 namespace pramukhraj.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925125013_Phase6ReturnReasonPolicies")]
+    partial class Phase6ReturnReasonPolicies
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2624,17 +2627,11 @@ namespace pramukhraj.Migrations
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("PaymentFeeRefundAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime?>("PickedUpOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("PickupScheduledDate")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("ProductRefundAmount")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Reason")
                         .HasColumnType("integer");
@@ -2663,9 +2660,6 @@ namespace pramukhraj.Migrations
 
                     b.Property<decimal>("ReverseShippingDeduction")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("ShippingRefundAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Status")

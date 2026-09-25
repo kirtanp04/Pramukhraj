@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Star,
 } from "lucide-react";
-import { formatDateTime, formatINR } from "@/lib/utils";
+import { formatDateTime, formatINR, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AdminDrawer } from "@/components/admin/AdminDrawer";
@@ -735,9 +735,32 @@ export function AdminReturnDrawer({
               </h4>
               <div className="space-y-1.5 text-xs!">
                 <div className="flex justify-between text-ink-soft">
-                  <span>Gross Item Refund:</span>
-                  <span className="font-mono">{formatINR(details.totalRefundAmount)}</span>
+                  <span>Product Items Refund:</span>
+                  <span className="font-mono">
+                    {formatINR(
+                      details.productRefundAmount ??
+                        (details.totalRefundAmount -
+                          (details.shippingRefundAmount || 0) -
+                          (details.paymentFeeRefundAmount || 0))
+                    )}
+                  </span>
                 </div>
+                {(details.shippingRefundAmount ?? 0) > 0 && (
+                  <div className="flex justify-between text-ink-soft">
+                    <span>Original Shipping Refund:</span>
+                    <span className="font-mono text-emerald-700">
+                      + {formatINR(details.shippingRefundAmount!)}
+                    </span>
+                  </div>
+                )}
+                {(details.paymentFeeRefundAmount ?? 0) > 0 && (
+                  <div className="flex justify-between text-ink-soft">
+                    <span>Payment Processing Fee Refund:</span>
+                    <span className="font-mono text-emerald-700">
+                      + {formatINR(details.paymentFeeRefundAmount!)}
+                    </span>
+                  </div>
+                )}
                 {details.reverseShippingDeduction > 0 && (
                   <div className="flex justify-between text-oxblood">
                     <span>Reverse Shipping Deduction:</span>
@@ -765,6 +788,36 @@ export function AdminReturnDrawer({
                     Resolution: {ReturnResolutionLabels[details.resolution]}
                   </span>
                 </div>
+
+                {(details.policyRefundProductAmount !== undefined ||
+                  details.policyRefundShippingAmount !== undefined ||
+                  details.policyRefundPaymentFee !== undefined) && (
+                  <div className="rounded-xl border border-ink/10 bg-ivory-dim/60 p-3 space-y-1.5">
+                    <span className="text-[11px]! uppercase font-semibold text-ink tracking-wider block">
+                      Reason Policy Eligibility:
+                    </span>
+                    <div className="grid grid-cols-3 gap-2 text-xs!">
+                      <div className="rounded-lg border border-ink/10 bg-white/70 p-2 text-center">
+                        <span className="block text-[10px]! text-ink-soft uppercase font-medium">Product Total</span>
+                        <span className={cn("font-semibold text-xs!", details.policyRefundProductAmount ? "text-emerald-700" : "text-oxblood")}>
+                          {details.policyRefundProductAmount ? "Eligible" : "Excluded"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-ink/10 bg-white/70 p-2 text-center">
+                        <span className="block text-[10px]! text-ink-soft uppercase font-medium">Shipping Fee</span>
+                        <span className={cn("font-semibold text-xs!", details.policyRefundShippingAmount ? "text-emerald-700" : "text-ink-soft")}>
+                          {details.policyRefundShippingAmount ? "Refundable" : "Retained"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-ink/10 bg-white/70 p-2 text-center">
+                        <span className="block text-[10px]! text-ink-soft uppercase font-medium">Payment Fee</span>
+                        <span className={cn("font-semibold text-xs!", details.policyRefundPaymentFee ? "text-emerald-700" : "text-ink-soft")}>
+                          {details.policyRefundPaymentFee ? "Refundable" : "Retained"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-xl bg-ivory-dim p-3 space-y-1">
                   <span className="text-[11px]! text-ink-soft block font-medium uppercase">
@@ -943,7 +996,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <Dialog.Title className="font-display font-semibold text-ink text-base!">
@@ -1024,7 +1077,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <Dialog.Title className="font-display font-semibold text-oxblood text-base!">

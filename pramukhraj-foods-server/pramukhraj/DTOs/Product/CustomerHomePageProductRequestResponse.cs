@@ -1,4 +1,4 @@
-﻿namespace pramukhraj.DTOs.Product
+namespace pramukhraj.DTOs.Product
 {
     public class CustomerHomePageProductRequestResponse
     {
@@ -25,6 +25,8 @@
             public decimal Weight { get; set; }
             public string WeightUnit { get; set; } = string.Empty;
 
+            public int StockQuantity { get; set; }
+            public bool IsLowStock { get; set; }
             public bool IsInStock { get; set; }
             public bool IsFeatured { get; set; }
             public bool IsBestSeller { get; set; }

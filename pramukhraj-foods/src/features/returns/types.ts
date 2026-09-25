@@ -21,7 +21,10 @@ export const ReturnReason = {
   WrongItemReceived: 3,
   QualityMismatch: 4,
   MissingItem: 5,
-  Other: 6,
+  LateDelivery: 7,         // Arrived too late (e.g., missed festival or event date)
+  OrderedByMistake: 8,     // Accidental duplicate order or wrong item clicked
+  PackageTampered: 9,      // Box looked opened, tampered, or leaked before opening
+  TasteNotAsExpected: 10,  // Subjective taste/spice profile dislike
 } as const;
 export type ReturnReason = (typeof ReturnReason)[keyof typeof ReturnReason];
 
@@ -86,7 +89,10 @@ export const ReturnReasonLabels: Record<ReturnReason, string> = {
   [ReturnReason.WrongItemReceived]: "Wrong item received",
   [ReturnReason.QualityMismatch]: "Quality not as expected",
   [ReturnReason.MissingItem]: "Missing item from shipment",
-  [ReturnReason.Other]: "Other issues",
+  [ReturnReason.LateDelivery]: "Arrived too late",
+  [ReturnReason.OrderedByMistake]: "Ordered by mistake",
+  [ReturnReason.PackageTampered]: "Package opened or tampered",
+  [ReturnReason.TasteNotAsExpected]: "Taste not as expected",
 };
 
 export const ReturnResolutionLabels: Record<ReturnResolution, string> = {
@@ -115,6 +121,15 @@ export interface EligibleOrderItem {
   nonReturnableReason?: string | null;
 }
 
+export interface ReturnReasonPolicy {
+  reason: ReturnReason;
+  reasonName: string;
+  refundProductAmount: boolean;
+  refundShippingAmount: boolean;
+  refundPaymentFee: boolean;
+  updatedOn: string;
+}
+
 export interface ReturnEligibility {
   isEligible: boolean;
   returnWindowDays: number;
@@ -122,6 +137,9 @@ export interface ReturnEligibility {
   returnWindowExpiresOn: string | null;
   ineligibilityReason: string | null;
   items: EligibleOrderItem[];
+  orderShippingAmount?: number;
+  orderPaymentFeeAmount?: number;
+  policies?: ReturnReasonPolicy[];
 }
 
 // Creation Request DTOs
@@ -226,6 +244,9 @@ export interface CustomerReturnDetails {
   storeAddress?: string | null;
   supportPhone?: string | null;
   supportEmail?: string | null;
+  productRefundAmount?: number;
+  shippingRefundAmount?: number;
+  paymentFeeRefundAmount?: number;
 }
 
 // Customer List Page Response

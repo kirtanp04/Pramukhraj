@@ -22,6 +22,7 @@ public sealed class ReturnService(
     IAdminNotificationService adminNotifications,
     IEmailService emailService,
     IShiprocketFulfillmentService shiprocketService,
+    ICacheService cache,
     ILogger<ReturnService> logger) : IReturnService
 {
     // ==========================================
@@ -101,6 +102,7 @@ public sealed class ReturnService(
 
             var eligibleItems = await CalculateEligibleItemsAsync(order, ct);
             var anyReturnable = eligibleItems.Any(i => i.ReturnableQuantity > 0);
+            var policies = (await GetReturnReasonPoliciesAsync(ct)).Data;
 
             return ApiResponse<ReturnEligibilityResponse>.Ok(new ReturnEligibilityResponse(
                 IsEligible: anyReturnable,
@@ -108,7 +110,10 @@ public sealed class ReturnService(
                 DeliveredOn: deliveredOn,
                 ReturnWindowExpiresOn: expiresOn,
                 IneligibilityReason: anyReturnable ? null : "All items in this order have already been returned, are non-returnable, or have an active return request.",
-                Items: eligibleItems));
+                Items: eligibleItems,
+                OrderShippingAmount: order.ShippingAmount,
+                OrderPaymentFeeAmount: order.PaymentServiceTaxAmount,
+                Policies: policies));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -195,6 +200,28 @@ public sealed class ReturnService(
                 });
             }
 
+            // Load refund policy for this specific return reason
+            var policy = await db.ReturnReasonPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.Reason == request.Reason, ct);
+            bool allowProduct = policy?.RefundProductAmount ?? true;
+            bool allowShipping = policy?.RefundShippingAmount ?? false;
+            bool allowPaymentFee = policy?.RefundPaymentFee ?? false;
+
+            // Prevent duplicate refund of shipping and payment fee across returns for the same order
+            var priorReturns = await db.ReturnRequests
+                .Where(r => r.OrderId == order.Id && r.Status != ReturnStatus.Rejected && r.Status != ReturnStatus.Cancelled)
+                .ToListAsync(ct);
+
+            decimal alreadyRefundedShipping = priorReturns.Sum(r => r.ShippingRefundAmount);
+            decimal availableShipping = Math.Max(0m, order.ShippingAmount - alreadyRefundedShipping);
+
+            decimal alreadyRefundedPaymentFee = priorReturns.Sum(r => r.PaymentFeeRefundAmount);
+            decimal availablePaymentFee = Math.Max(0m, order.PaymentServiceTaxAmount - alreadyRefundedPaymentFee);
+
+            decimal productRefund = allowProduct ? totalRefundAmount : 0m;
+            decimal shippingRefund = allowShipping ? availableShipping : 0m;
+            decimal paymentFeeRefund = allowPaymentFee ? availablePaymentFee : 0m;
+            decimal calculatedTotalRefund = productRefund + shippingRefund + paymentFeeRefund;
+
             var returnNumber = await GenerateReturnNumberAsync(ct);
             var returnRequest = new ReturnRequest
             {
@@ -208,9 +235,12 @@ public sealed class ReturnService(
                 CustomerComments = (request.CustomerComments ?? string.Empty).Trim().Length > 1000
                     ? (request.CustomerComments ?? string.Empty).Trim()[..1000]
                     : (request.CustomerComments ?? string.Empty).Trim(),
-                TotalRefundAmount = totalRefundAmount,
+                ProductRefundAmount = productRefund,
+                ShippingRefundAmount = shippingRefund,
+                PaymentFeeRefundAmount = paymentFeeRefund,
+                TotalRefundAmount = calculatedTotalRefund,
                 ReverseShippingDeduction = 0m,
-                NetRefundAmount = totalRefundAmount,
+                NetRefundAmount = calculatedTotalRefund,
                 CreatedOn = now,
                 UpdatedOn = now,
                 ConcurrencyStamp = Guid.NewGuid().ToString("N"),
@@ -548,9 +578,10 @@ public sealed class ReturnService(
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
             var storeSettings = await settingsService.GetCurrentAsync(ct);
+            var policy = await db.ReturnReasonPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.Reason == returnRequest.Reason, ct);
 
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
-                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings));
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings, policy));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -649,8 +680,9 @@ public sealed class ReturnService(
                 }
             }
 
+            var policy = await db.ReturnReasonPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.Reason == returnRequest.Reason, ct);
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
-                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings),
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, storeSettings, policy),
                 "Return request approved successfully.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -1172,20 +1204,31 @@ public sealed class ReturnService(
             returnRequest.UpdatedOn = now;
             returnRequest.ConcurrencyStamp = Guid.NewGuid().ToString("N");
 
-            if (allPassed)
+            var policy = await db.ReturnReasonPolicies.AsNoTracking().SingleOrDefaultAsync(p => p.Reason == returnRequest.Reason, ct);
+            bool allowProduct = policy?.RefundProductAmount ?? true;
+            bool allowShipping = policy?.RefundShippingAmount ?? false;
+            bool allowPaymentFee = policy?.RefundPaymentFee ?? false;
+
+            decimal passedProductRefund = allowProduct ? passedRefundTotal : 0m;
+            decimal shippingRefund = (allowShipping && anyPassed) ? returnRequest.ShippingRefundAmount : 0m;
+            decimal paymentFeeRefund = (allowPaymentFee && anyPassed) ? returnRequest.PaymentFeeRefundAmount : 0m;
+
+            if (allPassed || anyPassed)
             {
                 returnRequest.Status = ReturnStatus.InspectionPassed;
-            }
-            else if (anyPassed)
-            {
-                // Partial pass: update net refund to only reflect items that passed QC
-                returnRequest.Status = ReturnStatus.InspectionPassed;
-                returnRequest.TotalRefundAmount = passedRefundTotal;
-                returnRequest.NetRefundAmount = Math.Max(0m, passedRefundTotal - returnRequest.ReverseShippingDeduction);
+                returnRequest.ProductRefundAmount = passedProductRefund;
+                returnRequest.ShippingRefundAmount = shippingRefund;
+                returnRequest.PaymentFeeRefundAmount = paymentFeeRefund;
+                returnRequest.TotalRefundAmount = passedProductRefund + shippingRefund + paymentFeeRefund;
+                returnRequest.NetRefundAmount = Math.Max(0m, returnRequest.TotalRefundAmount - returnRequest.ReverseShippingDeduction);
             }
             else
             {
                 returnRequest.Status = ReturnStatus.InspectionFailed;
+                returnRequest.ProductRefundAmount = 0m;
+                returnRequest.ShippingRefundAmount = 0m;
+                returnRequest.PaymentFeeRefundAmount = 0m;
+                returnRequest.TotalRefundAmount = 0m;
                 returnRequest.NetRefundAmount = 0m;
                 returnRequest.CompletedOn = now;
             }
@@ -1205,7 +1248,7 @@ public sealed class ReturnService(
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
             return ApiResponse<AdminReturnDetailsResponse>.Ok(
-                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer),
+                MapAdminReturnDetails(returnRequest, returnRequest.Order.OrderNumber, customer, null, policy),
                 $"Inspection recorded successfully. Return status updated to {returnRequest.Status}.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -1394,7 +1437,23 @@ public sealed class ReturnService(
                 CreatedOn = now
             });
 
+            foreach (var retItem in itemsToReplace)
+            {
+                var variant = await db.ProductVariants.SingleOrDefaultAsync(v => v.Id == retItem.ProductVariantId, ct);
+                if (variant is not null && variant.StockQuantity >= retItem.Quantity)
+                {
+                    variant.StockQuantity -= retItem.Quantity;
+                }
+            }
+
             await db.SaveChangesAsync(ct);
+            try
+            {
+                cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Replacement order fulfilled - product stock deducted");
+                cache.RemoveByPrefix(CacheKey.Categories.AllPrefix, "Replacement order fulfilled - category cache invalidated");
+                cache.RemoveByPrefix(CacheKey.Sales.AllPrefix, "Replacement order fulfilled - sales cache invalidated");
+            }
+            catch { /* non-fatal */ }
             logger.LogInformation("Replacement order {OrderNumber} created for return {ReturnNumber}", repOrderNumber, returnRequest.ReturnNumber);
 
             var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
@@ -1620,9 +1679,17 @@ public sealed class ReturnService(
             StoreAddress: storeSettings?.StoreAddress,
             StoreName: storeSettings?.StoreName,
             SupportPhone: storeSettings?.SupportPhoneNumber,
-            SupportEmail: storeSettings?.SupportEmail);
+            SupportEmail: storeSettings?.SupportEmail,
+            ProductRefundAmount: r.ProductRefundAmount,
+            ShippingRefundAmount: r.ShippingRefundAmount,
+            PaymentFeeRefundAmount: r.PaymentFeeRefundAmount);
 
-    private static AdminReturnDetailsResponse MapAdminReturnDetails(ReturnRequest r, string orderNumber, Customer? customer, DTOs.Settings.StoreSettingsData? storeSettings = null) =>
+    private static AdminReturnDetailsResponse MapAdminReturnDetails(
+        ReturnRequest r,
+        string orderNumber,
+        Customer? customer,
+        DTOs.Settings.StoreSettingsData? storeSettings = null,
+        ReturnReasonPolicy? policy = null) =>
         new(
             Id: r.Id,
             ReturnNumber: r.ReturnNumber,
@@ -1665,5 +1732,131 @@ public sealed class ReturnService(
             StoreAddress: storeSettings?.StoreAddress,
             StoreName: storeSettings?.StoreName,
             SupportPhone: storeSettings?.SupportPhoneNumber,
-            SupportEmail: storeSettings?.SupportEmail);
+            SupportEmail: storeSettings?.SupportEmail,
+            PolicyRefundProductAmount: policy?.RefundProductAmount ?? true,
+            PolicyRefundShippingAmount: policy?.RefundShippingAmount ?? false,
+            PolicyRefundPaymentFee: policy?.RefundPaymentFee ?? false,
+            ProductRefundAmount: r.ProductRefundAmount,
+            ShippingRefundAmount: r.ShippingRefundAmount,
+            PaymentFeeRefundAmount: r.PaymentFeeRefundAmount);
+
+    public async Task<ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>> GetReturnReasonPoliciesAsync(CancellationToken ct = default)
+    {
+        var policies = await db.ReturnReasonPolicies.AsNoTracking().ToListAsync(ct);
+        var activeReasons = new[]
+        {
+            ReturnReason.DamagedInTransit,
+            ReturnReason.DefectiveOrExpired,
+            ReturnReason.WrongItemReceived,
+            ReturnReason.QualityMismatch,
+            ReturnReason.MissingItem,
+            ReturnReason.LateDelivery,
+            ReturnReason.OrderedByMistake,
+            ReturnReason.PackageTampered,
+            ReturnReason.TasteNotAsExpected
+        };
+
+        var policyDict = policies.ToDictionary(p => p.Reason);
+        var result = new List<ReturnReasonPolicyDto>();
+
+        foreach (var reason in activeReasons)
+        {
+            if (policyDict.TryGetValue(reason, out var existing))
+            {
+                result.Add(new ReturnReasonPolicyDto(
+                    existing.Reason,
+                    GetReturnReasonName(existing.Reason),
+                    existing.RefundProductAmount,
+                    existing.RefundShippingAmount,
+                    existing.RefundPaymentFee,
+                    existing.UpdatedOn));
+            }
+            else
+            {
+                var isSellerFault = reason is ReturnReason.DamagedInTransit or ReturnReason.DefectiveOrExpired or ReturnReason.WrongItemReceived or ReturnReason.PackageTampered;
+                var isLate = reason == ReturnReason.LateDelivery;
+                var isTaste = reason == ReturnReason.TasteNotAsExpected;
+
+                result.Add(new ReturnReasonPolicyDto(
+                    reason,
+                    GetReturnReasonName(reason),
+                    RefundProductAmount: !isTaste,
+                    RefundShippingAmount: isSellerFault || isLate,
+                    RefundPaymentFee: isSellerFault,
+                    UpdatedOn: DateTime.UtcNow));
+            }
+        }
+
+        return ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>.Ok(result.OrderBy(r => (int)r.Reason).ToList(), "Policies retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>> UpdateReturnReasonPoliciesAsync(UpdateReturnReasonPoliciesRequest request, CancellationToken ct = default)
+    {
+        var adminInfo = Common.Common.GetAdminClaimInfo(httpContextAccessor);
+        if (!adminInfo.Success || adminInfo.Data is null || !Guid.TryParse(adminInfo.Data.Id, out var adminId))
+            return ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>.Fail("Admin authentication required.", 401);
+
+        if (request?.Policies is null || request.Policies.Count == 0)
+            return ApiResponse<IReadOnlyList<ReturnReasonPolicyDto>>.Fail("At least one policy rule must be provided.", 400);
+
+        var existingPolicies = await db.ReturnReasonPolicies.ToListAsync(ct);
+        var existingDict = existingPolicies.ToDictionary(p => p.Reason);
+        var now = DateTime.UtcNow;
+
+        foreach (var item in request.Policies)
+        {
+            if (existingDict.TryGetValue(item.Reason, out var existing))
+            {
+                existing.RefundProductAmount = item.RefundProductAmount;
+                existing.RefundShippingAmount = item.RefundShippingAmount;
+                existing.RefundPaymentFee = item.RefundPaymentFee;
+                existing.UpdatedOn = now;
+            }
+            else
+            {
+                db.ReturnReasonPolicies.Add(new ReturnReasonPolicy
+                {
+                    Reason = item.Reason,
+                    RefundProductAmount = item.RefundProductAmount,
+                    RefundShippingAmount = item.RefundShippingAmount,
+                    RefundPaymentFee = item.RefundPaymentFee,
+                    UpdatedOn = now
+                });
+            }
+        }
+
+        db.AdminActions.Add(new AdminAction
+        {
+            Id = Guid.NewGuid(),
+            AdminId = adminId,
+            AdminName = adminInfo.Data.UserName ?? "Admin",
+            Module = AdminActionModules.StoreSettings,
+            Action = AdminActionTypes.Update,
+            EntityName = "ReturnReasonPolicies",
+            Description = "Updated return reason refund rules & policies.",
+            CreatedOn = now
+        });
+
+        await db.SaveChangesAsync(ct);
+        try
+        {
+            cache.RemoveByPrefix(CacheKey.Products.AllPrefix, "Return policies updated - product cache invalidated");
+        }
+        catch { /* non-fatal */ }
+        return await GetReturnReasonPoliciesAsync(ct);
+    }
+
+    public static string GetReturnReasonName(ReturnReason reason) => reason switch
+    {
+        ReturnReason.DamagedInTransit => "Damaged in transit",
+        ReturnReason.DefectiveOrExpired => "Defective or expired product",
+        ReturnReason.WrongItemReceived => "Wrong item received",
+        ReturnReason.QualityMismatch => "Quality not as expected",
+        ReturnReason.MissingItem => "Missing item from shipment",
+        ReturnReason.LateDelivery => "Arrived too late",
+        ReturnReason.OrderedByMistake => "Ordered by mistake",
+        ReturnReason.PackageTampered => "Package tampered or leaked",
+        ReturnReason.TasteNotAsExpected => "Taste not as expected",
+        _ => reason.ToString()
+    };
 }

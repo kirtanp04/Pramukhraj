@@ -3026,7 +3026,8 @@ namespace pramukhraj.Services
                             Id = product.Id.ToString(),
                             ProductVariantId = product.Variants
                                 .Where(variant => variant.IsActive)
-                                .OrderByDescending(variant => variant.IsDefault)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
                                 .ThenBy(variant => variant.Price)
                                 .Select(variant => variant.Id.ToString())
                                 .FirstOrDefault() ?? string.Empty,
@@ -3039,35 +3040,59 @@ namespace pramukhraj.Services
 
                             Price = product.Variants
                                 .Where(variant => variant.IsActive)
-                                .OrderByDescending(variant => variant.IsDefault)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
                                 .ThenBy(variant => variant.Price)
                                 .Select(variant => variant.Price)
                                 .FirstOrDefault(),
 
                             Mrp = product.Variants
                                 .Where(variant => variant.IsActive)
-                                .OrderByDescending(variant => variant.IsDefault)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
                                 .ThenBy(variant => variant.Price)
                                 .Select(variant => variant.MRP)
                                 .FirstOrDefault(),
 
                             Weight = product.Variants
                                 .Where(variant => variant.IsActive)
-                                .OrderByDescending(variant => variant.IsDefault)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
                                 .ThenBy(variant => variant.Price)
                                 .Select(variant => variant.Weight)
                                 .FirstOrDefault(),
 
                             WeightUnit = product.Variants
                                 .Where(variant => variant.IsActive)
-                                .OrderByDescending(variant => variant.IsDefault)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
                                 .ThenBy(variant => variant.Price)
                                 .Select(variant => variant.WeightUnit)
                                 .FirstOrDefault() ?? string.Empty,
 
-                            IsInStock = product.Variants.Any(variant =>
-                                variant.IsActive &&
-                                variant.StockQuantity > 0),
+                            StockQuantity = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.StockQuantity)
+                                .FirstOrDefault(),
+
+                            IsLowStock = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.StockQuantity > 0 && variant.StockQuantity < 5)
+                                .FirstOrDefault(),
+
+                            IsInStock = product.Variants
+                                .Where(variant => variant.IsActive)
+                                .OrderByDescending(variant => variant.StockQuantity > 0)
+                                .ThenByDescending(variant => variant.IsDefault)
+                                .ThenBy(variant => variant.Price)
+                                .Select(variant => variant.StockQuantity > 0)
+                                .FirstOrDefault(),
 
                             IsFeatured = product.IsFeatured,
                             IsBestSeller = product.IsBestSeller,

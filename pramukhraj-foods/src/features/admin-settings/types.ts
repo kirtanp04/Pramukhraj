@@ -5,7 +5,8 @@ export interface StoreSettings {
   supportEmail: string
   supportPhoneNumber: string
   taxRatePercent: number | null
-  paymentServiceTaxRatePercent: number | null
+  paymentProcessingFee: number | null
+  paymentServiceTaxRatePercent?: number | null
   storeAddress: string
   storeName: string
   freeShippingMinimumAmount: number

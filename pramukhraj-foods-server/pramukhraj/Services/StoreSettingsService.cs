@@ -80,11 +80,13 @@ public sealed class StoreSettingsService(
                 ? request.StoreAddress.Trim()
                 : formattedAddress;
 
+            var fee = Money(Math.Clamp(request.PaymentProcessingFee ?? request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10_000m));
+
             var data = new StoreSettingsData(
                 request.SupportEmail.Trim().ToLowerInvariant(),
                 NormalizePhone(request.SupportPhoneNumber),
                 0m,
-                Math.Clamp(request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
+                fee,
                 finalStoreAddress,
                 request.StoreName.Trim(),
                 Money(request.FreeShippingMinimumAmount),
@@ -94,7 +96,8 @@ public sealed class StoreSettingsService(
                 city,
                 state,
                 postalCode,
-                country);
+                country,
+                fee);
             var now = DateTime.UtcNow;
             if (entity is null)
             {
@@ -179,11 +182,12 @@ public sealed class StoreSettingsService(
                 storeAddress = string.Join(", ", addressParts);
             }
 
+            var fee = Math.Clamp(value.PaymentProcessingFee ?? value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10_000m);
             return new StoreSettingsData(
                 value.SupportEmail?.Trim() ?? string.Empty,
                 value.SupportPhoneNumber?.Trim() ?? string.Empty,
                 0m,
-                Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
+                fee,
                 storeAddress,
                 string.IsNullOrWhiteSpace(value.StoreName) ? Defaults.StoreName : value.StoreName.Trim(),
                 Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m),
@@ -193,7 +197,8 @@ public sealed class StoreSettingsService(
                 city,
                 state,
                 postalCode,
-                country);
+                country,
+                fee);
         }
         catch (JsonException exception)
         {
@@ -202,23 +207,28 @@ public sealed class StoreSettingsService(
         }
     }
 
-    private static StoreSettingsResponse ToResponse(StoreSettingsData data, StoreSettings? entity) => new(
-        data.SupportEmail,
-        data.SupportPhoneNumber,
-        data.TaxRatePercent ?? 0m,
-        data.PaymentServiceTaxRatePercent ?? 0m,
-        data.StoreAddress,
-        data.StoreName,
-        data.FreeShippingMinimumAmount,
-        entity?.UpdatedOn,
-        entity?.ConcurrencyStamp,
-        data.ReturnWindowDays,
-        data.StoreAddressLine1,
-        data.StoreAddressLine2,
-        data.StoreCity,
-        data.StoreState,
-        data.StorePostalCode,
-        data.StoreCountry);
+    private static StoreSettingsResponse ToResponse(StoreSettingsData data, StoreSettings? entity)
+    {
+        var fee = data.PaymentProcessingFee ?? data.PaymentServiceTaxRatePercent ?? 0m;
+        return new(
+            data.SupportEmail,
+            data.SupportPhoneNumber,
+            data.TaxRatePercent ?? 0m,
+            fee,
+            data.StoreAddress,
+            data.StoreName,
+            data.FreeShippingMinimumAmount,
+            entity?.UpdatedOn,
+            entity?.ConcurrencyStamp,
+            data.ReturnWindowDays,
+            data.StoreAddressLine1,
+            data.StoreAddressLine2,
+            data.StoreCity,
+            data.StoreState,
+            data.StorePostalCode,
+            data.StoreCountry,
+            fee);
+    }
     private static string NormalizePhone(string value) => new(value.Where(x => char.IsDigit(x) || x == '+').ToArray());
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
     private static ApiResponse<StoreSettingsResponse> ValidationFailure(ValidationResult result) =>

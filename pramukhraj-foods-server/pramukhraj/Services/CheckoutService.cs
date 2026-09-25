@@ -1,6 +1,7 @@
 using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using pramukhraj.Common;
 using pramukhraj.Database;
 using pramukhraj.DTOs.Checkout;
@@ -12,7 +13,7 @@ using static pramukhraj.Entities.Coupon.CouponEnums;
 
 namespace pramukhraj.Services;
 
-public sealed class CheckoutService(
+public sealed partial class CheckoutService(
     AppDbContext db,
     CustomerClaimsHelper claimsHelper,
     IValidatorManager validatorManager,
@@ -23,6 +24,11 @@ public sealed class CheckoutService(
 {
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromMinutes(15);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    [GeneratedRegex(@"^[1-9][0-9]{5}$")]
+    private static partial Regex IndianPostalCode();
+    [GeneratedRegex(@"^(\+91)?[6-9]\d{9}$")]
+    private static partial Regex IndianMobileNumber();
 
     public async Task<ApiResponse<CheckoutSessionResponse>> InitializeAsync(
         InitializeCheckoutRequest request,
@@ -41,13 +47,15 @@ public sealed class CheckoutService(
                 access.Data, request.ShippingAddressId, request.BillingAddressId, true, cancellationToken);
             if (!addresses.Success) return ApiResponse<CheckoutSessionResponse>.Fail(addresses.Message, addresses.StatusCode, addresses.Errors);
 
-            var quote = addresses.Shipping is null ? null : await GetBestRateAsync(cart!, addresses.Shipping.PostalCode, cancellationToken);
+            var (deliveryVerification, quote, deliveryWarning) = await VerifyAndQuoteDeliveryAsync(
+                cart!, addresses.Shipping, cancellationToken);
             var settings = await storeSettingsService.GetCurrentAsync(cancellationToken);
+            var fee = settings.PaymentProcessingFee ?? settings.PaymentServiceTaxRatePercent ?? 0m;
             var customerShipping = IsFreeShipping(settings.FreeShippingMinimumAmount, CartSubtotal(cart!), 0, false)
                 ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
                 cart!.Lines.Select(ToPricingLine).ToArray(), 0, customerShipping, quote?.Rate ?? 0,
-                0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+                0m, fee));
             var now = DateTime.UtcNow;
             var session = new CheckoutSession
             {
@@ -58,15 +66,12 @@ public sealed class CheckoutService(
             Apply(session, pricing, quote, null);
             db.CheckoutSessions.Add(session);
             await db.SaveChangesAsync(cancellationToken);
+            var warnings = Warnings(addresses.Shipping, quote, deliveryWarning);
             return new ApiResponse<CheckoutSessionResponse>
             {
                 Success = true, StatusCode = 201, Message = "Checkout initialized successfully.",
-                Data = ToResponse(session, cart, pricing, quote, Warnings(addresses.Shipping, quote))
+                Data = ToResponse(session, cart, pricing, quote, warnings, deliveryVerification)
             };
-        }
-        catch (ShiprocketProviderException exception)
-        {
-            return ApiResponse<CheckoutSessionResponse>.Fail(exception.Message, exception.StatusCode);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
@@ -91,12 +96,13 @@ public sealed class CheckoutService(
                 checkoutSessionId, null, null, null, false, false, cancellationToken);
         }
         var settings = await storeSettingsService.GetCurrentAsync(cancellationToken);
+        var fee = settings.PaymentProcessingFee ?? settings.PaymentServiceTaxRatePercent ?? 0m;
         var freeShippingCoupon = await IsFreeShippingCouponAsync(context.Session!.CouponId, cancellationToken);
         var customerShipping = IsFreeShipping(settings.FreeShippingMinimumAmount, CartSubtotal(cart!),
             context.Session.CouponDiscountAmount, freeShippingCoupon) ? 0 : quote?.Rate ?? 0;
         var pricing = pricingService.Calculate(new PricingCalculationRequest(
             cart!.Lines.Select(ToPricingLine).ToArray(), context.Session!.CouponDiscountAmount,
-            customerShipping, quote?.Rate ?? 0, 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+            customerShipping, quote?.Rate ?? 0, 0m, fee));
         if (!AmountsMatch(context.Session, pricing))
             return ApiResponse<CheckoutSessionResponse>.Fail("Cart prices changed. Refresh checkout to continue.", 409);
         return ApiResponse<CheckoutSessionResponse>.Ok(
@@ -157,7 +163,8 @@ public sealed class CheckoutService(
                 context.CustomerId, effectiveShippingId, effectiveBillingId, false, cancellationToken);
             if (!addresses.Success) return ApiResponse<CheckoutSessionResponse>.Fail(addresses.Message, addresses.StatusCode, addresses.Errors);
 
-            var quote = addresses.Shipping is null ? null : await GetBestRateAsync(cart!, addresses.Shipping.PostalCode, cancellationToken);
+            var (deliveryVerification, quote, deliveryWarning) = await VerifyAndQuoteDeliveryAsync(
+                cart!, addresses.Shipping, cancellationToken);
             CouponResult? coupon = null;
             var requestedCoupon = removeCoupon ? null : couponCode ?? session.CouponCode;
             if (!string.IsNullOrWhiteSpace(requestedCoupon))
@@ -168,11 +175,12 @@ public sealed class CheckoutService(
                 coupon = couponResponse.Data;
             }
             var settings = await storeSettingsService.GetCurrentAsync(cancellationToken);
+            var fee = settings.PaymentProcessingFee ?? settings.PaymentServiceTaxRatePercent ?? 0m;
             var customerShipping = IsFreeShipping(settings.FreeShippingMinimumAmount, CartSubtotal(cart!),
                 coupon?.Discount ?? 0, coupon?.FreeShipping == true) ? 0 : quote?.Rate ?? 0;
             var pricing = pricingService.Calculate(new PricingCalculationRequest(
                 cart!.Lines.Select(ToPricingLine).ToArray(), coupon?.Discount ?? 0,
-                customerShipping, quote?.Rate ?? 0, 0m, settings.PaymentServiceTaxRatePercent ?? 0m));
+                customerShipping, quote?.Rate ?? 0, 0m, fee));
             session.CartId = cart.Id;
             session.CartVersion = cart.Version;
             session.ShippingAddressId = addresses.Shipping?.Id;
@@ -182,15 +190,12 @@ public sealed class CheckoutService(
             session.ConcurrencyStamp = Guid.NewGuid().ToString("N");
             Apply(session, pricing, quote, coupon);
             await db.SaveChangesAsync(cancellationToken);
+            var warnings = Warnings(addresses.Shipping, quote, deliveryWarning);
             var message = removeCoupon ? "Coupon removed successfully."
                 : couponCode is not null ? "Coupon applied successfully."
                 : "Checkout refreshed successfully.";
             return ApiResponse<CheckoutSessionResponse>.Ok(
-                ToResponse(session, cart, pricing, quote, Warnings(addresses.Shipping, quote)), message);
-        }
-        catch (ShiprocketProviderException exception)
-        {
-            return ApiResponse<CheckoutSessionResponse>.Fail(exception.Message, exception.StatusCode);
+                ToResponse(session, cart, pricing, quote, warnings, deliveryVerification), message);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -269,7 +274,15 @@ public sealed class CheckoutService(
         var ids = new[] { shippingId, billingId }.Where(x => x.HasValue).Select(x => x!.Value).Distinct().ToArray();
         var addresses = await query.Where(x => ids.Contains(x.Id)).Select(x => new AddressProjection
         {
-            Id = x.Id, PostalCode = x.PostalCode
+            Id = x.Id,
+            RecipientName = x.RecipientName,
+            MobileNumber = x.MobileNumber,
+            AddressLine1 = x.AddressLine1,
+            AddressLine2 = x.AddressLine2,
+            City = x.City,
+            State = x.State,
+            PostalCode = x.PostalCode,
+            Country = x.Country
         }).ToListAsync(cancellationToken);
         var shipping = shippingId.HasValue ? addresses.SingleOrDefault(x => x.Id == shippingId.Value) : null;
         var billing = billingId.HasValue ? addresses.SingleOrDefault(x => x.Id == billingId.Value) : null;
@@ -277,10 +290,6 @@ public sealed class CheckoutService(
             return (false, 404, "A selected address was not found.", null, null, null);
         return (true, 200, string.Empty, null, shipping, billing);
     }
-
-    private Task<ShippingRateResult> GetBestRateAsync(CartProjection cart, string postalCode, CancellationToken cancellationToken) =>
-        shiprocketRateService.GetBestRateAsync(new ShippingRateRequest(
-            postalCode, cart.Lines.Sum(x => x.WeightKg * x.Quantity), cart.Lines.Sum(x => x.UnitPrice * x.Quantity)), cancellationToken);
 
     private async Task<ApiResponse<CouponResult>> ValidateCouponAsync(
         string code, Guid customerId, CartProjection cart, CancellationToken cancellationToken)
@@ -382,7 +391,8 @@ public sealed class CheckoutService(
 
     private static CheckoutSessionResponse ToResponse(
         CheckoutSession session, CartProjection cart, CheckoutPricingResponse pricing,
-        ShippingRateResult? quote, IReadOnlyList<string> warnings) => new(
+        ShippingRateResult? quote, IReadOnlyList<string> warnings,
+        DeliveryVerificationResponse? deliveryVerification = null) => new(
         session.Id, session.CartId, session.CartVersion, session.ShippingAddressId, session.BillingAddressId,
         session.CouponId, session.CouponCode,
         cart.Lines.Select(x => new CheckoutItemResponse(
@@ -395,8 +405,8 @@ public sealed class CheckoutService(
             CustomerEstimateMinDays(quote), CustomerEstimateMaxDays(quote),
             CustomerEstimateMinDate(quote), CustomerEstimateMaxDate(quote), quote.Rating,
             quote.IsRecommended, quote.QuoteExpiresOn),
-        session.ShippingAddressId.HasValue && session.BillingAddressId.HasValue && quote is not null && warnings.Count == 0,
-        warnings, session.ExpiresOn, session.ConcurrencyStamp);
+        session.ShippingAddressId.HasValue && session.BillingAddressId.HasValue && quote is not null && deliveryVerification?.IsDeliverable != false && warnings.Count == 0,
+        warnings, session.ExpiresOn, session.ConcurrencyStamp, deliveryVerification);
 
     private static ShippingRateResult? ReadQuote(CheckoutSession session)
     {
@@ -410,15 +420,141 @@ public sealed class CheckoutService(
             return null;
         }
     }
-    private static IReadOnlyList<string> Warnings(AddressProjection? address, ShippingRateResult? quote) =>
-        Warnings(address?.Id, quote);
-    private static IReadOnlyList<string> Warnings(Guid? addressId, ShippingRateResult? quote)
+    private static IReadOnlyList<string> Warnings(AddressProjection? address, ShippingRateResult? quote, string? deliveryWarning = null) =>
+        Warnings(address?.Id, quote, deliveryWarning);
+    private static IReadOnlyList<string> Warnings(Guid? addressId, ShippingRateResult? quote, string? deliveryWarning = null)
     {
         var warnings = new List<string>();
-        if (!addressId.HasValue) warnings.Add("Select a delivery address.");
-        if (addressId.HasValue && quote is null) warnings.Add("Refresh the shipping rate.");
-        if (quote?.QuoteExpiresOn <= DateTime.UtcNow) warnings.Add("The shipping quote expired. Refresh checkout.");
+        if (!addressId.HasValue)
+        {
+            warnings.Add("Select a delivery address.");
+        }
+        else if (!string.IsNullOrWhiteSpace(deliveryWarning))
+        {
+            warnings.Add(deliveryWarning);
+        }
+        else if (quote is null)
+        {
+            warnings.Add("Refresh the shipping rate.");
+        }
+        else if (quote.QuoteExpiresOn <= DateTime.UtcNow)
+        {
+            warnings.Add("The shipping quote expired. Refresh checkout.");
+        }
         return warnings;
+    }
+
+    private static (bool IsValid, string? ErrorMessage) ValidateAddressForDelivery(AddressProjection? address)
+    {
+        if (address is null)
+            return (false, "Please select a delivery address.");
+        if (string.IsNullOrWhiteSpace(address.RecipientName) || address.RecipientName.Trim().Length < 2)
+            return (false, "Recipient name is required for delivery.");
+        if (string.IsNullOrWhiteSpace(address.MobileNumber) || !IndianMobileNumber().IsMatch(address.MobileNumber.Trim()))
+            return (false, "A valid 10-digit Indian mobile number is required for delivery contact.");
+        if (string.IsNullOrWhiteSpace(address.AddressLine1) || address.AddressLine1.Trim().Length < 3)
+            return (false, "A complete street address (Line 1) is required for delivery.");
+        if (string.IsNullOrWhiteSpace(address.City))
+            return (false, "City is required for delivery.");
+        if (string.IsNullOrWhiteSpace(address.State))
+            return (false, "State is required for delivery.");
+        if (!string.Equals(address.Country?.Trim(), "India", StringComparison.OrdinalIgnoreCase))
+            return (false, "Only delivery addresses within India are supported.");
+        if (string.IsNullOrWhiteSpace(address.PostalCode) || !IndianPostalCode().IsMatch(address.PostalCode.Trim()))
+            return (false, "A valid 6-digit Indian PIN code is required for delivery.");
+        return (true, null);
+    }
+
+    private async Task<(DeliveryVerificationResponse Verification, ShippingRateResult? Quote, string? Warning)>
+        VerifyAndQuoteDeliveryAsync(CartProjection cart, AddressProjection? shippingAddress, CancellationToken cancellationToken)
+    {
+        if (shippingAddress is null)
+            return (new DeliveryVerificationResponse(false, false, null, "Please select a delivery address."), null, null);
+
+        var postalCode = shippingAddress.PostalCode?.Trim();
+        var validation = ValidateAddressForDelivery(shippingAddress);
+        if (!validation.IsValid)
+        {
+            var message = validation.ErrorMessage ?? "The shipping address is incomplete or invalid.";
+            return (new DeliveryVerificationResponse(true, false, postalCode, message), null, message);
+        }
+
+        var totalWeight = cart.Lines.Sum(x => x.WeightKg * x.Quantity);
+        var declaredValue = cart.Lines.Sum(x => x.UnitPrice * x.Quantity);
+
+        var serviceability = await shiprocketRateService.VerifyServiceabilityAsync(
+            new ShippingRateRequest(postalCode!, totalWeight, declaredValue), cancellationToken);
+
+        if (!serviceability.IsDeliverable || serviceability.BestRate is null)
+        {
+            var message = serviceability.Message;
+            return (new DeliveryVerificationResponse(true, false, postalCode, message, 0), null, message);
+        }
+
+        return (
+            new DeliveryVerificationResponse(true, true, postalCode, serviceability.Message, serviceability.AvailableCouriersCount),
+            serviceability.BestRate,
+            null);
+    }
+
+    public async Task<ApiResponse<DeliveryVerificationResponse>> VerifyDeliveryAddressAsync(
+        VerifyDeliveryAddressRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var access = await GetVerifiedCustomerIdAsync(cancellationToken);
+        if (!access.Success) return ApiResponse<DeliveryVerificationResponse>.Fail(access.Message, access.StatusCode, access.Errors);
+
+        string? postalCode = request.PostalCode?.Trim();
+        if (request.ShippingAddressId.HasValue)
+        {
+            var address = await db.CustomerAddresses.AsNoTracking()
+                .Where(x => x.Id == request.ShippingAddressId.Value && x.CustomerId == access.Data && x.IsActive)
+                .Select(x => new AddressProjection
+                {
+                    Id = x.Id,
+                    RecipientName = x.RecipientName,
+                    MobileNumber = x.MobileNumber,
+                    AddressLine1 = x.AddressLine1,
+                    AddressLine2 = x.AddressLine2,
+                    City = x.City,
+                    State = x.State,
+                    PostalCode = x.PostalCode,
+                    Country = x.Country
+                }).FirstOrDefaultAsync(cancellationToken);
+
+            if (address is null)
+                return ApiResponse<DeliveryVerificationResponse>.Fail("The selected delivery address was not found.", 404);
+
+            var validation = ValidateAddressForDelivery(address);
+            if (!validation.IsValid)
+            {
+                return ApiResponse<DeliveryVerificationResponse>.Ok(
+                    new DeliveryVerificationResponse(true, false, address.PostalCode, validation.ErrorMessage!));
+            }
+            postalCode = address.PostalCode;
+        }
+
+        if (string.IsNullOrWhiteSpace(postalCode) || !IndianPostalCode().IsMatch(postalCode))
+        {
+            return ApiResponse<DeliveryVerificationResponse>.Ok(
+                new DeliveryVerificationResponse(true, false, postalCode, "A valid 6-digit Indian PIN code is required for delivery."));
+        }
+
+        var cart = await LoadCartAsync(access.Data, cancellationToken);
+        var totalWeight = cart?.Lines.Sum(x => x.WeightKg * x.Quantity) ?? 0.5m;
+        var declaredValue = cart?.Lines.Sum(x => x.UnitPrice * x.Quantity) ?? 100m;
+
+        var result = await shiprocketRateService.VerifyServiceabilityAsync(
+            new ShippingRateRequest(postalCode, Math.Max(totalWeight, 0.5m), Math.Max(declaredValue, 0m)),
+            cancellationToken);
+
+        return ApiResponse<DeliveryVerificationResponse>.Ok(
+            new DeliveryVerificationResponse(
+                true,
+                result.IsDeliverable,
+                postalCode,
+                result.Message,
+                result.AvailableCouriersCount));
     }
     private static bool AmountsMatch(CheckoutSession session, CheckoutPricingResponse pricing) =>
         session.Subtotal == pricing.Subtotal && session.ItemDiscountAmount == pricing.ItemDiscountAmount &&
@@ -465,6 +601,17 @@ public sealed class CheckoutService(
         public decimal UnitPrice { get; set; } public decimal UnitMrp { get; set; }
         public decimal Weight { get; set; } public string WeightUnit { get; set; } = string.Empty; public decimal WeightKg { get; set; }
     }
-    private sealed class AddressProjection { public Guid Id { get; set; } public string PostalCode { get; set; } = string.Empty; }
+    private sealed class AddressProjection
+    {
+        public Guid Id { get; set; }
+        public string RecipientName { get; set; } = string.Empty;
+        public string MobileNumber { get; set; } = string.Empty;
+        public string AddressLine1 { get; set; } = string.Empty;
+        public string? AddressLine2 { get; set; }
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string PostalCode { get; set; } = string.Empty;
+        public string Country { get; set; } = "India";
+    }
     private sealed record CouponResult(Guid Id, string Code, decimal Discount, bool FreeShipping);
 }

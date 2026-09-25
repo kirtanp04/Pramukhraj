@@ -70,6 +70,7 @@ namespace pramukhraj.Database
         public DbSet<ReturnMedia> ReturnMedia => Set<ReturnMedia>();
         public DbSet<ReturnStatusHistory> ReturnStatusHistories => Set<ReturnStatusHistory>();
         public DbSet<RefundRecord> RefundRecords => Set<RefundRecord>();
+        public DbSet<ReturnReasonPolicy> ReturnReasonPolicies => Set<ReturnReasonPolicy>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -777,6 +778,25 @@ namespace pramukhraj.Database
                     .WithMany()
                     .HasForeignKey(x => x.PaymentId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<ReturnReasonPolicy>(entity =>
+            {
+                entity.ToTable("ReturnReasonPolicies");
+                entity.HasKey(x => x.Reason);
+                entity.Property(x => x.Reason).HasConversion<int>();
+
+                entity.HasData(
+                    new ReturnReasonPolicy { Reason = ReturnReason.DamagedInTransit, RefundProductAmount = true, RefundShippingAmount = true, RefundPaymentFee = true, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.DefectiveOrExpired, RefundProductAmount = true, RefundShippingAmount = true, RefundPaymentFee = true, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.WrongItemReceived, RefundProductAmount = true, RefundShippingAmount = true, RefundPaymentFee = true, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.QualityMismatch, RefundProductAmount = true, RefundShippingAmount = false, RefundPaymentFee = false, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.MissingItem, RefundProductAmount = true, RefundShippingAmount = false, RefundPaymentFee = false, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.LateDelivery, RefundProductAmount = true, RefundShippingAmount = true, RefundPaymentFee = false, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.OrderedByMistake, RefundProductAmount = true, RefundShippingAmount = false, RefundPaymentFee = false, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.PackageTampered, RefundProductAmount = true, RefundShippingAmount = true, RefundPaymentFee = true, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new ReturnReasonPolicy { Reason = ReturnReason.TasteNotAsExpected, RefundProductAmount = false, RefundShippingAmount = false, RefundPaymentFee = false, UpdatedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                );
             });
         }
     }

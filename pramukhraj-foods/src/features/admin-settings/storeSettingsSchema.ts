@@ -12,7 +12,11 @@ export const storeSettingsSchema = z.object({
   storeCountry: z.string().trim().min(1, 'Country is required.').max(100),
   storeAddress: z.string().trim().max(1000).optional().nullable(),
   taxRatePercent: z.number().min(0).max(100),
-  paymentServiceTaxRatePercent: z.number().min(0).max(100),
+  paymentProcessingFee: z
+    .number({ error: 'Payment processing fee is required.' })
+    .min(0, 'Payment processing fee cannot be negative.')
+    .max(10_000, 'Payment processing fee cannot exceed ₹10,000.'),
+  paymentServiceTaxRatePercent: z.number().min(0).max(100).optional().nullable(),
   freeShippingMinimumAmount: z.number({ error: 'Free shipping minimum is required.' }).min(0).max(10_000_000),
   returnWindowDays: z
     .number({ error: 'Return window is required.' })
@@ -26,6 +30,6 @@ export const DEFAULT_STORE_SETTINGS = {
   storeName: '', supportEmail: '', supportPhoneNumber: '', storeAddress: '',
   storeAddressLine1: '', storeAddressLine2: '', storeCity: '', storeState: '',
   storePostalCode: '', storeCountry: 'India',
-  taxRatePercent: 0, paymentServiceTaxRatePercent: 0, freeShippingMinimumAmount: 0,
+  taxRatePercent: 0, paymentProcessingFee: 0, paymentServiceTaxRatePercent: 0, freeShippingMinimumAmount: 0,
   returnWindowDays: 0, concurrencyStamp: null,
 }

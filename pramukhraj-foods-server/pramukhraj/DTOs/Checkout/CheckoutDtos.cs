@@ -49,7 +49,8 @@ public sealed record CheckoutPricingResponse(
     string Currency,
     bool TaxIncluded,
     decimal TaxRatePercent,
-    decimal PaymentServiceTaxRatePercent);
+    decimal PaymentProcessingFee,
+    decimal PaymentServiceTaxRatePercent = 0m);
 
 public sealed record CheckoutSessionResponse(
     Guid CheckoutSessionId,
@@ -65,7 +66,26 @@ public sealed record CheckoutSessionResponse(
     bool IsReadyForPayment,
     IReadOnlyList<string> Warnings,
     DateTime ExpiresOn,
-    string ConcurrencyStamp);
+    string ConcurrencyStamp,
+    DeliveryVerificationResponse? DeliveryVerification = null);
+
+public sealed record DeliveryVerificationResponse(
+    bool IsVerified,
+    bool IsDeliverable,
+    string? PostalCode,
+    string Message,
+    int AvailableCouriersCount = 0);
+
+public sealed record DeliveryServiceabilityResult(
+    bool IsDeliverable,
+    string Message,
+    string DeliveryPostalCode,
+    int AvailableCouriersCount,
+    ShippingRateResult? BestRate);
+
+public sealed record VerifyDeliveryAddressRequest(
+    Guid? ShippingAddressId,
+    string? PostalCode);
 
 public sealed record PricingLine(Guid ProductId, Guid CategoryId, decimal UnitPrice, decimal UnitMrp, int Quantity);
 public sealed record PricingCalculationRequest(
@@ -74,7 +94,8 @@ public sealed record PricingCalculationRequest(
     decimal CustomerShippingAmount,
     decimal ProviderShippingCost,
     decimal TaxRatePercent,
-    decimal PaymentServiceTaxRatePercent);
+    decimal PaymentProcessingFee,
+    decimal PaymentServiceTaxRatePercent = 0m);
 
 public sealed record ShippingRateRequest(string DeliveryPostalCode, decimal WeightKg, decimal DeclaredValue);
 public sealed record ShippingRateResult(

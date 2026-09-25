@@ -162,12 +162,26 @@ export function RequestReturnModal({
     setMediaList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Calculate estimated refund
-  const estimatedRefund = Object.entries(selectedItems).reduce((sum, [itemId, qty]) => {
+  // Find policy for currently selected reason
+  const currentPolicy = eligibility?.policies?.find((p) => p.reason === reason);
+
+  // Raw item refund subtotal (sum of unit refundPerItem * qty for selected items)
+  const rawItemTotal = Object.entries(selectedItems).reduce((sum, [itemId, qty]) => {
     const item = eligibility?.items.find((i) => i.orderItemId === itemId);
     if (!item) return sum;
     return sum + item.refundPerItem * qty;
   }, 0);
+
+  const isRefundResolution = resolution === ReturnResolution.RefundToSource;
+  // If policy exists, respect its boolean flags; otherwise default to true for product, false for fees
+  const allowProductRefund = currentPolicy ? currentPolicy.refundProductAmount : true;
+  const allowShippingRefund = currentPolicy ? currentPolicy.refundShippingAmount : false;
+  const allowPaymentFeeRefund = currentPolicy ? currentPolicy.refundPaymentFee : false;
+
+  const estimatedProductRefund = isRefundResolution && allowProductRefund ? rawItemTotal : 0;
+  const estimatedShippingRefund = isRefundResolution && allowShippingRefund ? (eligibility?.orderShippingAmount ?? 0) : 0;
+  const estimatedPaymentFeeRefund = isRefundResolution && allowPaymentFeeRefund ? (eligibility?.orderPaymentFeeAmount ?? 0) : 0;
+  const estimatedRefund = estimatedProductRefund + estimatedShippingRefund + estimatedPaymentFeeRefund;
 
   const selectedCount = Object.keys(selectedItems).length;
 
@@ -444,8 +458,17 @@ export function RequestReturnModal({
                       <option value={ReturnReason.MissingItem}>
                         {ReturnReasonLabels[ReturnReason.MissingItem]}
                       </option>
-                      <option value={ReturnReason.Other}>
-                        {ReturnReasonLabels[ReturnReason.Other]}
+                      <option value={ReturnReason.LateDelivery}>
+                        {ReturnReasonLabels[ReturnReason.LateDelivery]}
+                      </option>
+                      <option value={ReturnReason.OrderedByMistake}>
+                        {ReturnReasonLabels[ReturnReason.OrderedByMistake]}
+                      </option>
+                      <option value={ReturnReason.PackageTampered}>
+                        {ReturnReasonLabels[ReturnReason.PackageTampered]}
+                      </option>
+                      <option value={ReturnReason.TasteNotAsExpected}>
+                        {ReturnReasonLabels[ReturnReason.TasteNotAsExpected]}
                       </option>
                     </select>
                   </div>
@@ -543,18 +566,85 @@ export function RequestReturnModal({
                   </div>
                 </div>
 
-                {/* Live Refund Summary */}
-                <div className="rounded-xl border border-ink/10 bg-ivory-dim p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-turmeric-deep" />
-                    <span className="font-medium text-ink text-xs! sm:text-sm!">
-                      Estimated Refund Total:
-                    </span>
+                {/* Live Refund / Resolution Summary */}
+                {resolution === ReturnResolution.Replacement ? (
+                  <div className="rounded-xl border border-teal/20 bg-teal/5 p-4 flex items-start gap-3">
+                    <Sparkles size={18} className="text-teal shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-display font-medium text-ink text-xs! sm:text-sm!">
+                        Direct Product Replacement
+                      </h5>
+                      <p className="text-[11px]! text-ink-soft mt-0.5">
+                        No refund will be processed to your payment method. Fresh replacement units will be prepared and dispatched once reverse pickup inspection completes.
+                      </p>
+                    </div>
                   </div>
-                  <span className="font-mono font-bold text-ink text-sm! sm:text-base!">
-                    {formatINR(estimatedRefund)}
-                  </span>
-                </div>
+                ) : (
+                  <div className="rounded-2xl border border-ink/10 bg-ivory-dim/70 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-ink/10 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={16} className="text-turmeric-deep" />
+                        <span className="font-display font-semibold text-ink text-xs! sm:text-sm!">
+                          Estimated Refund Calculation
+                        </span>
+                      </div>
+                      <span className="text-[10px]! uppercase tracking-wider text-ink-soft font-mono">
+                        Policy Breakdown
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs!">
+                      <div className="flex justify-between items-center text-ink-soft">
+                        <div className="flex items-center gap-1.5">
+                          <span>Items Refund:</span>
+                          {!allowProductRefund && (
+                            <span className="rounded bg-oxblood/10 px-1.5 py-0.5 text-[10px]! font-medium text-oxblood">
+                              Excluded by reason policy
+                            </span>
+                          )}
+                        </div>
+                        <span className={`font-mono ${allowProductRefund ? "text-ink" : "text-oxblood line-through"}`}>
+                          {formatINR(allowProductRefund ? estimatedProductRefund : rawItemTotal)}
+                        </span>
+                      </div>
+
+                      {allowShippingRefund && (eligibility?.orderShippingAmount ?? 0) > 0 && (
+                        <div className="flex justify-between items-center text-emerald-700">
+                          <div className="flex items-center gap-1.5">
+                            <span>Original Shipping Fee:</span>
+                            <span className="rounded bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px]! font-medium text-emerald-800 dark:text-emerald-300">
+                              Refundable
+                            </span>
+                          </div>
+                          <span className="font-mono">
+                            + {formatINR(estimatedShippingRefund)}
+                          </span>
+                        </div>
+                      )}
+
+                      {allowPaymentFeeRefund && (eligibility?.orderPaymentFeeAmount ?? 0) > 0 && (
+                        <div className="flex justify-between items-center text-emerald-700">
+                          <div className="flex items-center gap-1.5">
+                            <span>Payment Processing Fee:</span>
+                            <span className="rounded bg-emerald-100 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px]! font-medium text-emerald-800 dark:text-emerald-300">
+                              Refundable
+                            </span>
+                          </div>
+                          <span className="font-mono">
+                            + {formatINR(estimatedPaymentFeeRefund)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center border-t border-ink/10 pt-2 font-bold text-ink text-sm! sm:text-base!">
+                        <span>Estimated Total Refund:</span>
+                        <span className="font-mono text-emerald-700">
+                          {formatINR(estimatedRefund)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </form>
             )}
           </div>

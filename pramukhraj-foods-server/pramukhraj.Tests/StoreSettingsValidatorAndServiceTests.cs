@@ -14,7 +14,7 @@ public sealed class StoreSettingsValidatorAndServiceTests
         SupportEmail: "support@pramukhraj.com",
         SupportPhoneNumber: "+919876543210",
         TaxRatePercent: 0m,
-        PaymentServiceTaxRatePercent: 2m,
+        PaymentProcessingFee: 20m,
         StoreAddress: "123 Market Street, Ahmedabad, Gujarat - 380001, India",
         StoreName: "Pramukhraj Foods",
         FreeShippingMinimumAmount: 500m,
@@ -93,14 +93,37 @@ public sealed class StoreSettingsValidatorAndServiceTests
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(StoreSettingsWriteRequest.ReturnWindowDays));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(15)]
+    [InlineData(50)]
+    [InlineData(10000)]
+    public void PaymentProcessingFee_ValidAmount_Passes(decimal fee)
+    {
+        var request = ValidRequest() with { PaymentProcessingFee = fee };
+        var result = _validator.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-0.01)]
+    [InlineData(10000.01)]
+    public void PaymentProcessingFee_OutOfRange_Fails(decimal invalidFee)
+    {
+        var request = ValidRequest() with { PaymentProcessingFee = invalidFee };
+        var result = _validator.Validate(request);
+        Assert.False(result.IsValid);
+    }
+
     [Fact]
-    public void StoreSettingsData_Serialization_PreservesReturnWindowDays()
+    public void StoreSettingsData_Serialization_PreservesReturnWindowDaysAndFlatFee()
     {
         var data = new StoreSettingsData(
             "support@pramukhraj.com",
             "+919876543210",
             0m,
-            2m,
+            25m,
             "123 Market Street",
             "Pramukhraj Foods",
             500m,
@@ -111,12 +134,13 @@ public sealed class StoreSettingsValidatorAndServiceTests
 
         Assert.NotNull(deserialized);
         Assert.Equal(14, deserialized.ReturnWindowDays);
+        Assert.Equal(25m, deserialized.PaymentProcessingFee);
     }
 
     [Fact]
     public void StoreSettingsData_Deserialization_DefaultsToZero_WhenFieldMissing()
     {
-        // Legacy JSON without ReturnWindowDays
+        // Legacy JSON without ReturnWindowDays or PaymentProcessingFee
         var legacyJson = """
         {
             "supportEmail": "support@pramukhraj.com",

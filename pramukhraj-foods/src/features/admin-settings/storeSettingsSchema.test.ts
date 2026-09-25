@@ -14,19 +14,37 @@ const validData = () => ({
   storeCountry: 'India',
   storeAddress: '123 Market Street, Opp. Central Mall, Ahmedabad, Gujarat - 380001, India',
   taxRatePercent: 0,
-  paymentServiceTaxRatePercent: 2,
+  paymentProcessingFee: 20,
   freeShippingMinimumAmount: 500,
   returnWindowDays: 0,
 })
 
 describe('storeSettingsSchema', () => {
-  it('has DEFAULT_STORE_SETTINGS configured with returnWindowDays = 0', () => {
+  it('has DEFAULT_STORE_SETTINGS configured with returnWindowDays = 0 and paymentProcessingFee = 0', () => {
     expect(DEFAULT_STORE_SETTINGS.returnWindowDays).toBe(0)
+    expect(DEFAULT_STORE_SETTINGS.paymentProcessingFee).toBe(0)
   })
 
-  it('validates a complete store settings payload successfully', () => {
+  it('validates a complete store settings payload with flat fee successfully', () => {
     const result = storeSettingsSchema.safeParse(validData())
     expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.paymentProcessingFee).toBe(20)
+    }
+  })
+
+  it('rejects negative payment processing fee', () => {
+    const data = validData()
+    data.paymentProcessingFee = -5
+    const result = storeSettingsSchema.safeParse(data)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects payment processing fee exceeding ₹10,000', () => {
+    const data = validData()
+    data.paymentProcessingFee = 10001
+    const result = storeSettingsSchema.safeParse(data)
+    expect(result.success).toBe(false)
   })
 
   it('rejects missing storeAddressLine1', () => {
