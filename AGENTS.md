@@ -27,3 +27,5 @@ trigger: always_on
 - Ensure the store name is dynamic across all customer touchpoints. Avoid hardcoding 'Pramukhraj Foods' anywhere in the application. Fetch the store name directly from the database configuration/settings for all orders, transactional emails, OTP SMS/templates, PDF invoices, and user-facing UI components.
 
 - The business operates without a GSTIN. Strictly omit GSTIN numbers, tax breakdowns, HSN/SAC codes, CGST/SGST/IGST line items, or tax collection fields across all workflows—including PDF/bill generation, order summaries, transactional emails, checkout pricing breakdowns, Shiprocket payload generation, and payment gateway (Razorpay) integrations. All customer prices must be presented as flat/total amounts without separate tax levies.
+
+- **Never write hardcoded HTML strings directly on the server side for emails.** Always use structured email templates. If a required template does not yet exist, create a new reusable template inside the email template module featuring a clean, default responsive design.

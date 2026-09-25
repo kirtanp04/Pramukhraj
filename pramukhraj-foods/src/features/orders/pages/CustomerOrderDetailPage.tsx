@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -37,8 +37,7 @@ export function CustomerOrderDetailPage() {
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [eligibility, setEligibility] = useState<ReturnEligibility | null>(null);
 
-  // Fetch return eligibility when order is loaded and confirmed
-  useEffect(() => {
+  const refreshEligibility = useCallback(() => {
     if (!orderId || !order) return;
     if (order.orderStatus.toLowerCase() !== "confirmed" && order.shipmentStatus?.toLowerCase() !== "delivered") {
       return;
@@ -53,6 +52,11 @@ export function CustomerOrderDetailPage() {
         // Non-fatal if returns are disabled or not applicable
       });
   }, [orderId, order]);
+
+  // Fetch return eligibility when order is loaded and confirmed
+  useEffect(() => {
+    refreshEligibility();
+  }, [refreshEligibility]);
 
   const handleCancelOrder = async () => {
     if (!orderId) return;
@@ -330,9 +334,16 @@ export function CustomerOrderDetailPage() {
         orderId={order.orderId}
         orderNumber={order.orderNumber}
         open={returnModalOpen}
-        onOpenChange={setReturnModalOpen}
+        onOpenChange={(nextOpen) => {
+          setReturnModalOpen(nextOpen);
+          if (!nextOpen) {
+            void reload();
+            refreshEligibility();
+          }
+        }}
         onSuccess={() => {
-          reload();
+          void reload();
+          refreshEligibility();
         }}
       />
     </div>

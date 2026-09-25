@@ -63,13 +63,24 @@ export function RequestReturnModal({
 
   // Load eligibility whenever modal opens
   useEffect(() => {
-    if (!open || !orderId) return;
+    if (!open) {
+      setIsSuccess(false);
+      setSubmitError("");
+      setComments("");
+      setMediaList([]);
+      setMediaError("");
+      return;
+    }
+    if (!orderId) return;
 
     let isMounted = true;
     setIsLoadingEligibility(true);
     setEligibilityError("");
     setIsSuccess(false);
     setSubmitError("");
+    setComments("");
+    setMediaList([]);
+    setMediaError("");
 
     returnsApi
       .getEligibility(orderId)
@@ -269,7 +280,32 @@ export function RequestReturnModal({
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-            {isLoadingEligibility ? (
+            {isSuccess ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <CheckCircle2 size={36} />
+                </div>
+                <h4 className="font-display font-semibold text-ink text-lg!">
+                  Return Request Submitted!
+                </h4>
+                <p className="text-xs! sm:text-sm! text-ink-soft max-w-md">
+                  Your return request{" "}
+                  <span className="font-mono font-bold text-ink">
+                    #{createdReturnNumber}
+                  </span>{" "}
+                  has been received and is pending review by our support team.
+                </p>
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    onClick={() => onOpenChange(false)}
+                    className="text-xs!"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </div>
+            ) : isLoadingEligibility ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
                 <Loader2 className="animate-spin text-oxblood" size={32} />
                 <p className="text-xs! text-ink-soft">Checking return eligibility...</p>
@@ -297,31 +333,6 @@ export function RequestReturnModal({
                     {new Date(eligibility.returnWindowExpiresOn).toLocaleDateString()}
                   </p>
                 )}
-              </div>
-            ) : isSuccess ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                  <CheckCircle2 size={36} />
-                </div>
-                <h4 className="font-display font-semibold text-ink text-lg!">
-                  Return Request Submitted!
-                </h4>
-                <p className="text-xs! sm:text-sm! text-ink-soft max-w-md">
-                  Your return request{" "}
-                  <span className="font-mono font-bold text-ink">
-                    #{createdReturnNumber}
-                  </span>{" "}
-                  has been received and is pending review by our support team.
-                </p>
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    onClick={() => onOpenChange(false)}
-                    className="text-xs!"
-                  >
-                    Done
-                  </Button>
-                </div>
               </div>
             ) : (
               <form id="return-form" onSubmit={handleSubmit} className="space-y-6">

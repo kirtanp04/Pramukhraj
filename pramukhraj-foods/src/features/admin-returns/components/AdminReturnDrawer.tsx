@@ -1077,7 +1077,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <Dialog.Title className="font-display font-semibold text-oxblood text-base!">
@@ -1141,7 +1141,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <Dialog.Title className="font-display font-semibold text-ink text-base!">
@@ -1277,7 +1277,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <div className="flex items-center gap-2 text-emerald-700">
@@ -1478,7 +1478,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[88vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[88vh] max-w-lg flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <div className="flex items-center gap-2 text-teal">
@@ -1796,7 +1796,7 @@ export function AdminReturnDrawer({
           <Dialog.Overlay className="fixed inset-0 z-80 bg-ink/50 backdrop-blur-xs" />
           <Dialog.Content
             aria-describedby={modalDescId}
-            className="fixed inset-4 z-80 m-auto max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
+            className="fixed inset-4 z-80 m-auto h-fit max-h-[85vh] max-w-md flex flex-col rounded-2xl bg-ivory p-6 shadow-2xl border border-ink/10"
           >
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
               <div className="flex items-center gap-2 text-teal">
