@@ -153,6 +153,7 @@ app.UseMiddleware<EncryptionMiddleware>();
 // Admin validation middleware - validate admin tokens and user state for /api/admin/*
 app.UseMiddleware<pramukhraj.Middleware.AdminValidationMiddleware>();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Frontend Development Dockerfile (React + Vite + Tailwind)
+# Optimized for lightweight memory footprint and real-time Hot Reloading (HMR)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
+# Cache package manifests separately to optimize Docker layer caching
+COPY package.json package-lock.json ./
+
+# Install all dependencies (clean install matching lockfile)
+RUN npm ci
+
+# Copy initial source (in dev this is augmented/shadowed by live volume bind mount)
+COPY . .
+
+# Environment variables for polling file watcher in Docker on Windows
+ENV PORT=5173
+ENV HOST=0.0.0.0
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCH_POLLING=true
+
+EXPOSE 5173
+
+# Start Vite dev server with explicit 0.0.0.0 host binding
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

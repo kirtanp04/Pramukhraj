@@ -1,0 +1,91 @@
+services:
+  # ── 1. PostgreSQL Database Service ──────────────────────────────────────────
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: pramukhraj_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pramukhraj_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-LocalDevPassword123!}
+      TZ: ${DB_TIMEZONE:-Asia/Kolkata}
+    ports:
+      # Exposed on host for external database tools (pgAdmin, DBeaver, EF CLI)
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      # Persistent local storage for existing dev database
+      - ./pg-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-pramukhraj_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pramukhraj-dev-net
+
+  # ── 2. Backend Web API Service (.NET 10 + dotnet watch live reload) ────────
+  backend-dev:
+    build:
+      context: ../pramukhraj-foods-server/pramukhraj
+      dockerfile: Dockerfile.dev
+    container_name: pramukhraj_backend_dev
+    restart: unless-stopped
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres-dev;Port=5432;Database=${DB_NAME:-pramukhraj_db};Username=${DB_USER:-postgres};Password=${DB_PASSWORD:-LocalDevPassword123!}
+      JwtSettings__Secret: ${JWT_SECRET:-wwf$@DSO56AFSDFH(hsfv8efghfh37w32DJDJHO2Asmzr45iD@skp}
+      JwtSettings__Issuer: ${JWT_ISSUER:-Pramukhraj}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-PramukhrajClients}
+      CustomerOtp__HashPepper: ${CUSTOMER_OTP_PEPPER:-local-dev-otp-pepper-must-be-at-least-32-chars}
+      Encryption__Key: ${ENCRYPTION_KEY:-264c37f69c56536dfcca645941011e15}
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: "1"
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+    ports:
+      # Map host 5204 (default dev port) to container 8080
+      - "${BACKEND_HOST_PORT:-5204}:8080"
+    volumes:
+      # Live bind mount for real-time dotnet watch recompilation without container restart
+      - ../pramukhraj-foods-server/pramukhraj:/app
+      # Anonymous volumes to protect container Linux bin/obj from host Windows clashes
+      - /app/bin
+      - /app/obj
+      # Cache NuGet packages so subsequent boots are near-instantaneous
+      - pramukhraj_nuget_cache:/root/.nuget/packages
+    networks:
+      - pramukhraj-dev-net
+
+  # ── 3. Frontend UI Service (React + Vite + Tailwind HMR live reload) ───────
+  frontend-dev:
+    build:
+      context: ../pramukhraj-foods
+      dockerfile: Dockerfile.dev
+    container_name: pramukhraj_frontend_dev
+    restart: unless-stopped
+    depends_on:
+      - backend-dev
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5204/api/}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCH_POLLING: "true"
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:5173"
+    volumes:
+      # Live bind mount for instant Vite HMR updates
+      - ../pramukhraj-foods:/app
+      # Anonymous volume preserving container's Linux-native node_modules
+      - /app/node_modules
+    networks:
+      - pramukhraj-dev-net
+
+volumes:
+  pramukhraj_nuget_cache:
+    name: pramukhraj_nuget_cache
+
+networks:
+  pramukhraj-dev-net:
+    name: pramukhraj-dev-net
+    driver: bridge

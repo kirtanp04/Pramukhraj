@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend Development Dockerfile (.NET 10 Web API on Alpine Linux)
+# Optimized for real-time Hot Reloading via `dotnet watch` with Polling
+# ─────────────────────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine
+
+WORKDIR /app
+
+# Enable polling file watcher for seamless file-change detection across Windows bind-mounts
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+ENV DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+
+# Install curl for container health check
+RUN apk add --no-cache curl
+
+# Copy csproj first to leverage Docker layer caching for NuGet restore
+COPY pramukhraj.csproj ./
+RUN dotnet restore pramukhraj.csproj
+
+# Copy initial source code (augmented/shadowed by live volume bind mount in dev)
+COPY . ./
+
+EXPOSE 8080
+
+# Run dotnet watch with non-interactive mode and explicit 0.0.0.0 binding
+CMD ["dotnet", "watch", "run", "--non-interactive", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]
