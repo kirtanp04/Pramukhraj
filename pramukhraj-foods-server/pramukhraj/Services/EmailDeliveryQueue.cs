@@ -92,6 +92,13 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
                     ["verification_code"] = verification.Code,
                     ["expires_in_minutes"] = verification.ExpiresInMinutes.ToString(),
                     ["store_name"] = storeSettings.StoreName,
+                    ["store_address"] = storeSettings.StoreAddress,
+                    ["store_address_line1"] = storeSettings.StoreAddressLine1 ?? "",
+                    ["store_address_line2"] = storeSettings.StoreAddressLine2 ?? "",
+                    ["store_city"] = storeSettings.StoreCity ?? "",
+                    ["store_state"] = storeSettings.StoreState ?? "",
+                    ["store_postal_code"] = storeSettings.StorePostalCode ?? "",
+                    ["store_country"] = storeSettings.StoreCountry ?? "India",
                     ["support_email"] = storeSettings.SupportEmail,
                     ["support_phone"] = storeSettings.SupportPhoneNumber
                 }, cancellationToken);
@@ -103,12 +110,13 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
             var safeName = WebUtility.HtmlEncode(verification.RecipientName);
             var safeCode = WebUtility.HtmlEncode(verification.Code);
             var safeStoreName = WebUtility.HtmlEncode(storeSettings.StoreName);
+            var safeStoreAddress = WebUtility.HtmlEncode(storeSettings.StoreAddress);
             return new DTOs.Email.EmailMessage(
                 verification.RecipientEmail,
                 verification.RecipientName,
                 $"Verify your email for {storeSettings.StoreName}",
-                $"<html lang=\"en\"><body><h1>Verify your email</h1><p>Hello {safeName},</p><p>Your {safeStoreName} verification code is:</p><p style=\"font:700 28px monospace;letter-spacing:6px\">{safeCode}</p><p>This code expires in {verification.ExpiresInMinutes} minutes. If you did not request it, you can ignore this email.</p></body></html>",
-                $"Hello {verification.RecipientName},\n\nYour {storeSettings.StoreName} verification code is {verification.Code}. It expires in {verification.ExpiresInMinutes} minutes.\n\nIf you did not request it, you can ignore this email.");
+                $"<html lang=\"en\"><body><h1>Verify your email</h1><p>Hello {safeName},</p><p>Your {safeStoreName} verification code is:</p><p style=\"font:700 28px monospace;letter-spacing:6px\">{safeCode}</p><p>This code expires in {verification.ExpiresInMinutes} minutes. If you did not request it, you can ignore this email.</p><hr/><p style=\"font-size:12px;color:#666;\">{safeStoreName}<br/>{safeStoreAddress}<br/>Support: {WebUtility.HtmlEncode(storeSettings.SupportEmail)} | {WebUtility.HtmlEncode(storeSettings.SupportPhoneNumber)}</p></body></html>",
+                $"Hello {verification.RecipientName},\n\nYour {storeSettings.StoreName} verification code is {verification.Code}. It expires in {verification.ExpiresInMinutes} minutes.\n\nIf you did not request it, you can ignore this email.\n\n--\n{storeSettings.StoreName}\n{storeSettings.StoreAddress}\nSupport: {storeSettings.SupportEmail} | {storeSettings.SupportPhoneNumber}");
         }
 
         var welcome = (WelcomeEmailRequest)request;
@@ -119,6 +127,13 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
                 ["customer_name"] = welcome.RecipientName,
                 ["customer_email"] = welcome.RecipientEmail,
                 ["store_name"] = storeSettings.StoreName,
+                ["store_address"] = storeSettings.StoreAddress,
+                ["store_address_line1"] = storeSettings.StoreAddressLine1 ?? "",
+                ["store_address_line2"] = storeSettings.StoreAddressLine2 ?? "",
+                ["store_city"] = storeSettings.StoreCity ?? "",
+                ["store_state"] = storeSettings.StoreState ?? "",
+                ["store_postal_code"] = storeSettings.StorePostalCode ?? "",
+                ["store_country"] = storeSettings.StoreCountry ?? "India",
                 ["support_email"] = storeSettings.SupportEmail,
                 ["support_phone"] = storeSettings.SupportPhoneNumber
             }, cancellationToken);

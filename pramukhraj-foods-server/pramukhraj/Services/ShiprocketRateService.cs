@@ -30,11 +30,21 @@ public sealed partial class ShiprocketRateService(
             throw new ShiprocketProviderException("The shipment weight is invalid.", 422);
 
         var credentials = await GetCredentialsAsync(cancellationToken);
-        if (!IndianPostalCode().IsMatch(credentials.PickupPostalCode) || credentials.MinimumChargeableWeightKg <= 0)
+        var pickupPostcode = credentials.PickupPostalCode?.Trim();
+        if (string.IsNullOrWhiteSpace(pickupPostcode) || !IndianPostalCode().IsMatch(pickupPostcode))
+        {
+            var cachedSettings = await cache.GetAsync<DTOs.Settings.StoreSettingsData>(CacheKey.Store.Settings, cancellationToken);
+            if (cachedSettings is not null && !string.IsNullOrWhiteSpace(cachedSettings.StorePostalCode) && IndianPostalCode().IsMatch(cachedSettings.StorePostalCode.Trim()))
+            {
+                pickupPostcode = cachedSettings.StorePostalCode.Trim();
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(pickupPostcode) || !IndianPostalCode().IsMatch(pickupPostcode) || credentials.MinimumChargeableWeightKg <= 0)
             throw new ShiprocketProviderException("Shiprocket pickup settings are incomplete.", 503);
         var chargeableWeight = NormalizeWeight(request.WeightKg, credentials.MinimumChargeableWeightKg);
         var path = string.Create(CultureInfo.InvariantCulture,
-            $"courier/serviceability/?pickup_postcode={credentials.PickupPostalCode.Trim()}&delivery_postcode={request.DeliveryPostalCode}&weight={chargeableWeight:0.###}&cod=0&declared_value={Math.Max(0, request.DeclaredValue):0.00}");
+            $"courier/serviceability/?pickup_postcode={pickupPostcode}&delivery_postcode={request.DeliveryPostalCode}&weight={chargeableWeight:0.###}&cod=0&declared_value={Math.Max(0, request.DeclaredValue):0.00}");
         using var response = await SendAuthorizedAsync(path, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {

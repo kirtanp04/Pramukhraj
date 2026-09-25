@@ -13,7 +13,26 @@ public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<Store
             .NotEmpty().MaximumLength(20)
             .Matches(@"^\+?[1-9]\d{7,14}$")
             .WithMessage("Support phone number must be a valid international number, for example +919876543210.");
-        RuleFor(x => x.StoreAddress).NotEmpty().MaximumLength(1000);
+        RuleFor(x => x.StoreAddressLine1)
+            .NotEmpty().WithMessage("Store address line 1 (street/building/plot) is required.")
+            .MaximumLength(250);
+        RuleFor(x => x.StoreAddressLine2)
+            .MaximumLength(250);
+        RuleFor(x => x.StoreCity)
+            .NotEmpty().WithMessage("Store city is required.")
+            .MaximumLength(100);
+        RuleFor(x => x.StoreState)
+            .NotEmpty().WithMessage("Store state is required.")
+            .MaximumLength(100);
+        RuleFor(x => x.StorePostalCode)
+            .NotEmpty().WithMessage("Store PIN / postal code is required.")
+            .Matches(@"^\d{6}$")
+            .WithMessage("Store PIN code must be a valid 6-digit Indian postal code.");
+        RuleFor(x => x.StoreCountry)
+            .NotEmpty().WithMessage("Store country is required.")
+            .MaximumLength(100);
+        RuleFor(x => x.StoreAddress)
+            .MaximumLength(1000);
         RuleFor(x => x.TaxRatePercent).Equal(0m)
             .WithMessage("As an unregistered business without a GSTIN, Tax Rate must be 0%. All prices must be all-inclusive (CGST Act Section 32).");
         RuleFor(x => x.PaymentServiceTaxRatePercent).InclusiveBetween(0m, 10m)

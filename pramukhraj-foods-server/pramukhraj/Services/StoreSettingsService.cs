@@ -21,7 +21,7 @@ public sealed class StoreSettingsService(
     private const int SettingsId = 1;
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m, 0);
+    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m, 0, "", "", "", "", "", "India");
 
     public async Task<ApiResponse<StoreSettingsResponse>> GetAdminAsync(CancellationToken cancellationToken = default)
     {
@@ -54,10 +54,47 @@ public sealed class StoreSettingsService(
             if (entity is not null && !string.Equals(entity.ConcurrencyStamp, request.ConcurrencyStamp, StringComparison.Ordinal))
                 return ApiResponse<StoreSettingsResponse>.Fail("Store settings changed elsewhere. Reload and try again.", 409);
 
+            var line1 = request.StoreAddressLine1?.Trim() ?? string.Empty;
+            var line2 = request.StoreAddressLine2?.Trim() ?? string.Empty;
+            var city = request.StoreCity?.Trim() ?? string.Empty;
+            var state = request.StoreState?.Trim() ?? string.Empty;
+            var postalCode = request.StorePostalCode?.Trim() ?? string.Empty;
+            var country = string.IsNullOrWhiteSpace(request.StoreCountry) ? "India" : request.StoreCountry.Trim();
+
+            var addressParts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(line1)) addressParts.Add(line1);
+            if (!string.IsNullOrWhiteSpace(line2)) addressParts.Add(line2);
+            if (!string.IsNullOrWhiteSpace(city)) addressParts.Add(city);
+            if (!string.IsNullOrWhiteSpace(state))
+            {
+                addressParts.Add(!string.IsNullOrWhiteSpace(postalCode) ? $"{state} - {postalCode}" : state);
+            }
+            else if (!string.IsNullOrWhiteSpace(postalCode))
+            {
+                addressParts.Add(postalCode);
+            }
+            if (!string.IsNullOrWhiteSpace(country)) addressParts.Add(country);
+
+            var formattedAddress = string.Join(", ", addressParts);
+            var finalStoreAddress = !string.IsNullOrWhiteSpace(request.StoreAddress)
+                ? request.StoreAddress.Trim()
+                : formattedAddress;
+
             var data = new StoreSettingsData(
-                request.SupportEmail.Trim().ToLowerInvariant(), NormalizePhone(request.SupportPhoneNumber),
-                0m, Math.Clamp(request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m), request.StoreAddress.Trim(), request.StoreName.Trim(),
-                Money(request.FreeShippingMinimumAmount), Math.Clamp(request.ReturnWindowDays, 0, 365));
+                request.SupportEmail.Trim().ToLowerInvariant(),
+                NormalizePhone(request.SupportPhoneNumber),
+                0m,
+                Math.Clamp(request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
+                finalStoreAddress,
+                request.StoreName.Trim(),
+                Money(request.FreeShippingMinimumAmount),
+                Math.Clamp(request.ReturnWindowDays, 0, 365),
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country);
             var now = DateTime.UtcNow;
             if (entity is null)
             {
@@ -110,15 +147,53 @@ public sealed class StoreSettingsService(
         {
             var value = JsonSerializer.Deserialize<StoreSettingsData>(json, JsonOptions);
             if (value is null) return Defaults;
+
+            var line1 = value.StoreAddressLine1?.Trim() ?? string.Empty;
+            var line2 = value.StoreAddressLine2?.Trim() ?? string.Empty;
+            var city = value.StoreCity?.Trim() ?? string.Empty;
+            var state = value.StoreState?.Trim() ?? string.Empty;
+            var postalCode = value.StorePostalCode?.Trim() ?? string.Empty;
+            var country = string.IsNullOrWhiteSpace(value.StoreCountry) ? "India" : value.StoreCountry.Trim();
+            var storeAddress = value.StoreAddress?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(line1) && !string.IsNullOrWhiteSpace(storeAddress))
+            {
+                line1 = storeAddress;
+            }
+
+            if (string.IsNullOrWhiteSpace(storeAddress))
+            {
+                var addressParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(line1)) addressParts.Add(line1);
+                if (!string.IsNullOrWhiteSpace(line2)) addressParts.Add(line2);
+                if (!string.IsNullOrWhiteSpace(city)) addressParts.Add(city);
+                if (!string.IsNullOrWhiteSpace(state))
+                {
+                    addressParts.Add(!string.IsNullOrWhiteSpace(postalCode) ? $"{state} - {postalCode}" : state);
+                }
+                else if (!string.IsNullOrWhiteSpace(postalCode))
+                {
+                    addressParts.Add(postalCode);
+                }
+                if (!string.IsNullOrWhiteSpace(country)) addressParts.Add(country);
+                storeAddress = string.Join(", ", addressParts);
+            }
+
             return new StoreSettingsData(
                 value.SupportEmail?.Trim() ?? string.Empty,
                 value.SupportPhoneNumber?.Trim() ?? string.Empty,
                 0m,
                 Math.Clamp(value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10m),
-                value.StoreAddress?.Trim() ?? string.Empty,
+                storeAddress,
                 string.IsNullOrWhiteSpace(value.StoreName) ? Defaults.StoreName : value.StoreName.Trim(),
                 Math.Clamp(value.FreeShippingMinimumAmount, 0m, 10_000_000m),
-                Math.Clamp(value.ReturnWindowDays, 0, 365));
+                Math.Clamp(value.ReturnWindowDays, 0, 365),
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country);
         }
         catch (JsonException exception)
         {
@@ -128,9 +203,22 @@ public sealed class StoreSettingsService(
     }
 
     private static StoreSettingsResponse ToResponse(StoreSettingsData data, StoreSettings? entity) => new(
-        data.SupportEmail, data.SupportPhoneNumber, data.TaxRatePercent ?? 0m, data.PaymentServiceTaxRatePercent ?? 0m, data.StoreAddress,
-        data.StoreName, data.FreeShippingMinimumAmount, entity?.UpdatedOn, entity?.ConcurrencyStamp,
-        data.ReturnWindowDays);
+        data.SupportEmail,
+        data.SupportPhoneNumber,
+        data.TaxRatePercent ?? 0m,
+        data.PaymentServiceTaxRatePercent ?? 0m,
+        data.StoreAddress,
+        data.StoreName,
+        data.FreeShippingMinimumAmount,
+        entity?.UpdatedOn,
+        entity?.ConcurrencyStamp,
+        data.ReturnWindowDays,
+        data.StoreAddressLine1,
+        data.StoreAddressLine2,
+        data.StoreCity,
+        data.StoreState,
+        data.StorePostalCode,
+        data.StoreCountry);
     private static string NormalizePhone(string value) => new(value.Where(x => char.IsDigit(x) || x == '+').ToArray());
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
     private static ApiResponse<StoreSettingsResponse> ValidationFailure(ValidationResult result) =>

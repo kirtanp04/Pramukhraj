@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { AlertCircle, LoaderCircle, RefreshCw, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react'
+import { AlertCircle, LoaderCircle, MapPin, RefreshCw, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react'
 import { FormField, inputCls } from '@/components/admin/product/FormField'
 import { Button } from '@/components/ui/Button'
 import { MessageDialog } from '@/components/ui/MessageDialog'
@@ -24,6 +24,13 @@ export function AdminSettings() {
   })
   const { register, reset, setError, watch, formState: { errors, isDirty } } = form
   const returnWindowDays = watch('returnWindowDays') ?? 0
+  const storeName = watch('storeName') ?? ''
+  const line1 = watch('storeAddressLine1') ?? ''
+  const line2 = watch('storeAddressLine2') ?? ''
+  const city = watch('storeCity') ?? ''
+  const state = watch('storeState') ?? ''
+  const postalCode = watch('storePostalCode') ?? ''
+  const country = watch('storeCountry') ?? 'India'
 
   useEffect(() => () => { mounted.current = false }, [])
   useEffect(() => {
@@ -35,6 +42,12 @@ export function AdminSettings() {
         if (!settings) throw new Error('Store settings were not returned.')
         if (!controller.signal.aborted) reset({
           ...settings,
+          storeAddressLine1: settings.storeAddressLine1 || settings.storeAddress || '',
+          storeAddressLine2: settings.storeAddressLine2 || '',
+          storeCity: settings.storeCity || '',
+          storeState: settings.storeState || '',
+          storePostalCode: settings.storePostalCode || '',
+          storeCountry: settings.storeCountry || 'India',
           taxRatePercent: finiteOrZero(settings.taxRatePercent),
           paymentServiceTaxRatePercent: finiteOrZero(settings.paymentServiceTaxRatePercent),
           returnWindowDays: finiteOrZero(settings.returnWindowDays),
@@ -52,8 +65,23 @@ export function AdminSettings() {
   async function submit(values: StoreSettingsFormValues) {
     setSaving(true)
     try {
+      const l1 = values.storeAddressLine1?.trim() || ''
+      const l2 = values.storeAddressLine2?.trim() || ''
+      const c = values.storeCity?.trim() || ''
+      const s = values.storeState?.trim() || ''
+      const pin = values.storePostalCode?.trim() || ''
+      const cntry = values.storeCountry?.trim() || 'India'
+      const formattedAddress = [l1, l2, c, s ? `${s}${pin ? ` - ${pin}` : ''}` : pin, cntry].filter(Boolean).join(', ')
+
       const response = await storeSettingsApi.update({
         ...values,
+        storeAddressLine1: l1,
+        storeAddressLine2: l2,
+        storeCity: c,
+        storeState: s,
+        storePostalCode: pin,
+        storeCountry: cntry,
+        storeAddress: formattedAddress,
         taxRatePercent: 0,
         paymentServiceTaxRatePercent: finiteOrZero(values.paymentServiceTaxRatePercent),
         returnWindowDays: Math.round(finiteOrZero(values.returnWindowDays)),
@@ -61,6 +89,12 @@ export function AdminSettings() {
       if (!mounted.current) return
       if (response.data) reset({
         ...response.data,
+        storeAddressLine1: response.data.storeAddressLine1 || '',
+        storeAddressLine2: response.data.storeAddressLine2 || '',
+        storeCity: response.data.storeCity || '',
+        storeState: response.data.storeState || '',
+        storePostalCode: response.data.storePostalCode || '',
+        storeCountry: response.data.storeCountry || 'India',
         taxRatePercent: finiteOrZero(response.data.taxRatePercent),
         paymentServiceTaxRatePercent: finiteOrZero(response.data.paymentServiceTaxRatePercent),
         returnWindowDays: finiteOrZero(response.data.returnWindowDays),
@@ -102,11 +136,12 @@ export function AdminSettings() {
       </div>
 
       <form id="store-settings-form" onSubmit={form.handleSubmit(submit)} noValidate aria-busy={saving} className="space-y-5">
+        {/* Section 1: Store & Customer Support */}
         <section className={cn('rounded-card border border-ink/10 bg-ivory p-5 shadow-sm md:p-8', saving && 'opacity-90')} aria-labelledby="store-details-heading">
           <h2 id="store-details-heading" className="font-display text-lg! font-semibold">Store & support</h2>
           <p className="mt-1 text-xs! text-ink-soft">These details identify your store and give customers a reliable way to contact you.</p>
           <div className="mt-5 grid gap-5 md:grid-cols-2">
-            <FormField label="Store name" htmlFor="store-name" error={errors.storeName?.message} required>
+            <FormField label="Store name" htmlFor="store-name" error={errors.storeName?.message} className="md:col-span-2" required>
               <input id="store-name" maxLength={150} {...register('storeName')} className={inputCls(!!errors.storeName)} placeholder="Your store name" />
             </FormField>
             <FormField label="Support email" htmlFor="support-email" error={errors.supportEmail?.message} required>
@@ -115,9 +150,59 @@ export function AdminSettings() {
             <FormField label="Support phone number" htmlFor="support-phone" error={errors.supportPhoneNumber?.message} hint="Use international format without spaces, e.g. +919876543210." required>
               <input id="support-phone" type="tel" maxLength={20} {...register('supportPhoneNumber')} className={inputCls(!!errors.supportPhoneNumber)} placeholder="+919876543210" autoComplete="tel" />
             </FormField>
-            <FormField label="Store address" htmlFor="store-address" error={errors.storeAddress?.message} className="md:col-span-2" required>
-              <textarea id="store-address" rows={4} maxLength={1000} {...register('storeAddress')} className={cn(inputCls(!!errors.storeAddress), 'resize-y')} placeholder="Full business or dispatch address" />
+          </div>
+        </section>
+
+        {/* Section 2: Dedicated Store & Dispatch Address */}
+        <section className={cn('rounded-card border border-ink/10 bg-ivory p-5 shadow-sm md:p-8', saving && 'opacity-90')} aria-labelledby="store-address-heading">
+          <div className="flex items-center gap-2">
+            <MapPin size={18} className="text-oxblood" aria-hidden />
+            <h2 id="store-address-heading" className="font-display text-lg! font-semibold">Store & dispatch address</h2>
+          </div>
+          <p className="mt-1 text-xs! text-ink-soft">
+            The primary physical facility and warehouse address of your store. Used for courier serviceability, forward shipments, reverse return pickups, order receipts, and customer communications.
+          </p>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <FormField label="Address line 1 (Street, Building, Plot / Shop No.)" htmlFor="store-address-line1" error={errors.storeAddressLine1?.message} className="md:col-span-2" required>
+              <input id="store-address-line1" maxLength={250} {...register('storeAddressLine1')} className={inputCls(!!errors.storeAddressLine1)} placeholder="e.g. Plot No. 42, GIDC Phase II, Naroda Industrial Estate" />
             </FormField>
+
+            <FormField label="Address line 2 (Apartment, Area, Sector, Landmark)" htmlFor="store-address-line2" error={errors.storeAddressLine2?.message} className="md:col-span-2">
+              <input id="store-address-line2" maxLength={250} {...register('storeAddressLine2')} className={inputCls(!!errors.storeAddressLine2)} placeholder="e.g. Near Old Railway Crossing (Optional)" />
+            </FormField>
+
+            <FormField label="City" htmlFor="store-city" error={errors.storeCity?.message} required>
+              <input id="store-city" maxLength={100} {...register('storeCity')} className={inputCls(!!errors.storeCity)} placeholder="e.g. Ahmedabad" />
+            </FormField>
+
+            <FormField label="State" htmlFor="store-state" error={errors.storeState?.message} required>
+              <input id="store-state" maxLength={100} {...register('storeState')} className={inputCls(!!errors.storeState)} placeholder="e.g. Gujarat" />
+            </FormField>
+
+            <FormField label="PIN / Postal Code" htmlFor="store-postal-code" error={errors.storePostalCode?.message} hint="6-digit Indian PIN code." required>
+              <input id="store-postal-code" maxLength={6} {...register('storePostalCode')} className={inputCls(!!errors.storePostalCode)} placeholder="e.g. 382330" />
+            </FormField>
+
+            <FormField label="Country" htmlFor="store-country" error={errors.storeCountry?.message} required>
+              <input id="store-country" maxLength={100} {...register('storeCountry')} className={inputCls(!!errors.storeCountry)} placeholder="India" />
+            </FormField>
+          </div>
+
+          {/* Formatted Address Live Preview */}
+          <div className="mt-5 rounded-xl border border-teal/20 bg-teal/5 p-4 text-xs! text-teal">
+            <span className="font-semibold uppercase tracking-wider text-[11px]! block mb-1">
+              Address Preview (As shown on RMA Slips, Order Receipts & Shipping Pickups)
+            </span>
+            <p className="font-medium text-ink">
+              {storeName || 'Store Name'}
+            </p>
+            <p className="text-ink-soft mt-0.5">
+              {[line1, line2].filter(Boolean).join(', ') || 'Address Line 1 & Line 2'}
+            </p>
+            <p className="text-ink-soft">
+              {[city, state ? `${state}${postalCode ? ` - ${postalCode}` : ''}` : postalCode, country].filter(Boolean).join(', ')}
+            </p>
           </div>
         </section>
 

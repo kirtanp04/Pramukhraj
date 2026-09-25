@@ -102,6 +102,7 @@ docker/pg-prod-data
 .vs
 .codex-build
 .AGENTS.md
+.agents
 
 # Test output directories
 test_bin/

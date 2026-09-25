@@ -65,7 +65,11 @@ public sealed record AdminReturnDetailsResponse(
     DateTime? PickedUpOn = null,
     DateTime? DeliveredToWarehouseOn = null,
     Guid? ReplacementOrderId = null,
-    string? ReplacementOrderNumber = null);
+    string? ReplacementOrderNumber = null,
+    string? StoreAddress = null,
+    string? StoreName = null,
+    string? SupportPhone = null,
+    string? SupportEmail = null);
 
 public sealed record AdminReturnItemDetailDto(
     Guid Id,

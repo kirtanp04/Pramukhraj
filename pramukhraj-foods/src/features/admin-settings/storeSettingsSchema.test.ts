@@ -6,7 +6,13 @@ const validData = () => ({
   storeName: 'Pramukhraj Foods',
   supportEmail: 'support@pramukhraj.com',
   supportPhoneNumber: '+919876543210',
-  storeAddress: '123 Market Street, Ahmedabad, Gujarat',
+  storeAddressLine1: '123 Market Street',
+  storeAddressLine2: 'Opp. Central Mall',
+  storeCity: 'Ahmedabad',
+  storeState: 'Gujarat',
+  storePostalCode: '380001',
+  storeCountry: 'India',
+  storeAddress: '123 Market Street, Opp. Central Mall, Ahmedabad, Gujarat - 380001, India',
   taxRatePercent: 0,
   paymentServiceTaxRatePercent: 2,
   freeShippingMinimumAmount: 500,
@@ -16,6 +22,34 @@ const validData = () => ({
 describe('storeSettingsSchema', () => {
   it('has DEFAULT_STORE_SETTINGS configured with returnWindowDays = 0', () => {
     expect(DEFAULT_STORE_SETTINGS.returnWindowDays).toBe(0)
+  })
+
+  it('validates a complete store settings payload successfully', () => {
+    const result = storeSettingsSchema.safeParse(validData())
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects missing storeAddressLine1', () => {
+    const data = validData()
+    data.storeAddressLine1 = ''
+    const result = storeSettingsSchema.safeParse(data)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects invalid 5-digit PIN code', () => {
+    const data = validData()
+    data.storePostalCode = '38000'
+    const result = storeSettingsSchema.safeParse(data)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing city or state', () => {
+    const data = validData()
+    data.storeCity = ''
+    expect(storeSettingsSchema.safeParse(data).success).toBe(false)
+    data.storeCity = 'Ahmedabad'
+    data.storeState = ''
+    expect(storeSettingsSchema.safeParse(data).success).toBe(false)
   })
 
   it('accepts returnWindowDays = 0 (returns not applicable)', () => {
