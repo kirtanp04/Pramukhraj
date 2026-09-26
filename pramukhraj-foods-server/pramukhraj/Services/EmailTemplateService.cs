@@ -314,9 +314,15 @@ public sealed partial class EmailTemplateService(
                 ? HtmlToText(fallback.HtmlContent)
                 : fallback.PlainTextContent;
 
+            var fallbackHtml = Merge(fallback.HtmlContent, fallbackHtmlVariables);
+            if (string.IsNullOrWhiteSpace(effectiveVariables.GetValueOrDefault("store_logo_url")))
+            {
+                fallbackHtml = Regex.Replace(fallbackHtml, @"<img\s+[^>]*src=""(?:\s*)""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
+            }
+
             return new RenderedEmailTemplate(
                 Merge(fallback.Subject, fallbackVariables),
-                Merge(fallback.HtmlContent, fallbackHtmlVariables),
+                fallbackHtml,
                 Merge(fallbackPlainText, fallbackVariables),
                 []);
         }
@@ -343,9 +349,15 @@ public sealed partial class EmailTemplateService(
             ? HtmlToText(entity.HtmlContent)
             : entity.PlainTextContent;
 
+        var mergedEntityHtml = Merge(entity.HtmlContent, htmlVariables);
+        if (string.IsNullOrWhiteSpace(effectiveVariables.GetValueOrDefault("store_logo_url")))
+        {
+            mergedEntityHtml = Regex.Replace(mergedEntityHtml, @"<img\s+[^>]*src=""(?:\s*)""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
+        }
+
         return new RenderedEmailTemplate(
             Merge(entity.Subject, normalizedVariables),
-            Merge(entity.HtmlContent, htmlVariables),
+            mergedEntityHtml,
             Merge(plainText, normalizedVariables),
             Deserialize<List<EmailTemplateAttachmentDefinition>>(entity.AttachmentsJson) ?? []);
     }
