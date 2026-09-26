@@ -9,11 +9,15 @@ import { ServerError } from '@/components/ui/ApiErrorPage'
 import { getApiErrorMessage } from '@/lib/apiClient'
 import { formatDateTime } from '@/lib/utils'
 import { emailTemplateApi } from '@/services/emailTemplateApi'
+import { storeSettingsApi } from '@/features/admin-settings/storeSettingsApi'
+import type { StoreSettings } from '@/features/admin-settings/types'
+import { renderEmailSubjectPreview, renderEmailTemplatePreview } from '@/lib/emailPreviewHelper'
 import { EMAIL_TEMPLATE_CATEGORY, EMAIL_TEMPLATE_CATEGORY_LABELS, type EmailTemplateListItem, type EmailTemplateResponse } from '@/types/emailTemplate'
 
 export function AdminEmailTemplates() {
   const navigate = useNavigate()
   const [items, setItems] = useState<EmailTemplateListItem[]>([])
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSeeding, setIsSeeding] = useState(false)
   const [showSeedConfirm, setShowSeedConfirm] = useState(false)
@@ -32,8 +36,14 @@ export function AdminEmailTemplates() {
     setIsLoading(true)
     setError('')
     try {
-      const res = await emailTemplateApi.getList(signal)
+      const [res, settings] = await Promise.all([
+        emailTemplateApi.getList(signal),
+        storeSettingsApi.get().catch(() => null),
+      ])
       setItems(res ?? [])
+      if (settings) {
+        setStoreSettings(settings)
+      }
     } catch (loadError) {
       if (!signal?.aborted) setError(getApiErrorMessage(loadError))
     } finally {
@@ -325,8 +335,8 @@ export function AdminEmailTemplates() {
       <EmailTemplatePreviewDialog
         open={previewTemplate !== null}
         name={previewDetails?.name ?? previewTemplate?.name ?? ''}
-        subject={previewDetails?.subject ?? previewTemplate?.subject ?? ''}
-        html={previewDetails?.htmlContent ?? ''}
+        subject={renderEmailSubjectPreview(previewDetails?.subject ?? previewTemplate?.subject ?? '', storeSettings)}
+        html={renderEmailTemplatePreview(previewDetails?.htmlContent ?? '', storeSettings)}
         isLoading={isPreviewLoading}
         error={previewError}
         onOpenChange={open => {

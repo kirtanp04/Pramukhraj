@@ -317,7 +317,7 @@ public sealed partial class EmailTemplateService(
             var fallbackHtml = Merge(fallback.HtmlContent, fallbackHtmlVariables);
             if (string.IsNullOrWhiteSpace(effectiveVariables.GetValueOrDefault("store_logo_url")))
             {
-                fallbackHtml = Regex.Replace(fallbackHtml, @"<img\s+[^>]*src=""(?:\s*)""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
+                fallbackHtml = Regex.Replace(fallbackHtml, @"<img\s+[^>]*src=""(?:\s*|\{\{store_logo_url\}\})""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
             }
 
             return new RenderedEmailTemplate(
@@ -352,7 +352,7 @@ public sealed partial class EmailTemplateService(
         var mergedEntityHtml = Merge(entity.HtmlContent, htmlVariables);
         if (string.IsNullOrWhiteSpace(effectiveVariables.GetValueOrDefault("store_logo_url")))
         {
-            mergedEntityHtml = Regex.Replace(mergedEntityHtml, @"<img\s+[^>]*src=""(?:\s*)""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
+            mergedEntityHtml = Regex.Replace(mergedEntityHtml, @"<img\s+[^>]*src=""(?:\s*|\{\{store_logo_url\}\})""[^>]*>\s*", string.Empty, RegexOptions.IgnoreCase);
         }
 
         return new RenderedEmailTemplate(

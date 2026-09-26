@@ -63,7 +63,12 @@ export function EmailTemplatePreviewDialog({
                       <Button type="button" variant="outline" className="mt-4" onClick={onRetry}><RefreshCw size={15} aria-hidden /> Retry</Button>
                     </div>
                   ) : (
-                    <iframe title={`${name} email preview`} sandbox="" srcDoc={html} className="h-full w-full border-0 bg-white" />
+                    <iframe
+                      title={`${name} email preview`}
+                      sandbox="allow-same-origin allow-scripts"
+                      srcDoc={html}
+                      className="h-full w-full border-0 bg-white"
+                    />
                   )}
                 </div>
               </motion.div>

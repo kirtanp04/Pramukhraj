@@ -161,7 +161,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var templateService = scope.ServiceProvider.GetRequiredService<pramukhraj.Interfaces.IEmailTemplateService>();
-        await templateService.SeedDefaultsAsync(overwriteExisting: false);
+        await templateService.SeedDefaultsAsync(overwriteExisting: true);
     }
     catch (Exception ex)
     {
