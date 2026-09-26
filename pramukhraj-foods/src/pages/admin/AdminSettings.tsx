@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { AlertCircle, LoaderCircle, MapPin, RefreshCw, RotateCcw, Save, Settings2, ShieldCheck } from 'lucide-react'
+import { AlertCircle, Image as ImageIcon, LoaderCircle, MapPin, RefreshCw, RotateCcw, Save, Settings2, ShieldCheck, Upload, X } from 'lucide-react'
 import { FormField, inputCls } from '@/components/admin/product/FormField'
 import { Button } from '@/components/ui/Button'
 import { MessageDialog } from '@/components/ui/MessageDialog'
 import { useMessageDialog } from '@/hooks/useMessageDialog'
 import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiClient'
+import { fileToDataUrl } from '@/lib/imageUpload'
 import { cn } from '@/lib/utils'
 import { storeSettingsApi } from '@/features/admin-settings/storeSettingsApi'
 import { DEFAULT_STORE_SETTINGS, storeSettingsSchema } from '@/features/admin-settings/storeSettingsSchema'
@@ -22,9 +23,10 @@ export function AdminSettings() {
   const form = useForm<StoreSettingsFormValues>({
     resolver: zodResolver(storeSettingsSchema), defaultValues: DEFAULT_STORE_SETTINGS, mode: 'onChange',
   })
-  const { register, reset, setError, watch, formState: { errors, isDirty } } = form
+  const { register, reset, setError, setValue, watch, formState: { errors, isDirty } } = form
   const returnWindowDays = watch('returnWindowDays') ?? 0
   const storeName = watch('storeName') ?? ''
+  const logoUrl = watch('logoUrl') ?? ''
   const line1 = watch('storeAddressLine1') ?? ''
   const line2 = watch('storeAddressLine2') ?? ''
   const city = watch('storeCity') ?? ''
@@ -47,6 +49,7 @@ export function AdminSettings() {
         if (!settings) throw new Error('Store settings were not returned.')
         if (!controller.signal.aborted) reset({
           ...settings,
+          logoUrl: settings.logoUrl || '',
           storeAddressLine1: settings.storeAddressLine1 || settings.storeAddress || '',
           storeAddressLine2: settings.storeAddressLine2 || '',
           storeCity: settings.storeCity || '',
@@ -81,6 +84,7 @@ export function AdminSettings() {
 
       const response = await storeSettingsApi.update({
         ...values,
+        logoUrl: values.logoUrl?.trim() || null,
         storeAddressLine1: l1,
         storeAddressLine2: l2,
         storeCity: c,
@@ -97,6 +101,7 @@ export function AdminSettings() {
       if (response?.data) {
         reset({
           ...response.data,
+          logoUrl: response.data.logoUrl || '',
           storeAddressLine1: response.data.storeAddressLine1 || '',
           storeAddressLine2: response.data.storeAddressLine2 || '',
           storeCity: response.data.storeCity || '',
@@ -153,6 +158,88 @@ export function AdminSettings() {
             <FormField label="Store name" htmlFor="store-name" error={errors.storeName?.message} className="md:col-span-2" required>
               <input id="store-name" maxLength={150} {...register('storeName')} className={inputCls(!!errors.storeName)} placeholder="Your store name" />
             </FormField>
+
+            {/* Store Logo Uploader & Verification */}
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs! font-medium text-ink">
+                Store logo
+                <span className="ml-1 text-[11px]! font-normal text-ink-soft">(Used in customer emails, receipts, and order confirmations)</span>
+              </label>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                {logoUrl ? (
+                  <div className="relative flex h-20 w-36 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink/15 bg-white p-2 shadow-xs">
+                    <img
+                      src={logoUrl}
+                      alt={storeName || 'Store logo'}
+                      className="max-h-full max-w-full object-contain"
+                      onError={() => setError('logoUrl', { type: 'manual', message: 'Unable to render image from this logo URL.' })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setValue('logoUrl', '', { shouldDirty: true, shouldValidate: true })}
+                      className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-ink/70 text-white transition hover:bg-red-700"
+                      title="Remove logo"
+                      aria-label="Remove logo"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex h-20 w-36 shrink-0 flex-col items-center justify-center rounded-xl border border-dashed border-ink/25 bg-ink/[0.02] p-2 text-center text-ink-soft">
+                    <ImageIcon size={22} className="text-ink-soft" aria-hidden />
+                    <span className="mt-1 text-[11px]! text-ink-soft">No logo set</span>
+                  </div>
+                )}
+
+                <div className="flex flex-1 flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      htmlFor="store-logo-file"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-xs! font-medium text-ink shadow-xs transition hover:bg-ink/5"
+                    >
+                      <Upload size={14} className="text-oxblood" aria-hidden />
+                      <span>Upload image</span>
+                      <input
+                        id="store-logo-file"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="sr-only"
+                        onChange={async e => {
+                          const file = e.target.files?.[0]
+                          e.target.value = ''
+                          if (!file) return
+                          if (file.size > 2 * 1024 * 1024) {
+                            dialog.error('Logo image must be smaller than 2 MB.', { title: 'File Too Large' })
+                            return
+                          }
+                          try {
+                            const dataUrl = await fileToDataUrl(file)
+                            setValue('logoUrl', dataUrl, { shouldDirty: true, shouldValidate: true })
+                          } catch {
+                            dialog.error('Failed to read image file.', { title: 'Upload Failed' })
+                          }
+                        }}
+                      />
+                    </label>
+                    <span className="text-[11px]! text-ink-soft">or enter image URL directly:</span>
+                  </div>
+                  <input
+                    id="store-logo-url"
+                    type="url"
+                    {...register('logoUrl')}
+                    className={inputCls(!!errors.logoUrl)}
+                    placeholder="https://example.com/logo.png"
+                  />
+                  {errors.logoUrl?.message && (
+                    <p className="text-xs! text-red-600">{errors.logoUrl.message}</p>
+                  )}
+                  <p className="text-[11px]! text-ink-soft">
+                    PNG, JPG, WebP or SVG under 2 MB. The logo is displayed at the top of all transactional emails and customer receipts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <FormField label="Support email" htmlFor="support-email" error={errors.supportEmail?.message} required>
               <input id="support-email" type="email" maxLength={254} {...register('supportEmail')} className={inputCls(!!errors.supportEmail)} placeholder="support@example.com" autoComplete="email" />
             </FormField>

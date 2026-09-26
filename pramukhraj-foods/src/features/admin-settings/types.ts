@@ -19,6 +19,7 @@ export interface StoreSettings {
   storeState?: string | null
   storePostalCode?: string | null
   storeCountry?: string | null
+  logoUrl?: string | null
 }
 
 export type StoreSettingsFormValues = z.infer<typeof storeSettingsSchema>

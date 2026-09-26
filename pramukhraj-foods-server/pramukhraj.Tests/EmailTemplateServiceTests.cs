@@ -28,7 +28,7 @@ public sealed class EmailTemplateServiceTests
             AttachmentsJson = "[]", IsActive = true, CreatedOn = DateTime.UtcNow, UpdatedOn = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        var service = new EmailTemplateService(db, null!, null!, NullLogger<EmailTemplateService>.Instance);
+        var service = new EmailTemplateService(db, null!, null!, null!, NullLogger<EmailTemplateService>.Instance);
 
         var rendered = await service.RenderActiveAsync(EmailTemplateKeys.Welcome,
             new Dictionary<string, string?> { ["customer_name"] = "<Admin>" });
@@ -57,7 +57,7 @@ public sealed class EmailTemplateServiceTests
             CreatedOn = DateTime.UtcNow, UpdatedOn = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        var service = new EmailTemplateService(db, null!, null!, NullLogger<EmailTemplateService>.Instance);
+        var service = new EmailTemplateService(db, null!, null!, null!, NullLogger<EmailTemplateService>.Instance);
 
         var rendered = await service.RenderActiveAsync(EmailTemplateKeys.EmailVerificationOtp,
             new Dictionary<string, string?> { ["otp_code"] = "123456", ["expires_in"] = "10" });

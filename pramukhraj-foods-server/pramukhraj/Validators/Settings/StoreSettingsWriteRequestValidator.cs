@@ -42,6 +42,9 @@ public sealed class StoreSettingsWriteRequestValidator : AbstractValidator<Store
             .WithMessage("Free shipping minimum must be between 0 and 10,000,000.");
         RuleFor(x => x.ReturnWindowDays).InclusiveBetween(0, 365)
             .WithMessage("Return window must be between 0 and 365 days (0 means returns are not accepted).");
+        RuleFor(x => x.LogoUrl)
+            .MaximumLength(2_000_000)
+            .WithMessage("Store logo URL cannot exceed 2,000,000 characters.");
         RuleFor(x => x.ConcurrencyStamp).MaximumLength(64);
     }
 }

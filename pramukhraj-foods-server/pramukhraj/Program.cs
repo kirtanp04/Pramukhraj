@@ -156,4 +156,17 @@ app.UseMiddleware<pramukhraj.Middleware.AdminValidationMiddleware>();
 app.MapHealthChecks("/health");
 app.MapControllers();
 
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var templateService = scope.ServiceProvider.GetRequiredService<pramukhraj.Interfaces.IEmailTemplateService>();
+        await templateService.SeedDefaultsAsync(overwriteExisting: true);
+    }
+    catch (Exception ex)
+    {
+        Serilog.Log.Warning(ex, "Failed to seed default email templates during startup.");
+    }
+}
+
 app.Run();

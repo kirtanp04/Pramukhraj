@@ -21,7 +21,7 @@ public sealed class StoreSettingsService(
     private const int SettingsId = 1;
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(30);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m, 0, "", "", "", "", "", "India");
+    private static readonly StoreSettingsData Defaults = new("", "", 0m, 0m, "", "Store", 0m, 0, "", "", "", "", "", "India", 0m, null);
 
     public async Task<ApiResponse<StoreSettingsResponse>> GetAdminAsync(CancellationToken cancellationToken = default)
     {
@@ -81,6 +81,7 @@ public sealed class StoreSettingsService(
                 : formattedAddress;
 
             var fee = Money(Math.Clamp(request.PaymentProcessingFee ?? request.PaymentServiceTaxRatePercent ?? 0m, 0m, 10_000m));
+            var logoUrl = string.IsNullOrWhiteSpace(request.LogoUrl) ? null : request.LogoUrl.Trim();
 
             var data = new StoreSettingsData(
                 request.SupportEmail.Trim().ToLowerInvariant(),
@@ -97,7 +98,8 @@ public sealed class StoreSettingsService(
                 state,
                 postalCode,
                 country,
-                fee);
+                fee,
+                logoUrl);
             var now = DateTime.UtcNow;
             if (entity is null)
             {
@@ -183,6 +185,7 @@ public sealed class StoreSettingsService(
             }
 
             var fee = Math.Clamp(value.PaymentProcessingFee ?? value.PaymentServiceTaxRatePercent ?? 0m, 0m, 10_000m);
+            var logoUrl = string.IsNullOrWhiteSpace(value.LogoUrl) ? null : value.LogoUrl.Trim();
             return new StoreSettingsData(
                 value.SupportEmail?.Trim() ?? string.Empty,
                 value.SupportPhoneNumber?.Trim() ?? string.Empty,
@@ -198,7 +201,8 @@ public sealed class StoreSettingsService(
                 state,
                 postalCode,
                 country,
-                fee);
+                fee,
+                logoUrl);
         }
         catch (JsonException exception)
         {
@@ -227,7 +231,8 @@ public sealed class StoreSettingsService(
             data.StoreState,
             data.StorePostalCode,
             data.StoreCountry,
-            fee);
+            fee,
+            data.LogoUrl);
     }
     private static string NormalizePhone(string value) => new(value.Where(x => char.IsDigit(x) || x == '+').ToArray());
     private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

@@ -13,6 +13,9 @@ import { isValidGuid } from '@/lib/routeParams'
 import type { EmailDesignJson } from '@/lib/emailDesignJson'
 import { EMAIL_TEMPLATE_STARTERS } from '@/lib/emailTemplateStarters'
 import { emailTemplateApi } from '@/services/emailTemplateApi'
+import { storeSettingsApi } from '@/features/admin-settings/storeSettingsApi'
+import type { StoreSettings } from '@/features/admin-settings/types'
+import { renderEmailTemplatePreview } from '@/lib/emailPreviewHelper'
 import { EMAIL_TEMPLATE_CATEGORY, EMAIL_TEMPLATE_CATEGORY_LABELS, type EmailTemplateAttachmentDefinition, type EmailTemplateCategory, type EmailTemplateWriteRequest } from '@/types/emailTemplate'
 
 const EMPTY_ATTACHMENT: EmailTemplateAttachmentDefinition = { name: '', contentType: 'application/pdf', sourceVariable: '', isRequired: false }
@@ -31,10 +34,17 @@ export function EmailTemplateFormPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState<{ message: string; status?: number } | null>(null)
   const [previewHtml, setPreviewHtml] = useState('')
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null)
   const [editorMode, setEditorMode] = useState<EditorMode>('visual')
   const [designJsonText, setDesignJsonText] = useState('')
   const [hasUnappliedJson, setHasUnappliedJson] = useState(false)
   const [form, setForm] = useState<EmailTemplateWriteRequest>({ key: '', name: '', description: '', category: EMAIL_TEMPLATE_CATEGORY.Account, subject: '', designJson: '{}', htmlContent: '', plainTextContent: '', variables: [], attachments: [], isActive: true })
+
+  useEffect(() => {
+    void storeSettingsApi.get().then(settings => {
+      if (settings) setStoreSettings(settings)
+    }).catch(() => null)
+  }, [])
 
   const mergeTags = useMemo(() => Object.fromEntries(form.variables.map(variable => [variable, { name: variable.replaceAll('_', ' '), value: `{{${variable}}}` }])), [form.variables])
 
@@ -159,7 +169,13 @@ export function EmailTemplateFormPage() {
 
   async function preview() {
     if (!requireAppliedJson()) return
-    try { setPreviewHtml((await exportEmail()).html) } catch (error) { dialog.error(getApiErrorMessage(error), { title: 'Preview Unavailable' }) }
+    try {
+      const exported = await exportEmail()
+      const mergedHtml = renderEmailTemplatePreview(exported.html, storeSettings)
+      setPreviewHtml(mergedHtml)
+    } catch (error) {
+      dialog.error(getApiErrorMessage(error), { title: 'Preview Unavailable' })
+    }
   }
   function updateAttachment(index: number, patch: Partial<EmailTemplateAttachmentDefinition>) { setForm(current => ({ ...current, attachments: current.attachments.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item) })) }
 
@@ -235,7 +251,7 @@ export function EmailTemplateFormPage() {
     </section>
 
     <section className="rounded-card border border-ink/10 bg-ivory p-5"><FormField label="Plain-text fallback" htmlFor="plain-text" hint="Optional. Generated from exported HTML when left blank."><textarea id="plain-text" rows={7} value={form.plainTextContent} onChange={event => setForm(current => ({ ...current, plainTextContent: event.target.value }))} className={inputCls(false)} placeholder="Accessible plain-text version" /></FormField></section>
-    {previewHtml && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-teal-deep/70 p-3 backdrop-blur-sm"><div className="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-card bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-ink/10 px-4 py-3"><div><h2 className="font-display text-lg!">Email Preview</h2><p className="text-xs! text-ink-soft">Current unsaved design.</p></div><button onClick={() => setPreviewHtml('')} className="rounded-full p-2 hover:bg-ink/5" aria-label="Close preview"><X size={18} /></button></div><iframe title="Email template preview" sandbox="" srcDoc={previewHtml} className="min-h-0 flex-1 bg-white" /></div></div>}
+    {previewHtml && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-teal-deep/70 p-3 backdrop-blur-sm"><div className="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-card bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-ink/10 px-4 py-3"><div><h2 className="font-display text-lg!">Email Preview</h2><p className="text-xs! text-ink-soft">Current unsaved design.</p></div><button onClick={() => setPreviewHtml('')} className="rounded-full p-2 hover:bg-ink/5" aria-label="Close preview"><X size={18} /></button></div><iframe title="Email template preview" sandbox="allow-same-origin allow-scripts" srcDoc={previewHtml} className="min-h-0 flex-1 bg-white" /></div></div>}
     <MessageDialog {...dialog.props} />
   </div>
 }

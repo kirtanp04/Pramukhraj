@@ -11,4 +11,5 @@ public interface IEmailTemplateService
     Task<ApiResponse<EmailTemplateResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<ApiResponse<List<EmailTemplateListItemResponse>>> GetListAsync(CancellationToken cancellationToken = default);
     Task<RenderedEmailTemplate?> RenderActiveAsync(string key, IReadOnlyDictionary<string, string?> variables, CancellationToken cancellationToken = default);
+    Task<ApiResponse<int>> SeedDefaultsAsync(bool overwriteExisting = false, CancellationToken cancellationToken = default);
 }

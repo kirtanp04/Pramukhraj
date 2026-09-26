@@ -11,6 +11,8 @@ using pramukhraj.Entities;
 using pramukhraj.Entities.Order;
 using pramukhraj.Entities.ProviderCredentials;
 using pramukhraj.Entities.Return;
+using pramukhraj.Entities.EmailTemplates;
+using pramukhraj.DTOs.Email;
 using pramukhraj.Interfaces;
 using pramukhraj.DTOs.Notifications;
 using static pramukhraj.Common.AdminActions;
@@ -24,6 +26,8 @@ public sealed class RefundService(
     IHttpContextAccessor httpContextAccessor,
     ICacheService cache,
     IAdminNotificationService notifications,
+    IEmailService emailService,
+    IEmailTemplateService emailTemplateService,
     ILogger<RefundService> logger) : IRefundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -214,6 +218,44 @@ public sealed class RefundService(
             catch { /* non-fatal */ }
             logger.LogInformation("Refund {ProviderRefundId} successfully processed for Return {ReturnNumber}", providerRefundId, returnRequest.ReturnNumber);
 
+            if (refundStatus == RefundStatus.Processed)
+            {
+                var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == returnRequest.CustomerId, ct);
+                if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+                {
+                    try
+                    {
+                        var refundVariables = new Dictionary<string, string?>
+                        {
+                            ["customer_name"] = customer.FullName ?? "Customer",
+                            ["order_number"] = returnRequest.Order.OrderNumber,
+                            ["refund_amount"] = $"₹{returnRequest.NetRefundAmount:F2}",
+                            ["refund_id"] = providerRefundId,
+                            ["payment_method"] = "Original Payment Method"
+                        };
+
+                        var rendered = await emailTemplateService.RenderActiveAsync(
+                            EmailTemplateKeys.Refund,
+                            refundVariables,
+                            ct);
+
+                        if (rendered is not null)
+                        {
+                            await emailService.SendAsync(new EmailMessage(
+                                customer.Email,
+                                customer.FullName ?? "Customer",
+                                rendered.Subject,
+                                rendered.HtmlContent,
+                                rendered.PlainTextContent), ct);
+                        }
+                    }
+                    catch (Exception emailEx)
+                    {
+                        logger.LogWarning(emailEx, "Failed to send refund processed email for Return {ReturnNumber}", returnRequest.ReturnNumber);
+                    }
+                }
+            }
+
             return ApiResponse<AdminRefundDetailDto>.Ok(new AdminRefundDetailDto(
                 Id: refundRecord.Id,
                 IdempotencyKey: refundRecord.IdempotencyKey,
@@ -317,6 +359,41 @@ public sealed class RefundService(
                 catch (Exception nEx)
                 {
                     logger.LogWarning(nEx, "Failed to publish admin notification for refund.processed");
+                }
+
+                var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == refundRecord.ReturnRequest.CustomerId, ct);
+                if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
+                {
+                    try
+                    {
+                        var refundVariables = new Dictionary<string, string?>
+                        {
+                            ["customer_name"] = customer.FullName ?? "Customer",
+                            ["order_number"] = refundRecord.ReturnRequest.Order?.OrderNumber ?? string.Empty,
+                            ["refund_amount"] = $"₹{((decimal)refundRecord.AmountPaise / 100m):F2}",
+                            ["refund_id"] = providerRefundId,
+                            ["payment_method"] = "Original Payment Method"
+                        };
+
+                        var rendered = await emailTemplateService.RenderActiveAsync(
+                            EmailTemplateKeys.Refund,
+                            refundVariables,
+                            ct);
+
+                        if (rendered is not null)
+                        {
+                            await emailService.SendAsync(new EmailMessage(
+                                customer.Email,
+                                customer.FullName ?? "Customer",
+                                rendered.Subject,
+                                rendered.HtmlContent,
+                                rendered.PlainTextContent), ct);
+                        }
+                    }
+                    catch (Exception emailEx)
+                    {
+                        logger.LogWarning(emailEx, "Failed to send webhook refund processed email for Return {ReturnNumber}", refundRecord.ReturnRequest.ReturnNumber);
+                    }
                 }
             }
             else if (eventType == "refund.failed")

@@ -15,7 +15,8 @@ public sealed record StoreSettingsData(
     string? StoreState = null,
     string? StorePostalCode = null,
     string? StoreCountry = "India",
-    decimal? PaymentServiceTaxRatePercent = null);
+    decimal? PaymentServiceTaxRatePercent = null,
+    string? LogoUrl = null);
 
 public sealed record StoreSettingsWriteRequest(
     string SupportEmail,
@@ -33,7 +34,8 @@ public sealed record StoreSettingsWriteRequest(
     string? StoreState = null,
     string? StorePostalCode = null,
     string? StoreCountry = "India",
-    decimal? PaymentServiceTaxRatePercent = null);
+    decimal? PaymentServiceTaxRatePercent = null,
+    string? LogoUrl = null);
 
 public sealed record StoreSettingsResponse(
     string SupportEmail,
@@ -52,5 +54,6 @@ public sealed record StoreSettingsResponse(
     string? StoreState = null,
     string? StorePostalCode = null,
     string? StoreCountry = "India",
-    decimal PaymentServiceTaxRatePercent = 0m);
+    decimal PaymentServiceTaxRatePercent = 0m,
+    string? LogoUrl = null);
 

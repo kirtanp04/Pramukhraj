@@ -23,13 +23,14 @@ export const storeSettingsSchema = z.object({
     .int('Return window must be a whole number of days.')
     .min(0, 'Return window cannot be negative.')
     .max(365, 'Return window cannot exceed 365 days.'),
+  logoUrl: z.string().trim().max(2_000_000).optional().nullable(),
   concurrencyStamp: z.string().nullable().optional(),
 })
 
 export const DEFAULT_STORE_SETTINGS = {
   storeName: '', supportEmail: '', supportPhoneNumber: '', storeAddress: '',
   storeAddressLine1: '', storeAddressLine2: '', storeCity: '', storeState: '',
-  storePostalCode: '', storeCountry: 'India',
+  storePostalCode: '', storeCountry: 'India', logoUrl: '',
   taxRatePercent: 0, paymentProcessingFee: 0, paymentServiceTaxRatePercent: 0, freeShippingMinimumAmount: 0,
   returnWindowDays: 0, concurrencyStamp: null,
 }

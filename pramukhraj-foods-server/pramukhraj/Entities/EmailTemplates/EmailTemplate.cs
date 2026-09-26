@@ -46,6 +46,9 @@ public static class EmailTemplateKeys
     public const string ReturnRequested = "RETURN_REQUESTED";
     public const string ReturnApproved = "RETURN_APPROVED";
     public const string ReturnRejected = "RETURN_REJECTED";
+    public const string ReversePickupScheduled = "REVERSE_PICKUP_SCHEDULED";
+    public const string ReturnPackageReceived = "RETURN_PACKAGE_RECEIVED";
+    public const string ReplacementConfirmed = "REPLACEMENT_ORDER_CONFIRMED";
     public const string PasswordReset = "PASSWORD_RESET";
     public const string Newsletter = "NEWSLETTER";
     public const string SecurityAlert = "SECURITY_ALERT";

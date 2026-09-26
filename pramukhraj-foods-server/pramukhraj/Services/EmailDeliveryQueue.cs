@@ -100,7 +100,8 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
                     ["store_postal_code"] = storeSettings.StorePostalCode ?? "",
                     ["store_country"] = storeSettings.StoreCountry ?? "India",
                     ["support_email"] = storeSettings.SupportEmail,
-                    ["support_phone"] = storeSettings.SupportPhoneNumber
+                    ["support_phone"] = storeSettings.SupportPhoneNumber,
+                    ["store_logo_url"] = storeSettings.LogoUrl ?? ""
                 }, cancellationToken);
             if (template is not null)
                 return new DTOs.Email.EmailMessage(
@@ -135,7 +136,8 @@ public sealed class EmailDeliveryQueue : BackgroundService, IEmailQueue
                 ["store_postal_code"] = storeSettings.StorePostalCode ?? "",
                 ["store_country"] = storeSettings.StoreCountry ?? "India",
                 ["support_email"] = storeSettings.SupportEmail,
-                ["support_phone"] = storeSettings.SupportPhoneNumber
+                ["support_phone"] = storeSettings.SupportPhoneNumber,
+                ["store_logo_url"] = storeSettings.LogoUrl ?? ""
             }, cancellationToken);
         if (welcomeTemplate is null)
         {
