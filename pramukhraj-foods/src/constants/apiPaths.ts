@@ -169,6 +169,7 @@ const AdminApiPaths = {
     getById: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
     update: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
     delete: (id: string) => `admin/email-templates/${encodeURIComponent(id)}`,
+    seedDefaults: (overwrite: boolean = false) => `admin/email-templates/seed-defaults?overwrite=${overwrite}`,
   },
   cacheMetrics: {
     get: "admin/cache-metrics",

@@ -8,6 +8,7 @@ using pramukhraj.Entities.Customer;
 using pramukhraj.Entities.Order;
 using pramukhraj.Entities.Return;
 using pramukhraj.Entities.Shipment;
+using pramukhraj.Entities.EmailTemplates;
 using pramukhraj.Interfaces;
 using pramukhraj.DTOs.Email;
 using pramukhraj.DTOs.Notifications;
@@ -21,6 +22,7 @@ public sealed class ReturnService(
     IHttpContextAccessor httpContextAccessor,
     IAdminNotificationService adminNotifications,
     IEmailService emailService,
+    IEmailTemplateService emailTemplateService,
     IShiprocketFulfillmentService shiprocketService,
     ICacheService cache,
     ILogger<ReturnService> logger) : IReturnService
@@ -297,18 +299,38 @@ public sealed class ReturnService(
                 logger.LogWarning(notifEx, "Failed to publish admin notification for Return {ReturnNumber}", returnNumber);
             }
 
-            // Customer confirmation email
+            // Customer confirmation email via dynamic template
             try
             {
                 var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == customerId, ct);
                 if (customer is not null && !string.IsNullOrWhiteSpace(customer.Email))
                 {
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Return Request Received - #{returnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>We have received your return request <strong>#{returnNumber}</strong> for Order #{order.OrderNumber}.</p><p>Our team is reviewing your request and will update you shortly.</p>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nWe have received your return request #{returnNumber} for Order #{order.OrderNumber}.\nOur team is reviewing your request and will update you shortly."), ct);
+                    var storeSettings = await settingsService.GetCurrentAsync(ct);
+                    var variables = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["return_number"] = returnNumber,
+                        ["order_number"] = order.OrderNumber,
+                        ["reason"] = GetReturnReasonName(returnRequest.Reason),
+                        ["resolution"] = returnRequest.Resolution.ToString(),
+                        ["items_count"] = returnRequest.Items.Count.ToString(),
+                        ["store_name"] = storeSettings.StoreName,
+                        ["store_logo_url"] = storeSettings.LogoUrl ?? string.Empty,
+                        ["support_email"] = storeSettings.SupportEmail,
+                        ["support_phone"] = storeSettings.SupportPhoneNumber,
+                        ["store_address"] = storeSettings.StoreAddress
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(EmailTemplateKeys.ReturnRequested, variables, ct);
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
             }
             catch (Exception emailEx)
@@ -660,19 +682,41 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    var returnFacility = !string.IsNullOrWhiteSpace(storeSettings.StoreAddress)
-                        ? $"<p><strong>Return Facility / Dispatch Address:</strong><br/>{storeSettings.StoreName}<br/>{storeSettings.StoreAddress}</p>"
-                        : "";
-                    var returnFacilityText = !string.IsNullOrWhiteSpace(storeSettings.StoreAddress)
-                        ? $"\n\nReturn Facility / Dispatch Address:\n{storeSettings.StoreName}\n{storeSettings.StoreAddress}"
-                        : "";
+                    var itemsSummary = string.Join(", ", returnRequest.Items.Select(i => $"{i.Quantity}x {i.ProductName} ({i.VariantName})"));
+                    var facility = !string.IsNullOrWhiteSpace(storeSettings.StoreAddress)
+                        ? $"{storeSettings.StoreName}, {storeSettings.StoreAddress}"
+                        : storeSettings.StoreName;
 
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Return Request Approved - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} has been <strong>Approved</strong>.</p><p>Please pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.</p>{returnFacility}",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} has been Approved.\nPlease pack the item(s) securely in their original packaging. We will coordinate reverse pickup shortly.{returnFacilityText}"), ct);
+                    var variables = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["order_number"] = returnRequest.Order.OrderNumber,
+                        ["resolution"] = returnRequest.Resolution.ToString(),
+                        ["product_refund_amount"] = $"₹{returnRequest.ProductRefundAmount:F2}",
+                        ["shipping_refund_amount"] = $"₹{returnRequest.ShippingRefundAmount:F2}",
+                        ["payment_fee_refund_amount"] = $"₹{returnRequest.PaymentFeeRefundAmount:F2}",
+                        ["reverse_shipping_deduction"] = $"₹{returnRequest.ReverseShippingDeduction:F2}",
+                        ["net_refund_amount"] = $"₹{returnRequest.NetRefundAmount:F2}",
+                        ["return_items_summary"] = itemsSummary,
+                        ["return_facility"] = facility,
+                        ["store_name"] = storeSettings.StoreName,
+                        ["store_logo_url"] = storeSettings.LogoUrl ?? string.Empty,
+                        ["support_email"] = storeSettings.SupportEmail,
+                        ["support_phone"] = storeSettings.SupportPhoneNumber,
+                        ["store_address"] = storeSettings.StoreAddress
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(EmailTemplateKeys.ReturnApproved, variables, ct);
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -759,12 +803,30 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Return Request Update - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>Your return request <strong>#{returnRequest.ReturnNumber}</strong> for Order #{returnRequest.Order.OrderNumber} could not be approved for the following reason:</p><blockquote>{request.RejectionReason.Trim()}</blockquote>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nYour return request #{returnRequest.ReturnNumber} for Order #{returnRequest.Order.OrderNumber} could not be approved for the following reason:\n{request.RejectionReason.Trim()}"), ct);
+                    var storeSettings = await settingsService.GetCurrentAsync(ct);
+                    var variables = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["order_number"] = returnRequest.Order.OrderNumber,
+                        ["rejection_reason"] = request.RejectionReason.Trim(),
+                        ["store_name"] = storeSettings.StoreName,
+                        ["store_logo_url"] = storeSettings.LogoUrl ?? string.Empty,
+                        ["support_email"] = storeSettings.SupportEmail,
+                        ["support_phone"] = storeSettings.SupportPhoneNumber,
+                        ["store_address"] = storeSettings.StoreAddress
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(EmailTemplateKeys.ReturnRejected, variables, ct);
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -849,12 +911,34 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Reverse Pickup Scheduled - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>A reverse pickup has been scheduled for your return request <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}).</p><p><strong>Courier:</strong> {returnRequest.CourierName}<br/><strong>Tracking Number (AWB):</strong> {returnRequest.TrackingNumber}" + (returnRequest.PickupScheduledDate.HasValue ? $"<br/><strong>Pickup Date:</strong> {returnRequest.PickupScheduledDate.Value:dd MMM yyyy}" : "") + "</p><p>Please keep the package securely packed and hand it over to the courier executive.</p>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nA reverse pickup has been scheduled for your return #{returnRequest.ReturnNumber}.\nCourier: {returnRequest.CourierName}\nAWB: {returnRequest.TrackingNumber}\nPlease hand over the package to the pickup executive."), ct);
+                    var pickupDateStr = returnRequest.PickupScheduledDate.HasValue
+                        ? returnRequest.PickupScheduledDate.Value.ToString("dd MMM yyyy")
+                        : "To be confirmed shortly";
+
+                    var emailVars = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["order_number"] = returnRequest.Order.OrderNumber,
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["courier_name"] = returnRequest.CourierName ?? "Courier Partner",
+                        ["tracking_number"] = returnRequest.TrackingNumber ?? "Pending",
+                        ["pickup_date"] = pickupDateStr
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(
+                        EmailTemplateKeys.ReversePickupScheduled,
+                        emailVars,
+                        ct);
+
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -1010,12 +1094,34 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Reverse Pickup Scheduled - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>A reverse pickup has been scheduled for your return request <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}) via <strong>{returnRequest.CourierName}</strong>.</p><p><strong>Tracking Number (AWB):</strong> {returnRequest.TrackingNumber}" + (returnRequest.PickupScheduledDate.HasValue ? $"<br/><strong>Pickup Date:</strong> {returnRequest.PickupScheduledDate.Value:dd MMM yyyy}" : "") + "</p><p>Please keep the package safely packed and hand it over to the pickup executive.</p>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nA reverse pickup has been scheduled for your return #{returnRequest.ReturnNumber}.\nCourier: {returnRequest.CourierName}\nAWB: {returnRequest.TrackingNumber}\nPlease hand over the package to the pickup executive."), ct);
+                    var pickupDateStr = returnRequest.PickupScheduledDate.HasValue
+                        ? returnRequest.PickupScheduledDate.Value.ToString("dd MMM yyyy")
+                        : "To be confirmed shortly";
+
+                    var emailVars = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["order_number"] = returnRequest.Order.OrderNumber,
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["courier_name"] = returnRequest.CourierName ?? "Courier Partner",
+                        ["tracking_number"] = returnRequest.TrackingNumber ?? "Pending",
+                        ["pickup_date"] = pickupDateStr
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(
+                        EmailTemplateKeys.ReversePickupScheduled,
+                        emailVars,
+                        ct);
+
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -1113,12 +1219,28 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Return Package Received at Warehouse - #{returnRequest.ReturnNumber}",
-                        $"<p>Dear {customer.FullName ?? "Customer"},</p><p>We have received your returned item(s) for <strong>#{returnRequest.ReturnNumber}</strong> (Order #{returnRequest.Order.OrderNumber}) at our fulfillment warehouse.</p><p>Our quality assurance team is performing inspection. Once verified, your refund will be processed immediately.</p>",
-                        $"Dear {customer.FullName ?? "Customer"},\n\nWe have received your return package #{returnRequest.ReturnNumber} at our warehouse.\nOur quality team is conducting inspection."), ct);
+                    var emailVars = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["order_number"] = returnRequest.Order.OrderNumber,
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["resolution"] = returnRequest.Resolution.ToString()
+                    };
+
+                    var rendered = await emailTemplateService.RenderActiveAsync(
+                        EmailTemplateKeys.ReturnPackageReceived,
+                        emailVars,
+                        ct);
+
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -1462,23 +1584,31 @@ public sealed class ReturnService(
             {
                 try
                 {
-                    var itemsList = string.Join("", itemsToReplace.Select(i => $"<li>{i.ProductName} ({i.VariantName}) x {i.Quantity}</li>"));
-                    var htmlBody = $@"<p>Dear {customer.FullName ?? "Customer"},</p>
-<p>Your replacement order for return request <strong>#{returnRequest.ReturnNumber}</strong> (Original Order #{originalOrder.OrderNumber}) has been confirmed!</p>
-<p><strong>Replacement Order Number:</strong> {repOrderNumber}</p>
-<p><strong>Items:</strong></p>
-<ul>{itemsList}</ul>
-<p>Your replacement order is now being processed and will be shipped to your registered delivery address.</p>
-<p>Thank you for shopping with Pramukhraj Foods!</p>";
+                    var itemsSummary = string.Join(", ", itemsToReplace.Select(i => $"{i.Quantity}x {i.ProductName} ({i.VariantName})"));
 
-                    var textBody = $"Dear {customer.FullName ?? "Customer"},\n\nYour replacement order #{repOrderNumber} for return #{returnRequest.ReturnNumber} has been confirmed and queued for fulfillment.\n\nThank you,\nPramukhraj Foods";
+                    var emailVars = new Dictionary<string, string?>
+                    {
+                        ["customer_name"] = customer.FullName ?? "Customer",
+                        ["return_number"] = returnRequest.ReturnNumber,
+                        ["original_order_number"] = originalOrder.OrderNumber,
+                        ["replacement_order_number"] = repOrderNumber,
+                        ["items_summary"] = itemsSummary
+                    };
 
-                    await emailService.SendAsync(new EmailMessage(
-                        customer.Email,
-                        customer.FullName ?? "Customer",
-                        $"Replacement Order Confirmed - #{repOrderNumber}",
-                        htmlBody,
-                        textBody), ct);
+                    var rendered = await emailTemplateService.RenderActiveAsync(
+                        EmailTemplateKeys.ReplacementConfirmed,
+                        emailVars,
+                        ct);
+
+                    if (rendered is not null)
+                    {
+                        await emailService.SendAsync(new EmailMessage(
+                            customer.Email,
+                            customer.FullName ?? "Customer",
+                            rendered.Subject,
+                            rendered.HtmlContent,
+                            rendered.PlainTextContent), ct);
+                    }
                 }
                 catch (Exception emailEx)
                 {

@@ -19,6 +19,7 @@ public sealed partial class EmailTemplateService(
     AppDbContext db,
     IHttpContextAccessor httpContextAccessor,
     IValidatorManager validatorManager,
+    IStoreSettingsService storeSettingsService,
     ILogger<EmailTemplateService> logger) : IEmailTemplateService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -143,6 +144,20 @@ public sealed partial class EmailTemplateService(
     {
         try
         {
+            var existingKeys = await db.EmailTemplates.AsNoTracking()
+                .Where(item => !item.IsDeleted)
+                .Select(item => item.Key)
+                .ToListAsync(cancellationToken);
+
+            var missingDefaults = DefaultEmailTemplates.All
+                .Where(d => !existingKeys.Contains(d.Key, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (missingDefaults.Count > 0)
+            {
+                await SeedDefaultsAsync(overwriteExisting: false, cancellationToken);
+            }
+
             var items = await db.EmailTemplates.AsNoTracking().Where(item => !item.IsDeleted)
                 .OrderBy(item => item.Category).ThenBy(item => item.Name)
                 .Select(item => new EmailTemplateListItemResponse
@@ -160,16 +175,154 @@ public sealed partial class EmailTemplateService(
         }
     }
 
+    public async Task<ApiResponse<int>> SeedDefaultsAsync(bool overwriteExisting = false, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var existingTemplates = await db.EmailTemplates
+                .Where(item => !item.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            var existingByKey = existingTemplates.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+            var now = DateTime.UtcNow;
+            var admin = GetAdmin();
+            var count = 0;
+
+            foreach (var def in DefaultEmailTemplates.All)
+            {
+                if (existingByKey.TryGetValue(def.Key, out var existing))
+                {
+                    if (overwriteExisting)
+                    {
+                        existing.Name = def.Name;
+                        existing.Description = def.Description;
+                        existing.Category = def.Category;
+                        existing.Subject = def.Subject;
+                        existing.DesignJson = def.DesignJson;
+                        existing.HtmlContent = def.HtmlContent;
+                        existing.PlainTextContent = def.PlainTextContent;
+                        existing.VariablesJson = JsonSerializer.Serialize(def.Variables, JsonOptions);
+                        existing.IsActive = true;
+                        existing.UpdatedOn = now;
+                        count++;
+                    }
+                }
+                else
+                {
+                    var newEntity = new EmailTemplate
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = def.Key,
+                        Name = def.Name,
+                        Description = def.Description,
+                        Category = def.Category,
+                        Subject = def.Subject,
+                        DesignJson = def.DesignJson,
+                        HtmlContent = def.HtmlContent,
+                        PlainTextContent = def.PlainTextContent,
+                        VariablesJson = JsonSerializer.Serialize(def.Variables, JsonOptions),
+                        AttachmentsJson = "[]",
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedOn = now,
+                        UpdatedOn = now,
+                        ConcurrencyStamp = Guid.NewGuid().ToString("N")
+                    };
+                    db.EmailTemplates.Add(newEntity);
+                    count++;
+                }
+            }
+
+            if (count > 0)
+            {
+                if (admin.Success)
+                {
+                    db.AdminActions.Add(new AdminAction
+                    {
+                        Id = Guid.NewGuid(),
+                        AdminId = admin.Id,
+                        AdminName = admin.Name,
+                        Module = AdminActionModules.EmailTemplates,
+                        Action = AdminActionTypes.Update,
+                        EntityName = "Email templates",
+                        Description = $"Seeded {count} default email templates.",
+                        CreatedOn = now
+                    });
+                }
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            return ApiResponse<int>.Ok(count, $"Successfully configured {count} email template(s).");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to seed default email templates.");
+            return ApiResponse<int>.Fail("Failed to seed default email templates.", 500);
+        }
+    }
+
     public async Task<RenderedEmailTemplate?> RenderActiveAsync(
         string key, IReadOnlyDictionary<string, string?> variables, CancellationToken cancellationToken = default)
     {
         var normalizedKey = NormalizeKey(key);
+        var effectiveVariables = new Dictionary<string, string?>(variables, StringComparer.Ordinal);
+
+        if (storeSettingsService is not null)
+        {
+            try
+            {
+                var storeSettings = await storeSettingsService.GetCurrentAsync(cancellationToken);
+                if (storeSettings is not null)
+                {
+                    if (!effectiveVariables.ContainsKey("store_name") || string.IsNullOrWhiteSpace(effectiveVariables["store_name"]))
+                        effectiveVariables["store_name"] = storeSettings.StoreName;
+
+                    if (!effectiveVariables.ContainsKey("store_logo_url") || string.IsNullOrWhiteSpace(effectiveVariables["store_logo_url"]))
+                        effectiveVariables["store_logo_url"] = storeSettings.LogoUrl ?? string.Empty;
+
+                    if (!effectiveVariables.ContainsKey("store_address") || string.IsNullOrWhiteSpace(effectiveVariables["store_address"]))
+                        effectiveVariables["store_address"] = storeSettings.StoreAddress;
+
+                    if (!effectiveVariables.ContainsKey("support_email") || string.IsNullOrWhiteSpace(effectiveVariables["support_email"]))
+                        effectiveVariables["support_email"] = storeSettings.SupportEmail;
+
+                    if (!effectiveVariables.ContainsKey("support_phone") || string.IsNullOrWhiteSpace(effectiveVariables["support_phone"]))
+                        effectiveVariables["support_phone"] = storeSettings.SupportPhoneNumber;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to load store settings for email template variable defaults.");
+            }
+        }
+
         var entity = await db.EmailTemplates.AsNoTracking().SingleOrDefaultAsync(
             item => !item.IsDeleted && item.IsActive && item.Key == normalizedKey, cancellationToken);
-        if (entity is null) return null;
+
+        if (entity is null)
+        {
+            var fallback = DefaultEmailTemplates.All.FirstOrDefault(x => string.Equals(x.Key, normalizedKey, StringComparison.OrdinalIgnoreCase));
+            if (fallback is null) return null;
+
+            var fallbackVariables = effectiveVariables
+                .Where(pair => MergeTokenNamePattern().IsMatch(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty, StringComparer.Ordinal);
+            var fallbackHtmlVariables = fallbackVariables.ToDictionary(
+                pair => pair.Key, pair => WebUtility.HtmlEncode(pair.Value), StringComparer.Ordinal);
+            var fallbackPlainText = string.IsNullOrWhiteSpace(fallback.PlainTextContent)
+                ? HtmlToText(fallback.HtmlContent)
+                : fallback.PlainTextContent;
+
+            return new RenderedEmailTemplate(
+                Merge(fallback.Subject, fallbackVariables),
+                Merge(fallback.HtmlContent, fallbackHtmlVariables),
+                Merge(fallbackPlainText, fallbackVariables),
+                []);
+        }
 
         var declaredVariables = Deserialize<List<string>>(entity.VariablesJson) ?? [];
-        var normalizedVariables = variables
+        var normalizedVariables = effectiveVariables
             .Where(pair => MergeTokenNamePattern().IsMatch(pair.Key))
             .ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty, StringComparer.Ordinal);
         var undeclaredVariables = normalizedVariables.Keys

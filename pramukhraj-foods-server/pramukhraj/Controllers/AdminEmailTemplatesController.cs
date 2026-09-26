@@ -46,4 +46,11 @@ public sealed class AdminEmailTemplatesController(IServiceManager serviceManager
         var response = await serviceManager.EmailTemplateService.DeleteAsync(id, token);
         return StatusCode(response.StatusCode, response);
     }
+
+    [HttpPost("seed-defaults")]
+    public async Task<IActionResult> SeedDefaults([FromQuery] bool overwrite = false, CancellationToken token = default)
+    {
+        var response = await serviceManager.EmailTemplateService.SeedDefaultsAsync(overwrite, token);
+        return StatusCode(response.StatusCode, response);
+    }
 }

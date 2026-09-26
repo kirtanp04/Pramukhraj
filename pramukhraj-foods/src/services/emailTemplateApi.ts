@@ -18,4 +18,7 @@ export const emailTemplateApi = {
   delete(id: string) {
     return apiDelete<{ id: string }>(ApiPath.admin.emailTemplates.delete(id))
   },
+  seedDefaults(overwrite: boolean = false) {
+    return apiPostResponse<number>(ApiPath.admin.emailTemplates.seedDefaults(overwrite), null)
+  },
 }
