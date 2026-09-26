@@ -843,6 +843,14 @@ public sealed partial class ShiprocketFulfillmentService(
                 };
             }).ToList();
 
+            var reasonName = ReturnService.GetReturnReasonName(returnRequest.Reason);
+            var comments = !string.IsNullOrWhiteSpace(returnRequest.CustomerComments)
+                ? returnRequest.CustomerComments.Trim()
+                : reasonName;
+
+            var shippingRefund = returnRequest.ShippingRefundAmount;
+            var paymentFeeRefund = returnRequest.PaymentFeeRefundAmount;
+
             // Build the return order payload using the dedicated store address.
             var returnBodyObj = new Dictionary<string, object?>
             {
@@ -875,6 +883,12 @@ public sealed partial class ShiprocketFulfillmentService(
                 ["payment_method"]         = "PREPAID",
                 ["total_discount"]         = "0.00",
                 ["sub_total"]              = subTotal.ToString("0.00", CultureInfo.InvariantCulture),
+                ["shipping_charges"]       = shippingRefund.ToString("0.00", CultureInfo.InvariantCulture),
+                ["transaction_charges"]    = paymentFeeRefund.ToString("0.00", CultureInfo.InvariantCulture),
+                ["return_reason"]          = reasonName,
+                ["reason"]                 = reasonName,
+                ["comment"]                = comments,
+                ["comments"]               = comments,
                 ["length"]                 = 15,
                 ["breadth"]                = 15,
                 ["height"]                 = 10,
